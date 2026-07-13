@@ -87,10 +87,13 @@ export const MODULE_PERMISSIONS = {
   inventory: 'inventory:read',
   sales: 'sales:read',
   purchases: 'purchases:read',
+  leads: 'sales:read',
+  marketing: 'sales:read',
   payments: 'payments:read',
   reports: 'reports:read',
   templates: 'sales:read',
   settings: 'org:read',
+  billing: 'org:read',
   users: 'users:read',
   audit: 'reports:read',
 } as const

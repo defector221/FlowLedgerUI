@@ -165,14 +165,29 @@ export const SelectTrigger = ({
 )
 export const SelectContent = ({
   className,
+  children,
+  position = 'popper',
   ...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
-      className={cn('z-50 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 shadow-lg', className)}
+      className={cn(
+        'z-[70] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg',
+        position === 'popper' &&
+          'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
+        className,
+      )}
+      position={position}
       {...props}
     >
-      <SelectPrimitive.Viewport />
+      <SelectPrimitive.Viewport
+        className={cn(
+          'p-1',
+          position === 'popper' && 'w-full min-w-[var(--radix-select-trigger-width)]',
+        )}
+      >
+        {children}
+      </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 )
@@ -216,7 +231,7 @@ export const DropdownMenuContent = ({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
-      className={cn('z-50 min-w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg', className)}
+      className={cn('z-[70] min-w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg', className)}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>

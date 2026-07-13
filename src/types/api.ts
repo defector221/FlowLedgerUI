@@ -487,16 +487,25 @@ export interface AuditLogResponse {
   createdAt: string
 }
 
+export interface InvoiceTemplateConfig {
+  logo?: { visible?: boolean; position?: string }
+  header?: { title?: string; accentColor?: string; showGstin?: boolean }
+  items?: { columns?: string[]; showHsn?: boolean; showTax?: boolean }
+  footer?: { showBankDetails?: boolean; showTerms?: boolean; showSignature?: boolean; note?: string }
+}
+
 export interface InvoiceTemplateResponse {
   id: string
   templateName: string
+  documentType?: string
   presetKey: string | null
   isDefault: boolean
-  configJson: string
+  configJson: InvoiceTemplateConfig | string
 }
 
 export interface CreateInvoiceTemplateRequest {
   templateName: string
   presetKey?: string
-  configJson?: string
+  documentType?: string
+  configJson?: InvoiceTemplateConfig
 }

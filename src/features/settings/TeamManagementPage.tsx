@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { roleApi, userApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
@@ -37,12 +38,37 @@ export function TeamManagementPage() {
   const queryClient = useQueryClient()
   const { session } = useAuth()
   const [open, setOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState(searchParams.get('q') ?? '')
+  const deferredSearch = useDeferredValue(search.trim().toLowerCase())
   const { data: users = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: userApi.list })
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: roleApi.list })
   const form = useForm({
     resolver: zodResolver(inviteSchema),
     defaultValues: { firstName: '', lastName: '', email: '', role: 'SALES_MANAGER' },
   })
+
+  useEffect(() => {
+    const next = searchParams.get('q') ?? ''
+    setSearch((current) => (current === next ? current : next))
+  }, [searchParams])
+
+  useEffect(() => {
+    const current = (searchParams.get('q') ?? '').toLowerCase()
+    if (deferredSearch === current) return
+    const next = new URLSearchParams(searchParams)
+    if (deferredSearch) next.set('q', deferredSearch)
+    else next.delete('q')
+    setSearchParams(next, { replace: true })
+  }, [deferredSearch, searchParams, setSearchParams])
+
+  const filteredUsers = useMemo(() => {
+    if (!deferredSearch) return users
+    return users.filter((user) => {
+      const haystack = `${user.firstName} ${user.lastName ?? ''} ${user.email} ${user.roles.join(' ')}`.toLowerCase()
+      return haystack.includes(deferredSearch)
+    })
+  }, [users, deferredSearch])
 
   const totalUsers = users.length
   const activeUsers = users.filter((user) => user.status === 'ACTIVE').length
@@ -123,6 +149,17 @@ export function TeamManagementPage() {
 
       <Card>
         <CardContent className="p-4">
+          <div className="mb-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+              <Input
+                className="pl-9"
+                placeholder="Search employees by name, email, or role…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+          </div>
           {isLoading ? (
             <p className="py-10 text-center text-sm text-slate-500">Loading team members…</p>
           ) : (
@@ -138,14 +175,18 @@ export function TeamManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {filteredUsers.length ? (
+                  filteredUsers.map((user) => (
                   <tr key={user.id} className="border-b">
                     <td className="p-3">
                       {user.firstName} {user.lastName}
                     </td>
                     <td className="p-3">{user.email}</td>
                     <td className="p-3">
-                      <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
+                      <Select
+                        value={user.roles[0]}
+                        onValueChange={(role) => changeRole(user.id, role)}
+                      >
                         <SelectTrigger className="h-8 w-44">
                           {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
                         </SelectTrigger>
@@ -177,7 +218,14 @@ export function TeamManagementPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-sm text-slate-500">
+                      {deferredSearch ? `No employees match “${deferredSearch}”.` : 'No employees found.'}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </Table>
           )}
@@ -208,16 +256,28 @@ export function TeamManagementPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Role</Label>
-              <Select value={form.watch('role')} onValueChange={(value) => form.setValue('role', value)}>
-                <SelectTrigger>{roles.find((r) => r.code === form.watch('role'))?.name ?? 'Select role'}</SelectTrigger>
+              <Select
+                value={form.watch('role')}
+                onValueChange={(value) => form.setValue('role', value, { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  {roles.find((r) => r.code === form.watch('role'))?.name ?? 'Select role'}
+                </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.code} value={role.code}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
+                  {roles.length ? (
+                    roles.map((role) => (
+                      <SelectItem key={role.code} value={role.code}>
+                        {role.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-slate-500">Loading roles…</div>
+                  )}
                 </SelectContent>
               </Select>
+              {form.formState.errors.role && (
+                <p className="text-xs text-rose-600">{form.formState.errors.role.message}</p>
+              )}
             </div>
             <Button type="submit" className="w-full">
               Send Invitation

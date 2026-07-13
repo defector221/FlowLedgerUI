@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { inventoryApi, productApi, warehouseApi } from '@/services/api'
@@ -24,9 +25,37 @@ export function InventoryPage() {
   const { data: reorder = [] } = useQuery({ queryKey: ['inventory', 'reorder'], queryFn: inventoryApi.reorderAlerts })
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Inventory overview</h1>
-        <p className="mt-1 text-sm text-slate-500">Monitor stock health across warehouses.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Inventory overview</h1>
+          <p className="mt-1 text-sm text-slate-500">Monitor stock health across warehouses.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex h-9 items-center rounded-lg border px-3 text-sm hover:bg-slate-50"
+            to="/inventory/adjustments"
+          >
+            Adjustments
+          </Link>
+          <Link
+            className="inline-flex h-9 items-center rounded-lg border px-3 text-sm hover:bg-slate-50"
+            to="/inventory/transfers"
+          >
+            Transfers
+          </Link>
+          <Link
+            className="inline-flex h-9 items-center rounded-lg border px-3 text-sm hover:bg-slate-50"
+            to="/inventory/opening-stock"
+          >
+            Opening stock
+          </Link>
+          <Link
+            className="inline-flex h-9 items-center rounded-lg bg-teal-700 px-3 text-sm text-white hover:bg-teal-800"
+            to="/inventory/ledger"
+          >
+            Stock ledger
+          </Link>
+        </div>
       </div>
       <section className="grid gap-4 sm:grid-cols-3">
         <Card>
@@ -81,7 +110,7 @@ export function SimpleInventoryPage({
 }: {
   title: string
   description: string
-  mode?: 'adjustment' | 'transfer'
+  mode?: 'adjustment' | 'transfer' | 'opening' | 'ledger'
 }) {
   const [productId, setProductId] = useState('')
   const [warehouseId, setWarehouseId] = useState('')
@@ -90,6 +119,11 @@ export function SimpleInventoryPage({
   const [quantity, setQuantity] = useState(1)
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: () => productApi.list({ size: 100 }) })
   const { data: warehouses = [] } = useQuery({ queryKey: ['warehouses'], queryFn: warehouseApi.list })
+  const { data: ledger = [], isFetching: ledgerLoading } = useQuery({
+    queryKey: ['inventory', 'ledger', productId, warehouseId],
+    queryFn: () => inventoryApi.ledger(productId, warehouseId ? { warehouseId } : undefined),
+    enabled: mode === 'ledger' && !!productId,
+  })
 
   const submit = async () => {
     try {
@@ -99,6 +133,9 @@ export function SimpleInventoryPage({
       } else if (mode === 'adjustment') {
         await inventoryApi.adjust({ productId, warehouseId, quantity })
         toast.success('Stock adjusted')
+      } else if (mode === 'opening') {
+        await inventoryApi.openingStock({ productId, warehouseId, quantity })
+        toast.success('Opening stock recorded')
       }
     } catch (error) {
       toast.error(getApiErrorMessage(error))
@@ -111,7 +148,7 @@ export function SimpleInventoryPage({
         <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
         <p className="mt-1 text-sm text-slate-500">{description}</p>
       </div>
-      {mode ? (
+      {mode === 'ledger' ? (
         <Card>
           <CardContent className="grid gap-4 p-6">
             <div className="space-y-1.5">
@@ -127,7 +164,74 @@ export function SimpleInventoryPage({
                 </SelectContent>
               </Select>
             </div>
-            {mode === 'adjustment' && (
+            <div className="space-y-1.5">
+              <Label>Warehouse (optional)</Label>
+              <Select value={warehouseId || undefined} onValueChange={setWarehouseId}>
+                <SelectTrigger>
+                  {warehouses.find((w) => w.id === warehouseId)?.warehouseName ?? 'All warehouses'}
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map((warehouse) => (
+                    <SelectItem key={warehouse.id} value={warehouse.id}>
+                      {warehouse.warehouseName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {!productId ? (
+              <p className="py-10 text-center text-sm text-slate-500">Select a product to inspect ledger entries.</p>
+            ) : ledgerLoading ? (
+              <p className="py-10 text-center text-sm text-slate-500">Loading ledger…</p>
+            ) : (
+              <Table>
+                <thead>
+                  <tr className="border-b">
+                    <th className="p-3 text-xs text-slate-500">DATE</th>
+                    <th className="p-3 text-xs text-slate-500">TYPE</th>
+                    <th className="p-3 text-xs text-slate-500">QTY</th>
+                    <th className="p-3 text-xs text-slate-500">BALANCE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.length ? (
+                    ledger.map((row, index) => (
+                      <tr key={String(row.id ?? index)} className="border-b">
+                        <td className="p-3">{String(row.transactionDate ?? row.createdAt ?? '—')}</td>
+                        <td className="p-3">{String(row.transactionType ?? row.type ?? '—')}</td>
+                        <td className="p-3">{String(row.quantity ?? '—')}</td>
+                        <td className="p-3">{String(row.balanceAfter ?? row.balance ?? '—')}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-10 text-center text-sm text-slate-500">
+                        No ledger entries for this product.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : mode ? (
+        <Card>
+          <CardContent className="grid gap-4 p-6">
+            <div className="space-y-1.5">
+              <Label>Product</Label>
+              <Select value={productId} onValueChange={setProductId}>
+                <SelectTrigger>{products.find((p) => p.id === productId)?.name ?? 'Select product'}</SelectTrigger>
+                <SelectContent>
+                  {products.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {(mode === 'adjustment' || mode === 'opening') && (
               <div className="space-y-1.5">
                 <Label>Warehouse</Label>
                 <Select value={warehouseId} onValueChange={setWarehouseId}>

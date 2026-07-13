@@ -1,0 +1,20 @@
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { api } from '@/lib/api-client'
+import { useAuth } from './auth'
+import { Button, Card, CardContent, Input, Label } from '@/components/ui'
+
+const credentialSchema = z.object({ email: z.email('Enter a valid email'), password: z.string().min(6, 'Password must be at least 6 characters') })
+function Shell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) { return <main className="grid min-h-screen place-items-center bg-slate-100 p-4"><Card className="w-full max-w-md"><CardContent className="p-7"><Link to="/" className="mb-8 block text-2xl font-semibold text-slate-950">Flow<span className="text-teal-700">Ledger</span></Link><h1 className="text-xl font-semibold text-slate-900">{title}</h1><p className="mt-1 text-sm text-slate-500">{subtitle}</p>{children}</CardContent></Card></main> }
+export function LoginPage() {
+  const { login } = useAuth(); const navigate = useNavigate(); const location = useLocation()
+  const form = useForm<z.infer<typeof credentialSchema>>({ resolver: zodResolver(credentialSchema), defaultValues: { email: '', password: '' } })
+  const submit = async (values: z.infer<typeof credentialSchema>) => { try { await login(values.email, values.password); toast.success('Welcome back'); navigate(location.state?.from?.pathname ?? '/') } catch { toast.error('Unable to sign in. Check your credentials.') } }
+  return <Shell title="Welcome back" subtitle="Sign in to manage your business"><form className="mt-6 space-y-4" onSubmit={form.handleSubmit(submit)}><div className="space-y-1.5"><Label>Email address</Label><Input type="email" {...form.register('email')} placeholder="you@company.com" /><p className="text-xs text-rose-600">{form.formState.errors.email?.message}</p></div><div className="space-y-1.5"><div className="flex justify-between"><Label>Password</Label><Link className="text-xs text-teal-700 hover:underline" to="/forgot-password">Forgot password?</Link></div><Input type="password" {...form.register('password')} /><p className="text-xs text-rose-600">{form.formState.errors.password?.message}</p></div><Button className="w-full" size="lg" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Signing in…' : 'Sign in'}</Button></form></Shell>
+}
+export function ForgotPasswordPage() { return <RequestPassword title="Reset your password" subtitle="We’ll email you instructions to reset your password." endpoint="/auth/forgot-password" button="Send reset link" /> }
+export function ResetPasswordPage() { const [params] = useSearchParams(); return <RequestPassword title="Set a new password" subtitle="Choose a secure password for your account." endpoint="/auth/reset-password" button="Reset password" extra={{ token: params.get('token') ?? '' }} /> }
+function RequestPassword({ title, subtitle, endpoint, button, extra = {} }: { title: string; subtitle: string; endpoint: string; button: string; extra?: Record<string, string> }) { const form = useForm<{ email: string; password?: string }>({ defaultValues: { email: '', password: '' } }); const submit = async (values: { email: string; password?: string }) => { await api.post(endpoint, { ...values, ...extra }); toast.success('Request submitted') }; return <Shell title={title} subtitle={subtitle}><form onSubmit={form.handleSubmit(submit)} className="mt-6 space-y-4"><div className="space-y-1.5"><Label>Email address</Label><Input type="email" {...form.register('email', { required: true })} /></div>{endpoint.includes('reset') && <div className="space-y-1.5"><Label>New password</Label><Input type="password" {...form.register('password', { required: true })} /></div>}<Button className="w-full" size="lg">{button}</Button><Link to="/login" className="block text-center text-sm text-teal-700 hover:underline">Back to sign in</Link></form></Shell> }

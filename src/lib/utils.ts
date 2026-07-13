@@ -6,7 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function currency(value: number | string | null | undefined) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value ?? 0))
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(
+    Number(value ?? 0),
+  )
 }
 
 export function date(value: string | Date) {

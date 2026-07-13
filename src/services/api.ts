@@ -41,17 +41,25 @@ import type {
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }).then((r) => unwrapApi<LoginResponse>(r)),
-  register: (payload: { organizationName: string; email: string; password: string; firstName: string; lastName?: string; phone?: string }) =>
-    api.post('/auth/register', payload).then((r) => unwrapApi<LoginResponse>(r)),
+  register: (payload: {
+    organizationName: string
+    email: string
+    password: string
+    firstName: string
+    lastName?: string
+    phone?: string
+  }) => api.post('/auth/register', payload).then((r) => unwrapApi<LoginResponse>(r)),
   logout: (refreshToken: string) => api.post('/auth/logout', { refreshToken }),
   forgotPassword: (organizationId: string, email: string) =>
     api.post('/auth/forgot-password', { organizationId, email }),
-  resetPassword: (token: string, newPassword: string) =>
-    api.post('/auth/reset-password', { token, newPassword }),
+  resetPassword: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, newPassword }),
   previewInvitation: (token: string) =>
     api.get('/auth/invitation', { params: { token } }).then((r) => unwrapApi<InvitationPreviewResponse>(r)),
-  acceptInvitation: (payload: AcceptInvitationRequest) =>
-    api.post('/auth/accept-invitation', payload),
+  acceptInvitation: (payload: AcceptInvitationRequest) => api.post('/auth/accept-invitation', payload),
+  switchOrganization: (organizationId: string) =>
+    api.post('/auth/switch-organization', { organizationId }).then((r) => unwrapApi<LoginResponse>(r)),
+  createOrganization: (organizationName: string) =>
+    api.post('/auth/create-organization', { organizationName }).then((r) => unwrapApi<LoginResponse>(r)),
 }
 
 export const organizationApi = {
@@ -72,10 +80,13 @@ export const organizationApi = {
 
 export const userApi = {
   list: () => api.get('/users').then((r) => unwrapList<UserListResponse>(r)),
-  invite: (payload: InviteUserRequest) => api.post('/users/invite', payload).then((r) => unwrapApi<UserListResponse>(r)),
-  changeRole: (id: string, role: string) => api.put(`/users/${id}/role`, { role }).then((r) => unwrapApi<UserListResponse>(r)),
+  invite: (payload: InviteUserRequest) =>
+    api.post('/users/invite', payload).then((r) => unwrapApi<UserListResponse>(r)),
+  changeRole: (id: string, role: string) =>
+    api.put(`/users/${id}/role`, { role }).then((r) => unwrapApi<UserListResponse>(r)),
   deactivate: (id: string) => api.post(`/users/${id}/deactivate`).then((r) => unwrapApi<UserListResponse>(r)),
-  resendInvitation: (id: string) => api.post(`/users/${id}/resend-invitation`).then((r) => unwrapApi<UserListResponse>(r)),
+  resendInvitation: (id: string) =>
+    api.post(`/users/${id}/resend-invitation`).then((r) => unwrapApi<UserListResponse>(r)),
 }
 
 export const roleApi = {
@@ -85,24 +96,30 @@ export const roleApi = {
 export const warehouseApi = {
   list: () => api.get('/warehouses').then((r) => unwrapList<WarehouseResponse>(r)),
   get: (id: string) => api.get(`/warehouses/${id}`).then((r) => unwrapApi<WarehouseResponse>(r)),
-  create: (payload: CreateWarehouseRequest) => api.post('/warehouses', payload).then((r) => unwrapApi<WarehouseResponse>(r)),
-  update: (id: string, payload: UpdateWarehouseRequest) => api.put(`/warehouses/${id}`, payload).then((r) => unwrapApi<WarehouseResponse>(r)),
+  create: (payload: CreateWarehouseRequest) =>
+    api.post('/warehouses', payload).then((r) => unwrapApi<WarehouseResponse>(r)),
+  update: (id: string, payload: UpdateWarehouseRequest) =>
+    api.put(`/warehouses/${id}`, payload).then((r) => unwrapApi<WarehouseResponse>(r)),
 }
 
 export const customerApi = {
   list: (params?: { search?: string; archived?: boolean; size?: number }) =>
     api.get('/customers', { params }).then((r) => unwrapPage<CustomerResponse>(r)),
   get: (id: string) => api.get(`/customers/${id}`).then((r) => unwrapApi<CustomerResponse>(r)),
-  create: (payload: CreateCustomerRequest) => api.post('/customers', payload).then((r) => unwrapApi<CustomerResponse>(r)),
-  update: (id: string, payload: UpdateCustomerRequest) => api.put(`/customers/${id}`, payload).then((r) => unwrapApi<CustomerResponse>(r)),
+  create: (payload: CreateCustomerRequest) =>
+    api.post('/customers', payload).then((r) => unwrapApi<CustomerResponse>(r)),
+  update: (id: string, payload: UpdateCustomerRequest) =>
+    api.put(`/customers/${id}`, payload).then((r) => unwrapApi<CustomerResponse>(r)),
 }
 
 export const supplierApi = {
   list: (params?: { search?: string; archived?: boolean; size?: number }) =>
     api.get('/suppliers', { params }).then((r) => unwrapPage<SupplierResponse>(r)),
   get: (id: string) => api.get(`/suppliers/${id}`).then((r) => unwrapApi<SupplierResponse>(r)),
-  create: (payload: CreateSupplierRequest) => api.post('/suppliers', payload).then((r) => unwrapApi<SupplierResponse>(r)),
-  update: (id: string, payload: UpdateSupplierRequest) => api.put(`/suppliers/${id}`, payload).then((r) => unwrapApi<SupplierResponse>(r)),
+  create: (payload: CreateSupplierRequest) =>
+    api.post('/suppliers', payload).then((r) => unwrapApi<SupplierResponse>(r)),
+  update: (id: string, payload: UpdateSupplierRequest) =>
+    api.put(`/suppliers/${id}`, payload).then((r) => unwrapApi<SupplierResponse>(r)),
 }
 
 export const productApi = {
@@ -110,14 +127,17 @@ export const productApi = {
     api.get('/products', { params }).then((r) => unwrapPage<ProductResponse>(r)),
   get: (id: string) => api.get(`/products/${id}`).then((r) => unwrapApi<ProductResponse>(r)),
   create: (payload: CreateProductRequest) => api.post('/products', payload).then((r) => unwrapApi<ProductResponse>(r)),
-  update: (id: string, payload: UpdateProductRequest) => api.put(`/products/${id}`, payload).then((r) => unwrapApi<ProductResponse>(r)),
+  update: (id: string, payload: UpdateProductRequest) =>
+    api.put(`/products/${id}`, payload).then((r) => unwrapApi<ProductResponse>(r)),
 }
 
 export const categoryApi = {
   list: () => api.get('/categories').then((r) => unwrapList<CategoryResponse>(r)),
   get: (id: string) => api.get(`/categories/${id}`).then((r) => unwrapApi<CategoryResponse>(r)),
-  create: (payload: CreateCategoryRequest) => api.post('/categories', payload).then((r) => unwrapApi<CategoryResponse>(r)),
-  update: (id: string, payload: UpdateCategoryRequest) => api.put(`/categories/${id}`, payload).then((r) => unwrapApi<CategoryResponse>(r)),
+  create: (payload: CreateCategoryRequest) =>
+    api.post('/categories', payload).then((r) => unwrapApi<CategoryResponse>(r)),
+  update: (id: string, payload: UpdateCategoryRequest) =>
+    api.put(`/categories/${id}`, payload).then((r) => unwrapApi<CategoryResponse>(r)),
 }
 
 export const salesApi = {
@@ -126,7 +146,8 @@ export const salesApi = {
   getInvoice: (id: string) => api.get(`/sales/invoices/${id}`).then((r) => unwrapApi<SalesInvoiceResponse>(r)),
   createInvoice: (payload: CreateSalesInvoiceRequest) =>
     api.post('/sales/invoices', payload).then((r) => unwrapApi<SalesInvoiceResponse>(r)),
-  confirmInvoice: (id: string) => api.post(`/sales/invoices/${id}/confirm`).then((r) => unwrapApi<SalesInvoiceResponse>(r)),
+  confirmInvoice: (id: string) =>
+    api.post(`/sales/invoices/${id}/confirm`).then((r) => unwrapApi<SalesInvoiceResponse>(r)),
   listQuotations: () => api.get('/sales/quotations').then((r) => unwrapList<Record<string, unknown>>(r)),
 }
 
@@ -168,7 +189,8 @@ export const reportApi = {
 
 export const templateApi = {
   list: () => api.get('/templates').then((r) => unwrapList<InvoiceTemplateResponse>(r)),
-  create: (payload: CreateInvoiceTemplateRequest) => api.post('/templates', payload).then((r) => unwrapApi<InvoiceTemplateResponse>(r)),
+  create: (payload: CreateInvoiceTemplateRequest) =>
+    api.post('/templates', payload).then((r) => unwrapApi<InvoiceTemplateResponse>(r)),
   presets: () => api.get('/templates/presets').then((r) => unwrapList<Record<string, unknown>>(r)),
 }
 

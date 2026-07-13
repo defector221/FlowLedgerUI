@@ -8,7 +8,22 @@ import { Plus } from 'lucide-react'
 import { roleApi, userApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
-import { Badge, Button, Card, CardContent, Dialog, DialogContent, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, Table } from '@/components/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  Table,
+} from '@/components/ui'
 import type { InviteUserRequest } from '@/types/api'
 
 const inviteSchema = z.object({
@@ -24,7 +39,10 @@ export function TeamManagementPage() {
   const [open, setOpen] = useState(false)
   const { data: users = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: userApi.list })
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: roleApi.list })
-  const form = useForm({ resolver: zodResolver(inviteSchema), defaultValues: { firstName: '', lastName: '', email: '', role: 'SALES_MANAGER' } })
+  const form = useForm({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: { firstName: '', lastName: '', email: '', role: 'SALES_MANAGER' },
+  })
 
   const totalUsers = users.length
   const activeUsers = users.filter((user) => user.status === 'ACTIVE').length
@@ -77,9 +95,14 @@ export function TeamManagementPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Team & Access</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage employees and permissions for {session?.user.firstName}'s organization.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Manage employees and permissions for {session?.user.firstName}'s organization.
+          </p>
         </div>
-        <Button onClick={() => setOpen(true)}><Plus className="size-4" />Invite Employee</Button>
+        <Button onClick={() => setOpen(true)}>
+          <Plus className="size-4" />
+          Invite Employee
+        </Button>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -89,32 +112,68 @@ export function TeamManagementPage() {
           ['Pending Invitations', pendingInvitations],
           ['Administrators', administrators],
         ].map(([label, value]) => (
-          <Card key={label}><CardContent className="p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p></CardContent></Card>
+          <Card key={label}>
+            <CardContent className="p-5">
+              <p className="text-sm text-slate-500">{label}</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+            </CardContent>
+          </Card>
         ))}
       </section>
 
       <Card>
         <CardContent className="p-4">
-          {isLoading ? <p className="py-10 text-center text-sm text-slate-500">Loading team members…</p> : (
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-slate-500">Loading team members…</p>
+          ) : (
             <Table>
-              <thead><tr className="border-b"><th className="p-3 text-xs text-slate-500">EMPLOYEE</th><th className="p-3 text-xs text-slate-500">EMAIL</th><th className="p-3 text-xs text-slate-500">ROLE</th><th className="p-3 text-xs text-slate-500">STATUS</th><th className="p-3 text-xs text-slate-500">LAST LOGIN</th><th className="p-3 text-xs text-slate-500">ACTIONS</th></tr></thead>
+              <thead>
+                <tr className="border-b">
+                  <th className="p-3 text-xs text-slate-500">EMPLOYEE</th>
+                  <th className="p-3 text-xs text-slate-500">EMAIL</th>
+                  <th className="p-3 text-xs text-slate-500">ROLE</th>
+                  <th className="p-3 text-xs text-slate-500">STATUS</th>
+                  <th className="p-3 text-xs text-slate-500">LAST LOGIN</th>
+                  <th className="p-3 text-xs text-slate-500">ACTIONS</th>
+                </tr>
+              </thead>
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id} className="border-b">
-                    <td className="p-3">{user.firstName} {user.lastName}</td>
+                    <td className="p-3">
+                      {user.firstName} {user.lastName}
+                    </td>
                     <td className="p-3">{user.email}</td>
                     <td className="p-3">
                       <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
-                        <SelectTrigger className="h-8 w-44">{roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}</SelectTrigger>
-                        <SelectContent>{roles.map((role) => <SelectItem key={role.code} value={role.code}>{role.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-8 w-44">
+                          {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roles.map((role) => (
+                            <SelectItem key={role.code} value={role.code}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
                     </td>
-                    <td className="p-3"><Badge>{user.status}</Badge></td>
+                    <td className="p-3">
+                      <Badge>{user.status}</Badge>
+                    </td>
                     <td className="p-3">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '—'}</td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        {user.status === 'INVITED' && <Button size="sm" variant="outline" onClick={() => resend(user.id)}>Resend</Button>}
-                        {user.status !== 'INACTIVE' && user.id !== session?.user.id && <Button size="sm" variant="outline" onClick={() => deactivate(user.id)}>Remove</Button>}
+                        {user.status === 'INVITED' && (
+                          <Button size="sm" variant="outline" onClick={() => resend(user.id)}>
+                            Resend
+                          </Button>
+                        )}
+                        {user.status !== 'INACTIVE' && user.id !== session?.user.id && (
+                          <Button size="sm" variant="outline" onClick={() => deactivate(user.id)}>
+                            Remove
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -129,16 +188,40 @@ export function TeamManagementPage() {
         <DialogContent>
           <DialogTitle className="text-lg font-semibold">Invite Employee</DialogTitle>
           <form className="space-y-4" onSubmit={invite}>
-            <div className="space-y-1.5"><Label>First Name</Label><Input {...form.register('firstName')} />{form.formState.errors.firstName && <p className="text-xs text-rose-600">{form.formState.errors.firstName.message}</p>}</div>
-            <div className="space-y-1.5"><Label>Last Name</Label><Input {...form.register('lastName')} /></div>
-            <div className="space-y-1.5"><Label>Email</Label><Input type="email" {...form.register('email')} />{form.formState.errors.email && <p className="text-xs text-rose-600">{form.formState.errors.email.message}</p>}</div>
-            <div className="space-y-1.5"><Label>Role</Label>
+            <div className="space-y-1.5">
+              <Label>First Name</Label>
+              <Input {...form.register('firstName')} />
+              {form.formState.errors.firstName && (
+                <p className="text-xs text-rose-600">{form.formState.errors.firstName.message}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Last Name</Label>
+              <Input {...form.register('lastName')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" {...form.register('email')} />
+              {form.formState.errors.email && (
+                <p className="text-xs text-rose-600">{form.formState.errors.email.message}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
               <Select value={form.watch('role')} onValueChange={(value) => form.setValue('role', value)}>
                 <SelectTrigger>{roles.find((r) => r.code === form.watch('role'))?.name ?? 'Select role'}</SelectTrigger>
-                <SelectContent>{roles.map((role) => <SelectItem key={role.code} value={role.code}>{role.name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.code} value={role.code}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="w-full">Send Invitation</Button>
+            <Button type="submit" className="w-full">
+              Send Invitation
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

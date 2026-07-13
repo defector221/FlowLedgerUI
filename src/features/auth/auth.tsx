@@ -1,18 +1,36 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getSession, setSession, type AuthSession } from '@/lib/api-client'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getSession, setSession, toAuthSession, type AuthSession } from '@/lib/api-client'
 import { authApi, organizationApi } from '@/services/api'
-import { canAccess, canAccessModule, canManageOrganization, canManageUsers, hasAnyRole, hasRole } from '@/lib/permissions'
-import type { OrganizationResponse, RoleCode } from '@/types/api'
+import {
+  canAccess,
+  canAccessModule,
+  canManageOrganization,
+  canManageUsers,
+  hasAnyRole,
+  hasRole,
+} from '@/lib/permissions'
+import type { OrganizationAccessResponse, OrganizationResponse, RoleCode } from '@/types/api'
 
 type AuthValue = {
   session: AuthSession | null
   organization: OrganizationResponse | null
+  activeOrganization: OrganizationAccessResponse | null
+  organizations: OrganizationAccessResponse[]
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (payload: { organizationName: string; email: string; password: string; firstName: string; lastName?: string; phone?: string }) => Promise<void>
+  register: (payload: {
+    organizationName: string
+    email: string
+    password: string
+    firstName: string
+    lastName?: string
+    phone?: string
+  }) => Promise<void>
   logout: () => Promise<void>
+  switchOrganization: (organizationId: string) => Promise<void>
+  createOrganization: (organizationName: string) => Promise<void>
   refreshOrganization: () => Promise<void>
   hasRole: (role: RoleCode) => boolean
   hasAnyRole: (roles: RoleCode[]) => boolean
@@ -25,14 +43,29 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null)
 
+function applySession(payload: Parameters<typeof toAuthSession>[0], setCurrent: (session: AuthSession) => void) {
+  const next = toAuthSession(payload)
+  setSession(next)
+  setCurrent(next)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [session, setCurrent] = useState<AuthSession | null>(getSession)
   const [organization, setOrganization] = useState<OrganizationResponse | null>(null)
 
+  useEffect(() => {
+    if (session && !session.activeOrganization?.id) {
+      setSession(null)
+      setCurrent(null)
+      setOrganization(null)
+    }
+  }, [session])
+
   const orgQuery = useQuery({
-    queryKey: ['organization', 'current', session?.user.organizationId],
+    queryKey: ['organization', 'current', session?.activeOrganization?.id],
     queryFn: organizationApi.current,
-    enabled: !!session,
+    enabled: !!session?.activeOrganization?.id,
     retry: false,
   })
 
@@ -41,24 +74,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session) setOrganization(null)
   }, [orgQuery.data, session])
 
+  const clearTenantCache = useCallback(async () => {
+    await queryClient.cancelQueries()
+    queryClient.clear()
+  }, [queryClient])
+
   const refreshOrganization = useCallback(async () => {
-    if (!session) return
+    const organizationId = session?.activeOrganization?.id
+    if (!organizationId) return
     const org = await organizationApi.current()
     setOrganization(org)
-  }, [session])
+    await queryClient.invalidateQueries({ queryKey: ['organization', 'current', organizationId] })
+  }, [queryClient, session])
 
   const login = async (email: string, password: string) => {
     const result = await authApi.login(email, password)
-    const next: AuthSession = { accessToken: result.accessToken, refreshToken: result.refreshToken, user: result.user }
-    setSession(next)
-    setCurrent(next)
+    applySession(result, setCurrent)
   }
 
-  const register = async (payload: { organizationName: string; email: string; password: string; firstName: string; lastName?: string; phone?: string }) => {
+  const register = async (payload: {
+    organizationName: string
+    email: string
+    password: string
+    firstName: string
+    lastName?: string
+    phone?: string
+  }) => {
     const result = await authApi.register(payload)
-    const next: AuthSession = { accessToken: result.accessToken, refreshToken: result.refreshToken, user: result.user }
-    setSession(next)
-    setCurrent(next)
+    applySession(result, setCurrent)
+  }
+
+  const switchOrganization = async (organizationId: string) => {
+    const result = await authApi.switchOrganization(organizationId)
+    await clearTenantCache()
+    applySession(result, setCurrent)
+  }
+
+  const createOrganization = async (organizationName: string) => {
+    const result = await authApi.createOrganization(organizationName)
+    await clearTenantCache()
+    applySession(result, setCurrent)
   }
 
   const logout = async () => {
@@ -68,26 +123,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null)
       setCurrent(null)
       setOrganization(null)
+      await clearTenantCache()
     }
   }
 
-  const roles = session?.user.roles
-  const value = useMemo<AuthValue>(() => ({
-    session,
-    organization,
-    isLoading: !!session && orgQuery.isLoading,
-    login,
-    register,
-    logout,
-    refreshOrganization,
-    hasRole: (role) => hasRole(roles, role),
-    hasAnyRole: (required) => hasAnyRole(roles, required),
-    can: (permission) => canAccess(roles, permission),
-    canAccessModule: (module) => canAccessModule(roles, module),
-    canManageUsers: () => canManageUsers(roles),
-    canManageOrganization: () => canManageOrganization(roles),
-    needsOnboarding: !!session && !!organization && !organization.onboardingCompleted && hasRole(roles, 'ORGANIZATION_ADMIN'),
-  }), [session, organization, orgQuery.isLoading, roles])
+  const activeOrganization = session?.activeOrganization ?? null
+  const roles = activeOrganization?.roles
+  const value = useMemo<AuthValue>(
+    () => ({
+      session,
+      organization,
+      activeOrganization,
+      organizations: session?.organizations ?? [],
+      isLoading: !!session && orgQuery.isLoading,
+      login,
+      register,
+      logout,
+      switchOrganization,
+      createOrganization,
+      refreshOrganization,
+      hasRole: (role) => hasRole(roles, role),
+      hasAnyRole: (required) => hasAnyRole(roles, required),
+      can: (permission) => canAccess(roles, permission),
+      canAccessModule: (module) => canAccessModule(roles, module),
+      canManageUsers: () => canManageUsers(roles),
+      canManageOrganization: () => canManageOrganization(roles),
+      needsOnboarding:
+        !!session && !!organization && !organization.onboardingCompleted && hasRole(roles, 'ORGANIZATION_ADMIN'),
+    }),
+    [session, organization, activeOrganization, orgQuery.isLoading, roles, clearTenantCache, refreshOrganization],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -101,7 +166,7 @@ export const useAuth = () => {
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const location = useLocation()
-  if (!session) return <Navigate to="/login" state={{ from: location }} replace />
+  if (!session?.activeOrganization?.id) return <Navigate to="/login" state={{ from: location }} replace />
   return <>{children}</>
 }
 

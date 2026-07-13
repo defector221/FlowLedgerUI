@@ -15,21 +15,22 @@ export interface PageResponse<T> {
 export type UserStatus = 'INVITED' | 'ACTIVE' | 'INACTIVE'
 
 export type RoleCode =
-  | 'ORGANIZATION_ADMIN'
-  | 'ACCOUNTANT'
-  | 'SALES_MANAGER'
-  | 'PURCHASE_MANAGER'
-  | 'INVENTORY_MANAGER'
-  | 'VIEWER'
+  'ORGANIZATION_ADMIN' | 'ACCOUNTANT' | 'SALES_MANAGER' | 'PURCHASE_MANAGER' | 'INVENTORY_MANAGER' | 'VIEWER'
 
 export interface UserResponse {
   id: string
-  organizationId: string
   email: string
   firstName: string
   lastName: string | null
   status: UserStatus
+}
+
+export interface OrganizationAccessResponse {
+  id: string
+  organizationName: string
   roles: RoleCode[]
+  membershipStatus: UserStatus
+  onboardingCompleted: boolean
 }
 
 export interface LoginResponse {
@@ -37,6 +38,16 @@ export interface LoginResponse {
   refreshToken: string
   expiresIn: number
   user: UserResponse
+  activeOrganization: OrganizationAccessResponse
+  organizations: OrganizationAccessResponse[]
+}
+
+export interface SwitchOrganizationRequest {
+  organizationId: string
+}
+
+export interface CreateOrganizationRequest {
+  organizationName: string
 }
 
 export interface OrganizationResponse {

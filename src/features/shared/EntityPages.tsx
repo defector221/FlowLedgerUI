@@ -6,9 +6,23 @@ import { z } from 'zod'
 import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { categoryApi, customerApi, productApi, supplierApi, unitApi, warehouseApi } from '@/services/api'
-import { getApiErrorMessage } from '@/lib/api-error'
+import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
+import { stripEmpty } from '@/lib/api-payload'
 import { currency } from '@/lib/utils'
-import { Badge, Button, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, Skeleton, Switch, Table } from '@/components/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  Skeleton,
+  Switch,
+  Table,
+} from '@/components/ui'
 
 type EntityKind = 'customers' | 'suppliers' | 'products' | 'categories' | 'warehouses'
 
@@ -78,7 +92,9 @@ const warehouseSchema = z.object({
 
 const configs: Record<EntityKind, EntityConfig> = {
   customers: {
-    title: 'Customers', singular: 'Customer', titleField: 'customerName',
+    title: 'Customers',
+    singular: 'Customer',
+    titleField: 'customerName',
     list: (params) => customerApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => customerApi.get(id).then((row) => row as unknown as Record<string, unknown>),
     create: (payload) => customerApi.create(payload as never),
@@ -94,7 +110,9 @@ const configs: Record<EntityKind, EntityConfig> = {
     ],
   },
   suppliers: {
-    title: 'Suppliers', singular: 'Supplier', titleField: 'supplierName',
+    title: 'Suppliers',
+    singular: 'Supplier',
+    titleField: 'supplierName',
     list: (params) => supplierApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => supplierApi.get(id).then((row) => row as unknown as Record<string, unknown>),
     create: (payload) => supplierApi.create(payload as never),
@@ -110,7 +128,9 @@ const configs: Record<EntityKind, EntityConfig> = {
     ],
   },
   products: {
-    title: 'Products', singular: 'Product', titleField: 'name',
+    title: 'Products',
+    singular: 'Product',
+    titleField: 'name',
     list: (params) => productApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => productApi.get(id).then((row) => row as unknown as Record<string, unknown>),
     create: (payload) => productApi.create(payload as never),
@@ -120,13 +140,23 @@ const configs: Record<EntityKind, EntityConfig> = {
       { name: 'sku', label: 'SKU', required: true, list: true, create: true, detail: true },
       { name: 'name', label: 'Name', required: true, list: true, create: true, detail: true },
       { name: 'barcode', label: 'Barcode', list: true, create: true, detail: true },
-      { name: 'unitId', label: 'Unit', type: 'select', optionsKey: 'units', required: true, create: true, detail: true },
+      {
+        name: 'unitId',
+        label: 'Unit',
+        type: 'select',
+        optionsKey: 'units',
+        required: true,
+        create: true,
+        detail: true,
+      },
       { name: 'sellingPrice', label: 'Selling price', type: 'number', list: true, create: true, detail: true },
       { name: 'purchasePrice', label: 'Purchase price', type: 'number', create: true, detail: true },
     ],
   },
   categories: {
-    title: 'Product categories', singular: 'Category', titleField: 'name',
+    title: 'Product categories',
+    singular: 'Category',
+    titleField: 'name',
     list: () => categoryApi.list().then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => categoryApi.get(id).then((row) => row as unknown as Record<string, unknown>),
     create: (payload) => categoryApi.create(payload as never),
@@ -139,7 +169,9 @@ const configs: Record<EntityKind, EntityConfig> = {
     ],
   },
   warehouses: {
-    title: 'Warehouses', singular: 'Warehouse', titleField: 'warehouseName',
+    title: 'Warehouses',
+    singular: 'Warehouse',
+    titleField: 'warehouseName',
     list: () => warehouseApi.list().then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => warehouseApi.get(id).then((row) => row as unknown as Record<string, unknown>),
     create: (payload) => warehouseApi.create(payload as never),
@@ -157,7 +189,8 @@ const configs: Record<EntityKind, EntityConfig> = {
 }
 
 function formatValue(field: FieldConfig, value: unknown) {
-  if (typeof value === 'boolean') return <Badge className={value ? 'bg-emerald-100 text-emerald-700' : ''}>{value ? 'Yes' : 'No'}</Badge>
+  if (typeof value === 'boolean')
+    return <Badge className={value ? 'bg-emerald-100 text-emerald-700' : ''}>{value ? 'Yes' : 'No'}</Badge>
   if (field.type === 'number' && typeof value === 'number') return currency(value)
   return String(value ?? '—')
 }
@@ -170,16 +203,75 @@ export function EntityListPage({ kind }: { kind: EntityKind }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-semibold text-slate-900">{config.title}</h1><p className="mt-1 text-sm text-slate-500">Manage your {config.title.toLowerCase()}.</p></div>
-        <Link className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800" to={`/${kind}/new`}><Plus className="size-4" />Add {config.singular}</Link>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">{config.title}</h1>
+          <p className="mt-1 text-sm text-slate-500">Manage your {config.title.toLowerCase()}.</p>
+        </div>
+        <Link
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800"
+          to={`/${kind}/new`}
+        >
+          <Plus className="size-4" />
+          Add {config.singular}
+        </Link>
       </div>
-      <Card><CardContent className="p-4">
-        <div className="mb-4 flex gap-3"><div className="relative max-w-md flex-1"><Search className="absolute left-3 top-2.5 size-4 text-slate-400" /><Input className="pl-9" placeholder={`Search ${config.title.toLowerCase()}…`} /></div></div>
-        {isLoading ? <div className="space-y-3">{[1, 2, 3].map((id) => <Skeleton key={id} className="h-12 w-full" />)}</div> : (
-          <Table><thead><tr className="border-b border-slate-200">{listFields.map((field) => <th key={field.name} className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{field.label}</th>)}<th /></tr></thead>
-            <tbody>{rows.length ? rows.map((row) => <tr key={String(row.id)} className="border-b border-slate-100 hover:bg-slate-50">{listFields.map((field) => <td key={field.name} className="px-3 py-3 text-slate-700">{formatValue(field, row[field.name])}</td>)}<td className="px-3 py-3 text-right"><Link className="text-sm font-medium text-teal-700 hover:underline" to={`/${kind}/${row.id}`}>View</Link></td></tr>) : <tr><td colSpan={listFields.length + 1} className="py-16 text-center text-sm text-slate-500">No {config.title.toLowerCase()} found.</td></tr>}</tbody></Table>
-        )}
-      </CardContent></Card>
+      <Card>
+        <CardContent className="p-4">
+          <div className="mb-4 flex gap-3">
+            <div className="relative max-w-md flex-1">
+              <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+              <Input className="pl-9" placeholder={`Search ${config.title.toLowerCase()}…`} />
+            </div>
+          </div>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((id) => (
+                <Skeleton key={id} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {listFields.map((field) => (
+                    <th
+                      key={field.name}
+                      className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
+                      {field.label}
+                    </th>
+                  ))}
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length ? (
+                  rows.map((row) => (
+                    <tr key={String(row.id)} className="border-b border-slate-100 hover:bg-slate-50">
+                      {listFields.map((field) => (
+                        <td key={field.name} className="px-3 py-3 text-slate-700">
+                          {formatValue(field, row[field.name])}
+                        </td>
+                      ))}
+                      <td className="px-3 py-3 text-right">
+                        <Link className="text-sm font-medium text-teal-700 hover:underline" to={`/${kind}/${row.id}`}>
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={listFields.length + 1} className="py-16 text-center text-sm text-slate-500">
+                      No {config.title.toLowerCase()} found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -194,39 +286,70 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
 
   const submit = form.handleSubmit(async (values) => {
     try {
-      await config.create(values)
+      await config.create(stripEmpty(values))
       await queryClient.invalidateQueries({ queryKey: [kind] })
       toast.success(`${config.singular} created`)
       navigate(`/${kind}`)
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      if (!applyApiFieldErrors(error, form.setError)) toast.error(getApiErrorMessage(error))
     }
   })
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div><h1 className="text-2xl font-semibold text-slate-900">New {config.singular}</h1><p className="mt-1 text-sm text-slate-500">Add details aligned with backend validation.</p></div>
-      <Card><CardContent className="p-6">
-        <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
-          {createFields.map((field) => (
-            <label key={field.name} className="space-y-1.5 text-sm font-medium text-slate-700">
-              {field.label}
-              {field.type === 'boolean' ? <Switch checked={!!form.watch(field.name as never)} onCheckedChange={(value) => form.setValue(field.name as never, value as never)} /> :
-                field.type === 'select' ? (
-                  <Select value={String(form.watch(field.name as never) ?? '')} onValueChange={(value) => form.setValue(field.name as never, value as never)}>
-                    <SelectTrigger>{units.find((unit) => unit.id === form.watch('unitId'))?.name ?? 'Select unit'}</SelectTrigger>
-                    <SelectContent>{units.map((unit) => <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>)}</SelectContent>
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">New {config.singular}</h1>
+        <p className="mt-1 text-sm text-slate-500">Add details aligned with backend validation.</p>
+      </div>
+      <Card>
+        <CardContent className="p-6">
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
+            {createFields.map((field) => (
+              <label key={field.name} className="space-y-1.5 text-sm font-medium text-slate-700">
+                {field.label}
+                {field.type === 'boolean' ? (
+                  <Switch
+                    checked={!!form.watch(field.name as never)}
+                    onCheckedChange={(value) => form.setValue(field.name as never, value as never)}
+                  />
+                ) : field.type === 'select' ? (
+                  <Select
+                    value={String(form.watch(field.name as never) ?? '')}
+                    onValueChange={(value) => form.setValue(field.name as never, value as never)}
+                  >
+                    <SelectTrigger>
+                      {units.find((unit) => unit.id === form.watch('unitId'))?.name ?? 'Select unit'}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                ) : <Input type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'} {...form.register(field.name as never)} />}
-              {form.formState.errors[field.name as keyof typeof form.formState.errors] && <p className="text-xs text-rose-600">{String(form.formState.errors[field.name as keyof typeof form.formState.errors]?.message)}</p>}
-            </label>
-          ))}
-          <div className="col-span-full flex justify-end gap-3 border-t border-slate-100 pt-5">
-            <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-            <Button type="submit">Save {config.singular}</Button>
-          </div>
-        </form>
-      </CardContent></Card>
+                ) : (
+                  <Input
+                    type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'}
+                    {...form.register(field.name as never)}
+                  />
+                )}
+                {form.formState.errors[field.name as keyof typeof form.formState.errors] && (
+                  <p className="text-xs text-rose-600">
+                    {String(form.formState.errors[field.name as keyof typeof form.formState.errors]?.message)}
+                  </p>
+                )}
+              </label>
+            ))}
+            <div className="col-span-full flex justify-end gap-3 border-t border-slate-100 pt-5">
+              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save {config.singular}</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -238,8 +361,22 @@ export function EntityDetailPage({ kind }: { kind: EntityKind }) {
   const { data: item } = useQuery({ queryKey: [kind, id], queryFn: () => config.get(id), enabled: !!id })
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-semibold text-slate-900">{String(item?.[config.titleField] ?? config.singular)}</h1><p className="mt-1 text-sm text-slate-500">{config.singular} record</p></div>
-      <Card><CardContent className="grid gap-5 p-6 sm:grid-cols-2">{detailFields.map((field) => <div key={field.name}><p className="text-xs uppercase tracking-wide text-slate-500">{field.label}</p><p className="mt-1 text-sm font-medium text-slate-800">{formatValue(field, item?.[field.name])}</p></div>)}</CardContent></Card>
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {String(item?.[config.titleField] ?? config.singular)}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">{config.singular} record</p>
+      </div>
+      <Card>
+        <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
+          {detailFields.map((field) => (
+            <div key={field.name}>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{field.label}</p>
+              <p className="mt-1 text-sm font-medium text-slate-800">{formatValue(field, item?.[field.name])}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }

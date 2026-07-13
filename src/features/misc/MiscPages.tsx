@@ -1,8 +1,147 @@
 import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Download, Save } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, Textarea } from '@/components/ui'
+import { toast } from 'sonner'
+import { auditApi, organizationApi, reportApi, templateApi } from '@/services/api'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { useAuth } from '@/features/auth/auth'
+import { Button, Card, CardContent, CardHeader, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, Table, Textarea } from '@/components/ui'
 
-export function ReportsPage() { return <div className="space-y-6"><div><h1 className="text-2xl font-semibold text-slate-900">Reports</h1><p className="mt-1 text-sm text-slate-500">Analyze sales, purchases, taxes and inventory.</p></div><Card><CardContent className="grid gap-4 p-5 md:grid-cols-4"><div><Label>Report</Label><Select defaultValue="sales"><SelectTrigger className="mt-1.5">Sales summary</SelectTrigger><SelectContent><SelectItem value="sales">Sales summary</SelectItem><SelectItem value="gst">GST report</SelectItem><SelectItem value="stock">Stock valuation</SelectItem></SelectContent></Select></div><div><Label>From date</Label><Input className="mt-1.5" type="date" /></div><div><Label>To date</Label><Input className="mt-1.5" type="date" /></div><div className="flex items-end gap-2"><Button>Run report</Button><Button variant="outline"><Download className="size-4" />Export</Button></div></CardContent></Card><Card><CardContent className="py-24 text-center text-sm text-slate-500">Choose a report and date range to view results.</CardContent></Card></div> }
-export function TemplateDesignerPage() { const [json, setJson] = useState('{\n  "companyName": "FlowLedger",\n  "columns": ["Description", "Qty", "Rate", "Amount"]\n}'); return <div className="space-y-6"><div className="flex justify-between"><div><h1 className="text-2xl font-semibold text-slate-900">Invoice template designer</h1><p className="mt-1 text-sm text-slate-500">Configure your printable document layout.</p></div><Button><Save className="size-4" />Save template</Button></div><div className="grid gap-6 xl:grid-cols-2"><Card><CardHeader><h2 className="font-semibold text-slate-900">Template JSON</h2></CardHeader><CardContent><Textarea className="min-h-[420px] font-mono text-xs" value={json} onChange={(event) => setJson(event.target.value)} /></CardContent></Card><Card><CardHeader><h2 className="font-semibold text-slate-900">Live preview</h2></CardHeader><CardContent><div className="min-h-[420px] border border-slate-200 bg-white p-8 text-sm shadow-sm"><h3 className="text-xl font-bold text-slate-900">TAX INVOICE</h3><p className="mt-2 text-slate-500">FlowLedger · GSTIN: 27AAAAA0000A1Z5</p><hr className="my-8" /><div className="grid grid-cols-4 gap-2 border-b pb-2 text-xs font-semibold"><span>Description</span><span>Qty</span><span>Rate</span><span className="text-right">Amount</span></div><div className="mt-3 grid grid-cols-4 gap-2"><span>Sample product</span><span>2</span><span>₹1,000</span><span className="text-right">₹2,000</span></div><div className="mt-10 border-t pt-3 text-right font-semibold">Total ₹2,360</div></div></CardContent></Card></div></div> }
-export function SettingsPage({ users = false }: { users?: boolean }) { return <div className="max-w-4xl space-y-6"><div><h1 className="text-2xl font-semibold text-slate-900">{users ? 'User management' : 'Organization settings'}</h1><p className="mt-1 text-sm text-slate-500">{users ? 'Control access to your organization.' : 'Manage business details, tax and preferences.'}</p></div><Card><CardContent className="grid gap-4 p-6 sm:grid-cols-2">{users ? <><Input placeholder="Name" /><Input placeholder="Email address" /><Select><SelectTrigger>Select role</SelectTrigger><SelectContent><SelectItem value="admin">Administrator</SelectItem><SelectItem value="accountant">Accountant</SelectItem></SelectContent></Select></> : <><Input placeholder="Organization legal name" /><Input placeholder="GSTIN" /><Input placeholder="Business email" /><Input placeholder="Phone number" /><Input placeholder="Address" className="sm:col-span-2" /></>}<div className="col-span-full flex justify-end"><Button>Save changes</Button></div></CardContent></Card></div> }
-export function AuditLogsPage() { return <div className="space-y-6"><div><h1 className="text-2xl font-semibold text-slate-900">Audit log</h1><p className="mt-1 text-sm text-slate-500">Track important activity across your organization.</p></div><Card><CardContent className="py-20 text-center text-sm text-slate-500">No audit events to display.</CardContent></Card></div> }
+const orgSchema = z.object({
+  name: z.string().min(1),
+  legalName: z.string().optional(),
+  gstin: z.string().optional(),
+  pan: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().optional(),
+  billingAddress: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  stateCode: z.string().optional(),
+  invoicePrefix: z.string().optional(),
+})
+
+export function OrganizationSettingsPage() {
+  const { refreshOrganization } = useAuth()
+  const { data: organization } = useQuery({ queryKey: ['organization', 'settings'], queryFn: organizationApi.current })
+  const form = useForm<z.infer<typeof orgSchema>>({
+    resolver: zodResolver(orgSchema),
+    values: organization ? {
+      name: organization.name,
+      legalName: organization.legalName ?? undefined,
+      gstin: organization.gstin ?? undefined,
+      pan: organization.pan ?? undefined,
+      email: organization.email ?? undefined,
+      phone: organization.phone ?? undefined,
+      billingAddress: organization.billingAddress ?? undefined,
+      city: organization.city ?? undefined,
+      state: organization.state ?? undefined,
+      stateCode: organization.stateCode ?? undefined,
+      invoicePrefix: organization.invoicePrefix ?? undefined,
+    } : undefined,
+  })
+  const submit = form.handleSubmit(async (values) => {
+    try {
+      await organizationApi.update(values)
+      await refreshOrganization()
+      toast.success('Organization updated')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  })
+  return (
+    <div className="max-w-4xl space-y-6">
+      <div><h1 className="text-2xl font-semibold text-slate-900">Organization settings</h1><p className="mt-1 text-sm text-slate-500">Manage business details, tax and preferences.</p></div>
+      <Card><CardContent className="grid gap-4 p-6 sm:grid-cols-2">
+        <form className="contents" onSubmit={submit}>
+          <Input placeholder="Organization name" {...form.register('name')} />
+          <Input placeholder="Legal name" {...form.register('legalName')} />
+          <Input placeholder="GSTIN" {...form.register('gstin')} />
+          <Input placeholder="PAN" {...form.register('pan')} />
+          <Input placeholder="Business email" {...form.register('email')} />
+          <Input placeholder="Phone number" {...form.register('phone')} />
+          <Input placeholder="Address" className="sm:col-span-2" {...form.register('billingAddress')} />
+          <Input placeholder="City" {...form.register('city')} />
+          <Input placeholder="State" {...form.register('state')} />
+          <Input placeholder="State code" {...form.register('stateCode')} />
+          <Input placeholder="Invoice prefix" {...form.register('invoicePrefix')} />
+          <div className="col-span-full flex justify-end"><Button type="submit">Save changes</Button></div>
+        </form>
+      </CardContent></Card>
+    </div>
+  )
+}
+
+export function ReportsPage() {
+  const [report, setReport] = useState('sales')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const { data = [], refetch, isFetching } = useQuery({
+    queryKey: ['reports', report, from, to],
+    queryFn: () => reportApi.run(report, { from, to }),
+    enabled: false,
+  })
+  const run = async () => { try { await refetch() } catch (error) { toast.error(getApiErrorMessage(error)) } }
+  const exportCsv = async () => {
+    try {
+      const response = await reportApi.export(report, { from, to })
+      const url = URL.createObjectURL(response.data)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${report}.csv`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+  return (
+    <div className="space-y-6">
+      <div><h1 className="text-2xl font-semibold text-slate-900">Reports</h1><p className="mt-1 text-sm text-slate-500">Analyze sales, purchases, taxes and inventory.</p></div>
+      <Card><CardContent className="grid gap-4 p-5 md:grid-cols-4">
+        <div><Label>Report</Label><Select value={report} onValueChange={setReport}><SelectTrigger className="mt-1.5">{report}</SelectTrigger><SelectContent>{['sales', 'purchase', 'stock-summary', 'outstanding-receivables', 'outstanding-payables', 'gstr1'].map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label>From date</Label><Input className="mt-1.5" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></div>
+        <div><Label>To date</Label><Input className="mt-1.5" type="date" value={to} onChange={(event) => setTo(event.target.value)} /></div>
+        <div className="flex items-end gap-2"><Button onClick={run} disabled={isFetching}>Run report</Button><Button variant="outline" onClick={exportCsv}><Download className="size-4" />Export</Button></div>
+      </CardContent></Card>
+      <Card><CardContent className="p-4">{data.length ? <Table><tbody>{data.map((row, index) => <tr key={index} className="border-b">{Object.values(row).map((value, cell) => <td key={cell} className="p-3">{String(value)}</td>)}</tr>)}</tbody></Table> : <p className="py-24 text-center text-sm text-slate-500">Choose a report and date range to view results.</p>}</CardContent></Card>
+    </div>
+  )
+}
+
+export function TemplateDesignerPage() {
+  const queryClient = useQueryClient()
+  const { data: templates = [] } = useQuery({ queryKey: ['templates'], queryFn: templateApi.list })
+  const [json, setJson] = useState('{\n  "companyName": "FlowLedger",\n  "columns": ["Description", "Qty", "Rate", "Amount"]\n}')
+  const save = async () => {
+    try {
+      await templateApi.create({ templateName: `Template ${templates.length + 1}`, configJson: json })
+      await queryClient.invalidateQueries({ queryKey: ['templates'] })
+      toast.success('Template saved')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between"><div><h1 className="text-2xl font-semibold text-slate-900">Invoice template designer</h1><p className="mt-1 text-sm text-slate-500">Configure printable document layouts via backend template APIs.</p></div><Button onClick={save}><Save className="size-4" />Save template</Button></div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card><CardHeader><h2 className="font-semibold text-slate-900">Template JSON</h2></CardHeader><CardContent><Textarea className="min-h-[420px] font-mono text-xs" value={json} onChange={(event) => setJson(event.target.value)} /></CardContent></Card>
+        <Card><CardHeader><h2 className="font-semibold text-slate-900">Saved templates</h2></CardHeader><CardContent className="space-y-3">{templates.length ? templates.map((template) => <div key={template.id} className="rounded-lg border p-3 text-sm"><b>{template.templateName}</b><p className="text-slate-500">{template.isDefault ? 'Default template' : template.presetKey ?? 'Custom template'}</p></div>) : <p className="text-sm text-slate-500">No templates yet.</p>}</CardContent></Card>
+      </div>
+    </div>
+  )
+}
+
+export function AuditLogsPage() {
+  const { data = [] } = useQuery({ queryKey: ['audit-logs'], queryFn: () => auditApi.list({ size: 50 }) })
+  return (
+    <div className="space-y-6">
+      <div><h1 className="text-2xl font-semibold text-slate-900">Audit log</h1><p className="mt-1 text-sm text-slate-500">Track important activity across your organization.</p></div>
+      <Card><CardContent className="p-4">{data.length ? <Table><thead><tr className="border-b"><th className="p-3 text-xs text-slate-500">ACTION</th><th className="p-3 text-xs text-slate-500">ENTITY</th><th className="p-3 text-xs text-slate-500">DATE</th></tr></thead><tbody>{data.map((row) => <tr key={row.id} className="border-b"><td className="p-3">{row.action}</td><td className="p-3">{row.entityType}</td><td className="p-3">{new Date(row.createdAt).toLocaleString()}</td></tr>)}</tbody></Table> : <p className="py-20 text-center text-sm text-slate-500">No audit events to display.</p>}</CardContent></Card>
+    </div>
+  )
+}

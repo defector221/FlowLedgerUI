@@ -1,0 +1,491 @@
+export interface ApiResponse<T> {
+  data: T
+  message: string | null
+  timestamp: string
+}
+
+export interface PageResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export type UserStatus = 'INVITED' | 'ACTIVE' | 'INACTIVE'
+
+export type RoleCode =
+  | 'ORGANIZATION_ADMIN'
+  | 'ACCOUNTANT'
+  | 'SALES_MANAGER'
+  | 'PURCHASE_MANAGER'
+  | 'INVENTORY_MANAGER'
+  | 'VIEWER'
+
+export interface UserResponse {
+  id: string
+  organizationId: string
+  email: string
+  firstName: string
+  lastName: string | null
+  status: UserStatus
+  roles: RoleCode[]
+}
+
+export interface LoginResponse {
+  accessToken: string
+  refreshToken: string
+  expiresIn: number
+  user: UserResponse
+}
+
+export interface OrganizationResponse {
+  id: string
+  name: string
+  legalName: string | null
+  logoObjectKey: string | null
+  email: string | null
+  phone: string | null
+  website: string | null
+  gstin: string | null
+  pan: string | null
+  cin: string | null
+  billingAddress: string | null
+  shippingAddress: string | null
+  city: string | null
+  state: string | null
+  stateCode: string | null
+  country: string | null
+  currency: string | null
+  financialYearStart: string | null
+  invoicePrefix: string | null
+  invoiceNumberFormat: string | null
+  bankName: string | null
+  bankAccountNumber: string | null
+  bankIfsc: string | null
+  bankBranch: string | null
+  upiId: string | null
+  paymentTerms: string | null
+  onboardingCompleted: boolean
+  onboardingCompletedAt: string | null
+}
+
+export interface UpdateOrganizationRequest {
+  name?: string
+  legalName?: string
+  gstin?: string
+  pan?: string
+  cin?: string
+  email?: string
+  phone?: string
+  website?: string
+  billingAddress?: string
+  shippingAddress?: string
+  city?: string
+  state?: string
+  stateCode?: string
+  country?: string
+  currency?: string
+  financialYearStart?: string
+  invoicePrefix?: string
+  invoiceNumberFormat?: string
+  bankName?: string
+  bankAccountNumber?: string
+  bankIfsc?: string
+  bankBranch?: string
+  upiId?: string
+  paymentTerms?: string
+}
+
+export interface OrganizationSettingsResponse {
+  id: string
+  organizationId: string
+  inventoryDeductionEvent: string
+  taxInclusiveDefault: boolean
+  roundOffEnabled: boolean
+  defaultWarehouseId: string | null
+  settingsJson: string
+}
+
+export interface UpdateOrganizationSettingsRequest {
+  inventoryDeductionEvent?: string
+  taxInclusiveDefault?: boolean
+  roundOffEnabled?: boolean
+  defaultWarehouseId?: string
+  settingsJson?: string
+}
+
+export interface CreateWarehouseRequest {
+  warehouseCode: string
+  warehouseName: string
+  defaultWarehouse?: boolean
+  address?: string
+  contactPerson?: string
+  phone?: string
+}
+
+export interface UpdateWarehouseRequest {
+  warehouseName: string
+  address?: string
+  contactPerson?: string
+  phone?: string
+  active?: boolean
+}
+
+export interface WarehouseResponse {
+  id: string
+  warehouseCode: string
+  warehouseName: string
+  address: string | null
+  contactPerson: string | null
+  phone: string | null
+  defaultWarehouse: boolean
+  active: boolean
+}
+
+export interface CreateCustomerRequest {
+  customerCode: string
+  customerName: string
+  companyName?: string
+  gstin?: string
+  pan?: string
+  email?: string
+  phone?: string
+  billingAddress?: string
+  shippingAddress?: string
+  city?: string
+  state?: string
+  stateCode?: string
+  country?: string
+  creditLimit?: number
+  paymentTerms?: string
+  openingBalance?: number
+  notes?: string
+}
+
+export interface UpdateCustomerRequest {
+  customerName: string
+  companyName?: string
+  gstin?: string
+  pan?: string
+  email?: string
+  phone?: string
+  billingAddress?: string
+  shippingAddress?: string
+  city?: string
+  state?: string
+  stateCode?: string
+  country?: string
+  creditLimit?: number
+  paymentTerms?: string
+  openingBalance?: number
+  notes?: string
+  archived?: boolean
+}
+
+export interface CustomerResponse {
+  id: string
+  customerCode: string
+  customerName: string
+  companyName: string | null
+  gstin: string | null
+  email: string | null
+  phone: string | null
+  city: string | null
+  state: string | null
+  stateCode: string | null
+  creditLimit: number
+  openingBalance: number
+  archived: boolean
+}
+
+export interface CreateSupplierRequest {
+  supplierCode: string
+  supplierName: string
+  companyName?: string
+  gstin?: string
+  pan?: string
+  email?: string
+  phone?: string
+  billingAddress?: string
+  shippingAddress?: string
+  city?: string
+  state?: string
+  stateCode?: string
+  country?: string
+  paymentTerms?: string
+  openingBalance?: number
+  bankName?: string
+  bankAccountNumber?: string
+  bankIfsc?: string
+  notes?: string
+}
+
+export interface UpdateSupplierRequest {
+  supplierName: string
+  companyName?: string
+  gstin?: string
+  pan?: string
+  email?: string
+  phone?: string
+  billingAddress?: string
+  shippingAddress?: string
+  city?: string
+  state?: string
+  stateCode?: string
+  country?: string
+  paymentTerms?: string
+  openingBalance?: number
+  bankName?: string
+  bankAccountNumber?: string
+  bankIfsc?: string
+  notes?: string
+  archived?: boolean
+}
+
+export interface SupplierResponse {
+  id: string
+  supplierCode: string
+  supplierName: string
+  companyName: string | null
+  gstin: string | null
+  email: string | null
+  phone: string | null
+  city: string | null
+  state: string | null
+  stateCode: string | null
+  openingBalance: number
+  archived: boolean
+}
+
+export interface CreateProductRequest {
+  sku: string
+  name: string
+  unitId: string
+  itemType?: string
+  barcode?: string
+  description?: string
+  categoryId?: string
+  brand?: string
+  hsnSacCode?: string
+  purchasePrice?: number
+  sellingPrice?: number
+  mrp?: number
+  taxRateId?: string
+  openingStock?: number
+  minimumStockLevel?: number
+  maximumStockLevel?: number
+  reorderLevel?: number
+}
+
+export interface UpdateProductRequest {
+  name: string
+  barcode?: string
+  description?: string
+  categoryId?: string
+  brand?: string
+  hsnSacCode?: string
+  unitId?: string
+  purchasePrice?: number
+  sellingPrice?: number
+  mrp?: number
+  taxRateId?: string
+  minimumStockLevel?: number
+  maximumStockLevel?: number
+  reorderLevel?: number
+  active?: boolean
+}
+
+export interface ProductResponse {
+  id: string
+  itemType: string
+  sku: string
+  barcode: string | null
+  name: string
+  description: string | null
+  categoryId: string | null
+  brand: string | null
+  hsnSacCode: string | null
+  unitId: string
+  purchasePrice: number
+  sellingPrice: number
+  mrp: number
+  taxRateId: string | null
+  minimumStockLevel: number
+  reorderLevel: number
+  active: boolean
+}
+
+export interface CreateCategoryRequest {
+  name: string
+  description?: string
+  parentId?: string
+}
+
+export interface UpdateCategoryRequest {
+  name: string
+  description?: string
+  parentId?: string
+  active?: boolean
+}
+
+export interface CategoryResponse {
+  id: string
+  name: string
+  description: string | null
+  parentId: string | null
+  active: boolean
+}
+
+export interface InviteUserRequest {
+  firstName: string
+  lastName?: string
+  email: string
+  role: RoleCode
+  phone?: string
+}
+
+export interface UserListResponse {
+  id: string
+  email: string
+  firstName: string
+  lastName: string | null
+  phone: string | null
+  status: UserStatus
+  roles: RoleCode[]
+  lastLoginAt: string | null
+}
+
+export interface RoleResponse {
+  code: RoleCode
+  name: string
+  description: string | null
+}
+
+export interface InvitationPreviewResponse {
+  organizationName: string
+  email: string
+  firstName: string
+  lastName: string | null
+}
+
+export interface AcceptInvitationRequest {
+  token: string
+  password: string
+}
+
+export interface SalesInvoiceItemRequest {
+  productId: string
+  description?: string
+  hsnSacCode?: string
+  quantity: number
+  unitId?: string
+  rate: number
+  discountPercent?: number
+  taxRate?: number
+}
+
+export interface CreateSalesInvoiceRequest {
+  customerId: string
+  invoiceDate?: string
+  dueDate?: string
+  warehouseId?: string
+  salesOrderId?: string
+  deliveryChallanId?: string
+  billingAddress?: string
+  shippingAddress?: string
+  placeOfSupply?: string
+  taxInclusive?: boolean
+  shippingCharges?: number
+  additionalCharges?: number
+  roundOff?: number
+  notes?: string
+  termsAndConditions?: string
+  items: SalesInvoiceItemRequest[]
+}
+
+export interface SalesInvoiceResponse {
+  id: string
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate: string | null
+  customerId: string
+  warehouseId: string | null
+  status: string
+  grandTotal: number
+  paymentStatus: string
+}
+
+export interface PaymentResponse {
+  id: string
+  paymentNumber: string
+  paymentDate: string
+  paymentType: 'RECEIPT' | 'PAYMENT'
+  partyType: 'CUSTOMER' | 'SUPPLIER'
+  customerId: string | null
+  supplierId: string | null
+  amount: number
+  paymentMode: string
+}
+
+export interface DashboardResponse {
+  todaySales: number
+  monthSales: number
+  todayPurchases: number
+  monthPurchases: number
+  receivables: number
+  payables: number
+  overdueInvoices: number
+  outOfStock: number
+  lowStock: number
+  salesTrend: [string, number][]
+  purchaseTrend: [string, number][]
+  topProducts: unknown[]
+  topCustomers: unknown[]
+}
+
+export interface InventoryAlertResponse {
+  productId: string
+  productName: string
+  available: number
+  threshold: number
+}
+
+export interface StockAdjustmentRequest {
+  productId: string
+  warehouseId: string
+  quantity: number
+  notes?: string
+}
+
+export interface StockTransferRequest {
+  productId: string
+  fromWarehouseId: string
+  toWarehouseId: string
+  quantity: number
+  notes?: string
+}
+
+export interface AuditLogResponse {
+  id: string
+  organizationId: string
+  userId: string | null
+  action: string
+  entityType: string
+  entityId: string | null
+  createdAt: string
+}
+
+export interface InvoiceTemplateResponse {
+  id: string
+  templateName: string
+  presetKey: string | null
+  isDefault: boolean
+  configJson: string
+}
+
+export interface CreateInvoiceTemplateRequest {
+  templateName: string
+  presetKey?: string
+  configJson?: string
+}

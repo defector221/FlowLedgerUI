@@ -35,6 +35,9 @@ import type {
   StockAdjustmentRequest,
   StockTransferRequest,
   AuditLogResponse,
+  InAppNotificationResponse,
+  PaymentReminderRuleRequest,
+  PaymentReminderRuleResponse,
   InvoiceTemplateResponse,
   CreateInvoiceTemplateRequest,
   InvoiceTemplateConfig,
@@ -53,9 +56,10 @@ export const authApi = {
     phone?: string
   }) => api.post('/auth/register', payload).then((r) => unwrapApi<LoginResponse>(r)),
   logout: (refreshToken: string) => api.post('/auth/logout', { refreshToken }),
-  forgotPassword: (organizationId: string, email: string) =>
-    api.post('/auth/forgot-password', { organizationId, email }),
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, newPassword }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }),
   previewInvitation: (token: string) =>
     api.get('/auth/invitation', { params: { token } }).then((r) => unwrapApi<InvitationPreviewResponse>(r)),
   acceptInvitation: (payload: AcceptInvitationRequest) => api.post('/auth/accept-invitation', payload),
@@ -254,7 +258,26 @@ export const paymentApi = {
   allocate: (id: string, allocations: { documentType: string; documentId: string; amount: number }[]) =>
     api.post(`/payments/${id}/allocations`, allocations).then((r) => unwrapApi<PaymentResponse>(r)),
   cancel: (id: string) => api.post(`/payments/${id}/cancel`).then((r) => unwrapApi<PaymentResponse>(r)),
-  sendReminder: (invoiceId: string) => api.post(`/payment-reminders/invoices/${invoiceId}/send`),
+  sendReminder: (invoiceId: string, channels?: string[]) =>
+    api
+      .post(`/payment-reminders/invoices/${invoiceId}/send`, channels ? { channels } : {})
+      .then((r) => unwrapApi<{ reminderId: string; sent: boolean; message: string }>(r)),
+  listReminderRules: () =>
+    api.get('/payment-reminders/rules').then((r) => unwrapList<PaymentReminderRuleResponse>(r)),
+  createReminderRule: (payload: PaymentReminderRuleRequest) =>
+    api.post('/payment-reminders/rules', payload).then((r) => unwrapApi<PaymentReminderRuleResponse>(r)),
+  updateReminderRule: (id: string, payload: PaymentReminderRuleRequest) =>
+    api.put(`/payment-reminders/rules/${id}`, payload).then((r) => unwrapApi<PaymentReminderRuleResponse>(r)),
+  deleteReminderRule: (id: string) => api.delete(`/payment-reminders/rules/${id}`),
+}
+
+export const notificationApi = {
+  list: (params?: { page?: number; size?: number }) =>
+    api.get('/notifications', { params }).then((r) => unwrapPage<InAppNotificationResponse>(r)),
+  unreadCount: () => api.get('/notifications/unread-count').then((r) => unwrapApi<{ count: number }>(r)),
+  markRead: (id: string) =>
+    api.post(`/notifications/${id}/read`).then((r) => unwrapApi<InAppNotificationResponse>(r)),
+  markAllRead: () => api.post('/notifications/read-all').then((r) => unwrapApi<{ count: number }>(r)),
 }
 
 export const inventoryApi = {

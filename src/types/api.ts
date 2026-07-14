@@ -556,6 +556,39 @@ export interface AuditLogResponse {
   createdAt: string
 }
 
+export interface InAppNotificationResponse {
+  id: string
+  title: string
+  body: string | null
+  notificationType: string
+  entityType: string | null
+  entityId: string | null
+  read: boolean
+  createdAt: string
+  link: string | null
+}
+
+export interface PaymentReminderRuleResponse {
+  id: string
+  name: string
+  daysOffset: number
+  offsetType: 'BEFORE_DUE' | 'AFTER_DUE' | 'ON_DUE' | string
+  channel: 'EMAIL' | 'WHATSAPP' | string
+  enabled: boolean
+  subjectTemplate: string | null
+  bodyTemplate: string | null
+}
+
+export interface PaymentReminderRuleRequest {
+  name: string
+  daysOffset: number
+  offsetType: string
+  channel: string
+  enabled?: boolean
+  subjectTemplate?: string
+  bodyTemplate?: string
+}
+
 export interface InvoiceTemplateConfig {
   layoutKey?: string
   logo?: { visible?: boolean; position?: string }

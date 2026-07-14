@@ -1,6 +1,7 @@
-import { Bell, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { GlobalSearch } from '@/components/layout/GlobalSearch'
+import { NotificationBell } from '@/components/layout/NotificationBell'
 import { OrganizationSwitcher } from '@/components/layout/OrganizationSwitcher'
 import { Button } from '@/components/ui'
 
@@ -21,9 +22,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         <span className="hidden max-w-[10rem] truncate rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold capitalize tracking-wide text-teal-800 lg:block">
           {page}
         </span>
-        <Button variant="ghost" size="icon" className="relative" type="button" aria-label="Notifications">
-          <Bell className="size-5" />
-        </Button>
+        <NotificationBell />
       </div>
     </header>
   )

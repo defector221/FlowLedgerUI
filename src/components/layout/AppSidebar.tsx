@@ -70,6 +70,8 @@ const groups = [
     label: 'SYSTEM',
     items: [
       { to: '/settings/organization', label: 'Settings', icon: Settings, module: 'settings' as const },
+      { to: '/settings/password', label: 'Change password', icon: ShieldCheck, module: 'dashboard' as const },
+      { to: '/settings/reminder-rules', label: 'Reminder rules', icon: Wallet, module: 'payments' as const },
       { to: '/settings/billing', label: 'Billing', icon: CreditCard, module: 'billing' as const },
       { to: '/templates', label: 'Templates', icon: FileText, module: 'templates' as const },
       { to: '/settings/tax-rates', label: 'Tax rates', icon: Percent, module: 'settings' as const },

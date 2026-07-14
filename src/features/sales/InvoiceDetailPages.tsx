@@ -1,8 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge, Button, Card, CardContent, CardHeader, Skeleton, Table } from '@/components/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Skeleton,
+  Table,
+} from '@/components/ui'
 import { customerApi, paymentApi, purchaseApi, salesApi, supplierApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { currency, quantity as formatQty } from '@/lib/utils'
@@ -27,6 +40,9 @@ export function SalesInvoiceDetailPage() {
     queryFn: () => customerApi.get(String(data?.customerId)),
     enabled: !!data?.customerId,
   })
+
+  const [reminderOpen, setReminderOpen] = useState(false)
+  const [reminderChannels, setReminderChannels] = useState<string[]>(['EMAIL'])
 
   const confirmInvoice = async () => {
     try {
@@ -69,12 +85,22 @@ export function SalesInvoiceDetailPage() {
   }
 
   const sendReminder = async () => {
-    if (!customer?.email?.trim()) {
-      toast.error('Customer has no email address; reminder cannot be sent')
+    if (!reminderChannels.length) {
+      toast.error('Select at least one channel')
+      return
+    }
+    if (reminderChannels.includes('EMAIL') && !customer?.email?.trim()) {
+      toast.error('Customer has no email address')
+      return
+    }
+    if (reminderChannels.includes('WHATSAPP') && !customer?.phone?.trim()) {
+      toast.error('Customer has no phone number')
       return
     }
     try {
-      await paymentApi.sendReminder(id)
+      await paymentApi.sendReminder(id, reminderChannels)
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      setReminderOpen(false)
       toast.success('Payment reminder sent')
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Unable to send reminder'))
@@ -129,7 +155,7 @@ export function SalesInvoiceDetailPage() {
               >
                 Record payment
               </Button>
-              <Button variant="outline" onClick={sendReminder}>
+              <Button variant="outline" onClick={() => setReminderOpen(true)}>
                 Send reminder
               </Button>
             </>
@@ -274,6 +300,55 @@ export function SalesInvoiceDetailPage() {
           <CardContent className="text-sm text-slate-600">{data.notes}</CardContent>
         </Card>
       ) : null}
+
+      <Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
+        <DialogContent>
+          <DialogTitle className="text-lg font-semibold">Send payment reminder</DialogTitle>
+          <p className="mt-1 text-sm text-slate-500">
+            Choose how to remind the customer about invoice {data.invoiceNumber}.
+          </p>
+          <div className="mt-4 space-y-3">
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2.5">
+              <Checkbox
+                checked={reminderChannels.includes('EMAIL')}
+                onCheckedChange={(checked) => {
+                  setReminderChannels((prev) =>
+                    checked ? Array.from(new Set([...prev, 'EMAIL'])) : prev.filter((c) => c !== 'EMAIL'),
+                  )
+                }}
+              />
+              <span>
+                <span className="block text-sm font-medium text-slate-900">Email</span>
+                <span className="text-xs text-slate-500">{customer?.email?.trim() || 'No email on customer'}</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2.5">
+              <Checkbox
+                checked={reminderChannels.includes('WHATSAPP')}
+                onCheckedChange={(checked) => {
+                  setReminderChannels((prev) =>
+                    checked
+                      ? Array.from(new Set([...prev, 'WHATSAPP']))
+                      : prev.filter((c) => c !== 'WHATSAPP'),
+                  )
+                }}
+              />
+              <span>
+                <span className="block text-sm font-medium text-slate-900">WhatsApp</span>
+                <span className="text-xs text-slate-500">
+                  {customer?.phone?.trim() || 'No phone on customer'} · mock provider until WhatsApp is enabled
+                </span>
+              </span>
+            </label>
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setReminderOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={sendReminder}>Send reminder</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

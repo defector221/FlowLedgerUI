@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,13 +23,18 @@ const registerSchema = z.object({
 })
 
 const forgotSchema = z.object({
-  organizationId: z.string().uuid('Organization ID is required'),
   email: z.email('Enter a valid email'),
 })
 
-const resetSchema = z.object({
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
+const resetSchema = z
+  .object({
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(8, 'Confirm your password'),
+  })
+  .refine((values) => values.password === values.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
 
 function Shell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
@@ -104,7 +109,10 @@ export function LoginPage() {
         <div className="space-y-1.5">
           <div className="flex justify-between">
             <Label>Password</Label>
-            <Link className="text-xs text-teal-700 hover:underline" to="/forgot-password">
+            <Link
+              className="text-xs text-teal-700 hover:underline"
+              to={`/forgot-password${form.watch('email') ? `?email=${encodeURIComponent(form.watch('email'))}` : ''}`}
+            >
               Forgot password?
             </Link>
           </div>
@@ -183,28 +191,52 @@ export function RegisterPage() {
 }
 
 export function ForgotPasswordPage() {
-  const form = useForm({ resolver: zodResolver(forgotSchema), defaultValues: { organizationId: '', email: '' } })
+  const [sent, setSent] = useState(false)
+  const [params] = useSearchParams()
+  const form = useForm({
+    resolver: zodResolver(forgotSchema),
+    defaultValues: { email: params.get('email') ?? '' },
+  })
   const submit = form.handleSubmit(async (values) => {
     try {
-      await authApi.forgotPassword(values.organizationId, values.email)
-      toast.success('If the account exists, reset instructions were sent')
+      await authApi.forgotPassword(values.email)
+      setSent(true)
+      toast.success('Check your email for reset instructions')
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      toast.error(getApiErrorMessage(error, 'Unable to send reset email'))
     }
   })
+
+  if (sent) {
+    return (
+      <Shell title="Check your email" subtitle="If an account exists for that address, we sent a reset link.">
+        <p className="mt-4 text-sm text-slate-600">
+          The link expires in one hour. If you do not see the message, check spam or try again.
+        </p>
+        <div className="mt-6 space-y-3">
+          <Button className="w-full" size="lg" variant="outline" onClick={() => setSent(false)}>
+            Try another email
+          </Button>
+          <Link to="/login" className="block text-center text-sm text-teal-700 hover:underline">
+            Back to sign in
+          </Link>
+        </div>
+      </Shell>
+    )
+  }
+
   return (
-    <Shell title="Reset your password" subtitle="Enter your organization ID and email">
+    <Shell title="Reset your password" subtitle="Enter the email you use to sign in. We will send a reset link.">
       <form className="mt-6 space-y-4" onSubmit={submit}>
         <div className="space-y-1.5">
-          <Label>Organization ID</Label>
-          <Input {...form.register('organizationId')} placeholder="UUID from your administrator" />
-        </div>
-        <div className="space-y-1.5">
           <Label>Email address</Label>
-          <Input type="email" {...form.register('email')} />
+          <Input type="email" autoComplete="email" {...form.register('email')} placeholder="you@company.com" />
+          {form.formState.errors.email && (
+            <p className="text-xs text-rose-600">{form.formState.errors.email.message}</p>
+          )}
         </div>
-        <Button className="w-full" size="lg">
-          Send reset link
+        <Button className="w-full" size="lg" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? 'Sending…' : 'Send reset link'}
         </Button>
         <Link to="/login" className="block text-center text-sm text-teal-700 hover:underline">
           Back to sign in
@@ -217,25 +249,58 @@ export function ForgotPasswordPage() {
 export function ResetPasswordPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const form = useForm({ resolver: zodResolver(resetSchema), defaultValues: { password: '' } })
+  const token = params.get('token')?.trim() ?? ''
+  const form = useForm({
+    resolver: zodResolver(resetSchema),
+    defaultValues: { password: '', confirmPassword: '' },
+  })
+
+  if (!token) {
+    return (
+      <Shell title="Invalid reset link" subtitle="This password reset link is missing or incomplete.">
+        <div className="mt-6 space-y-3">
+          <Link to="/forgot-password">
+            <Button className="w-full" size="lg">
+              Request a new link
+            </Button>
+          </Link>
+          <Link to="/login" className="block text-center text-sm text-teal-700 hover:underline">
+            Back to sign in
+          </Link>
+        </div>
+      </Shell>
+    )
+  }
+
   const submit = form.handleSubmit(async (values) => {
     try {
-      await authApi.resetPassword(params.get('token') ?? '', values.password)
-      toast.success('Password updated')
+      await authApi.resetPassword(token, values.password)
+      toast.success('Password updated. You can sign in now.')
       navigate('/login')
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      toast.error(getApiErrorMessage(error, 'Unable to reset password. Request a new link.'))
     }
   })
+
   return (
-    <Shell title="Set a new password" subtitle="Choose a secure password for your account">
+    <Shell title="Set a new password" subtitle="Choose a secure password for your account (at least 8 characters).">
       <form className="mt-6 space-y-4" onSubmit={submit}>
         <div className="space-y-1.5">
           <Label>New password</Label>
-          <Input type="password" {...form.register('password')} />
+          <Input type="password" autoComplete="new-password" {...form.register('password')} />
+          {form.formState.errors.password && (
+            <p className="text-xs text-rose-600">{form.formState.errors.password.message}</p>
+          )}
         </div>
-        <Button className="w-full" size="lg">
-          Reset password
+        <div className="space-y-1.5">
+          <Label>Confirm password</Label>
+          <Input type="password" autoComplete="new-password" {...form.register('confirmPassword')} />
+          {form.formState.errors.confirmPassword && (
+            <p className="text-xs text-rose-600">{form.formState.errors.confirmPassword.message}</p>
+          )}
+        </div>
+        <Button className="w-full" size="lg" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? 'Updating…' : 'Reset password'}
         </Button>
         <Link to="/login" className="block text-center text-sm text-teal-700 hover:underline">
           Back to sign in

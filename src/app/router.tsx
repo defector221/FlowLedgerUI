@@ -34,6 +34,8 @@ import {
 } from '@/features/misc/MiscPages'
 import { TeamManagementPage } from '@/features/settings/TeamManagementPage'
 import { BillingPage } from '@/features/settings/BillingPage'
+import { ReminderRulesPage } from '@/features/settings/ReminderRulesPage'
+import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -213,6 +215,8 @@ export const router = createBrowserRouter([
       },
       { path: 'settings/tax-rates', element: <TaxRatesPage /> },
       { path: 'settings/units', element: <UnitsPage /> },
+      { path: 'settings/reminder-rules', element: <ReminderRulesPage /> },
+      { path: 'settings/password', element: <ChangePasswordPage /> },
       { path: 'audit', element: <AuditLogsPage /> },
     ],
   },

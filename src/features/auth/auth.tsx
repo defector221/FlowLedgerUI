@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getSession, setSession, toAuthSession, type AuthSession } from '@/lib/api-client'
+import { getSession, onAuthSessionChange, setSession, toAuthSession, type AuthSession } from '@/lib/api-client'
 import { authApi, organizationApi } from '@/services/api'
 import {
   canAccess,
@@ -53,6 +53,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [session, setCurrent] = useState<AuthSession | null>(getSession)
   const [organization, setOrganization] = useState<OrganizationResponse | null>(null)
+
+  useEffect(() => {
+    return onAuthSessionChange((next) => {
+      setCurrent(next)
+      if (!next) {
+        setOrganization(null)
+        void queryClient.cancelQueries()
+        queryClient.clear()
+      }
+    })
+  }, [queryClient])
 
   useEffect(() => {
     if (session && !session.activeOrganization?.id) {

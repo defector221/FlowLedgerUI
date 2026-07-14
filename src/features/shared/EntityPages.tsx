@@ -7,17 +7,19 @@ import { z } from 'zod'
 import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/auth'
-import { categoryApi, customerApi, productApi, supplierApi, taxRateApi, unitApi, warehouseApi } from '@/services/api'
+import { categoryApi, customerApi, organizationApi, productApi, supplierApi, taxRateApi, unitApi, warehouseApi } from '@/services/api'
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { stripEmpty } from '@/lib/api-payload'
 import { generateEntityCode, slugifyName } from '@/lib/entity-code'
 import { currency } from '@/lib/utils'
+import { resolveDefaultWarehouseId } from '@/lib/warehouse'
 import {
   Badge,
   Button,
   Card,
   CardContent,
   Input,
+  NumberInput,
   Select,
   SelectContent,
   SelectItem,
@@ -41,7 +43,7 @@ type FieldConfig = {
   edit?: boolean
   /** Create-only (codes, opening stock, etc.) — not sent on update. */
   createOnly?: boolean
-  optionsKey?: 'units' | 'categories' | 'taxRates' | 'itemTypes'
+  optionsKey?: 'units' | 'categories' | 'taxRates' | 'itemTypes' | 'warehouses'
   /** Prefer this response field on detail/list when present (e.g. parentName). */
   displayField?: string
   defaultValue?: string | number | boolean
@@ -49,6 +51,8 @@ type FieldConfig = {
   autoCodeFrom?: string
   autoCodePrefix?: string
   readOnlyOnCreate?: boolean
+  /** Hide this field unless itemType matches (products/services). */
+  showWhenItemType?: 'PRODUCT' | 'SERVICE'
 }
 
 type EntityConfig = {
@@ -79,8 +83,8 @@ function formFields(config: EntityConfig, isEdit: boolean) {
 
 const customerSchema = z.object({
   customerCode: z.string().optional(),
-  customerName: z.string().min(1, 'Customer name is required'),
-  companyName: z.string().optional(),
+  companyName: z.string().min(1, 'Company name is required'),
+  customerName: z.string().min(1, 'Contact name is required'),
   gstin: z.string().optional(),
   pan: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
@@ -99,8 +103,8 @@ const customerSchema = z.object({
 
 const supplierSchema = z.object({
   supplierCode: z.string().min(1, 'Supplier code is required'),
-  supplierName: z.string().min(1, 'Supplier name is required'),
-  companyName: z.string().optional(),
+  companyName: z.string().min(1, 'Company name is required'),
+  supplierName: z.string().min(1, 'Contact name is required'),
   gstin: z.string().optional(),
   pan: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
@@ -119,24 +123,31 @@ const supplierSchema = z.object({
   notes: z.string().optional(),
 })
 
-const productSchema = z.object({
-  sku: z.string().optional(),
-  name: z.string().min(1, 'Product name is required'),
-  unitId: z.string().uuid('Unit is required'),
-  itemType: z.string().min(1),
-  barcode: z.string().optional(),
-  description: z.string().optional(),
-  categoryId: z.string().uuid().optional().or(z.literal('')),
-  brand: z.string().optional(),
-  hsnSacCode: z.string().optional(),
-  taxRateId: z.string().uuid().optional().or(z.literal('')),
-  sellingPrice: z.coerce.number().optional(),
-  purchasePrice: z.coerce.number().optional(),
-  mrp: z.coerce.number().optional(),
-  openingStock: z.coerce.number().optional(),
-  minimumStockLevel: z.coerce.number().optional(),
-  reorderLevel: z.coerce.number().optional(),
-})
+const productSchema = z
+  .object({
+    sku: z.string().optional(),
+    name: z.string().min(1, 'Product name is required'),
+    unitId: z.string().uuid().optional().or(z.literal('')),
+    itemType: z.string().min(1),
+    barcode: z.string().optional(),
+    description: z.string().optional(),
+    categoryId: z.string().uuid().optional().or(z.literal('')),
+    brand: z.string().optional(),
+    hsnSacCode: z.string().optional(),
+    taxRateId: z.string().uuid().optional().or(z.literal('')),
+    sellingPrice: z.coerce.number().optional(),
+    purchasePrice: z.coerce.number().optional(),
+    mrp: z.coerce.number().optional(),
+    openingStock: z.coerce.number().optional(),
+    warehouseId: z.string().uuid().optional().or(z.literal('')),
+    minimumStockLevel: z.coerce.number().optional(),
+    reorderLevel: z.coerce.number().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.itemType !== 'SERVICE' && !data.unitId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Unit is required', path: ['unitId'] })
+    }
+  })
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Category name is required'),
@@ -165,9 +176,26 @@ const withCountryDefaults = (values: Record<string, unknown>) => {
 
 const withProductDefaults = (values: Record<string, unknown>) => {
   const cleaned = stripEmpty(values)
+  const itemType = String(values.itemType || 'PRODUCT')
+  const isService = itemType === 'SERVICE'
+  if (isService) {
+    return {
+      sku: cleaned.sku,
+      name: cleaned.name,
+      itemType,
+      description: cleaned.description,
+      taxRateId: cleaned.taxRateId,
+      sellingPrice: values.sellingPrice ?? 0,
+      purchasePrice: 0,
+      mrp: 0,
+      openingStock: 0,
+      minimumStockLevel: 0,
+      reorderLevel: 0,
+    }
+  }
   return {
     ...cleaned,
-    itemType: String(values.itemType || 'PRODUCT'),
+    itemType,
     purchasePrice: values.purchasePrice ?? 0,
     sellingPrice: values.sellingPrice ?? 0,
     mrp: values.mrp ?? 0,
@@ -176,6 +204,7 @@ const withProductDefaults = (values: Record<string, unknown>) => {
     reorderLevel: values.reorderLevel ?? 0,
     ...(values.categoryId ? { categoryId: values.categoryId } : {}),
     ...(values.taxRateId ? { taxRateId: values.taxRateId } : {}),
+    ...(values.warehouseId ? { warehouseId: values.warehouseId } : {}),
   }
 }
 
@@ -184,7 +213,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     title: 'Customers',
     singular: 'Customer',
     writePermission: 'customers:write',
-    titleField: 'customerName',
+    titleField: 'companyName',
     searchable: true,
     list: (params) => customerApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => customerApi.get(id).then((row) => row as unknown as Record<string, unknown>),
@@ -193,9 +222,9 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: customerSchema,
     buildPayload: withCountryDefaults,
     fields: [
-      { name: 'customerCode', label: 'Customer code (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'customerName', autoCodePrefix: 'CUST', readOnlyOnCreate: true },
-      { name: 'customerName', label: 'Customer name', required: true, list: true, create: true, detail: true },
-      { name: 'companyName', label: 'Company name', create: true, detail: true },
+      { name: 'customerCode', label: 'Customer code (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'companyName', autoCodePrefix: 'CUST', readOnlyOnCreate: true },
+      { name: 'companyName', label: 'Company name', required: true, list: true, create: true, detail: true },
+      { name: 'customerName', label: 'Contact name', required: true, list: true, create: true, detail: true },
       { name: 'phone', label: 'Phone', list: true, create: true, detail: true },
       { name: 'email', label: 'Email', type: 'email', list: true, create: true, detail: true },
       { name: 'gstin', label: 'GSTIN', list: true, create: true, detail: true },
@@ -224,7 +253,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     title: 'Suppliers',
     singular: 'Supplier',
     writePermission: 'suppliers:write',
-    titleField: 'supplierName',
+    titleField: 'companyName',
     searchable: true,
     list: (params) => supplierApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
     get: (id) => supplierApi.get(id).then((row) => row as unknown as Record<string, unknown>),
@@ -234,8 +263,8 @@ const configs: Record<EntityKind, EntityConfig> = {
     buildPayload: withCountryDefaults,
     fields: [
       { name: 'supplierCode', label: 'Supplier code', required: true, list: true, create: true, detail: true, createOnly: true },
-      { name: 'supplierName', label: 'Supplier name', required: true, list: true, create: true, detail: true },
-      { name: 'companyName', label: 'Company name', create: true, detail: true },
+      { name: 'companyName', label: 'Company name', required: true, list: true, create: true, detail: true },
+      { name: 'supplierName', label: 'Contact name', required: true, list: true, create: true, detail: true },
       { name: 'phone', label: 'Phone', list: true, create: true, detail: true },
       { name: 'email', label: 'Email', type: 'email', list: true, create: true, detail: true },
       { name: 'gstin', label: 'GSTIN', list: true, create: true, detail: true },
@@ -263,7 +292,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     ],
   },
   products: {
-    title: 'Products',
+    title: 'Products & services',
     singular: 'Product',
     writePermission: 'products:write',
     titleField: 'name',
@@ -283,13 +312,14 @@ const configs: Record<EntityKind, EntityConfig> = {
         type: 'select',
         optionsKey: 'itemTypes',
         required: true,
+        list: true,
         create: true,
         detail: true,
         createOnly: true,
         defaultValue: 'PRODUCT',
       },
-      { name: 'barcode', label: 'Barcode', list: true, create: true, detail: true },
-      { name: 'categoryId', label: 'Category', type: 'select', optionsKey: 'categories', create: true, detail: true, displayField: 'categoryName' },
+      { name: 'barcode', label: 'Barcode', list: true, create: true, detail: true, showWhenItemType: 'PRODUCT' },
+      { name: 'categoryId', label: 'Category', type: 'select', optionsKey: 'categories', create: true, detail: true, displayField: 'categoryName', showWhenItemType: 'PRODUCT' },
       {
         name: 'unitId',
         label: 'Unit',
@@ -299,23 +329,50 @@ const configs: Record<EntityKind, EntityConfig> = {
         create: true,
         detail: true,
         displayField: 'unitName',
+        showWhenItemType: 'PRODUCT',
       },
       { name: 'taxRateId', label: 'Tax rate', type: 'select', optionsKey: 'taxRates', create: true, detail: true, displayField: 'taxRateName' },
-      { name: 'brand', label: 'Brand', create: true, detail: true },
-      { name: 'hsnSacCode', label: 'HSN/SAC', create: true, detail: true },
+      { name: 'brand', label: 'Brand', create: true, detail: true, showWhenItemType: 'PRODUCT' },
+      { name: 'hsnSacCode', label: 'HSN/SAC', create: true, detail: true, showWhenItemType: 'PRODUCT' },
       { name: 'description', label: 'Description', create: true, detail: true },
       {
         name: 'sellingPrice',
-        label: 'Selling price',
+        label: 'Rate / price',
         type: 'number',
         list: true,
         create: true,
         detail: true,
         defaultValue: 0,
       },
-      { name: 'purchasePrice', label: 'Purchase price', type: 'number', create: true, detail: true, defaultValue: 0 },
-      { name: 'mrp', label: 'MRP', type: 'number', create: true, detail: true, defaultValue: 0 },
-      { name: 'openingStock', label: 'Opening stock', type: 'number', create: true, detail: true, createOnly: true, defaultValue: 0 },
+      {
+        name: 'purchasePrice',
+        label: 'Purchase / cost price',
+        type: 'number',
+        create: true,
+        detail: true,
+        defaultValue: 0,
+        showWhenItemType: 'PRODUCT',
+      },
+      { name: 'mrp', label: 'MRP', type: 'number', create: true, detail: true, defaultValue: 0, showWhenItemType: 'PRODUCT' },
+      {
+        name: 'openingStock',
+        label: 'Opening stock',
+        type: 'number',
+        create: true,
+        detail: true,
+        createOnly: true,
+        defaultValue: 0,
+        showWhenItemType: 'PRODUCT',
+      },
+      {
+        name: 'warehouseId',
+        label: 'Opening stock warehouse',
+        type: 'select',
+        optionsKey: 'warehouses',
+        create: true,
+        createOnly: true,
+        showWhenItemType: 'PRODUCT',
+      },
       {
         name: 'minimumStockLevel',
         label: 'Minimum stock',
@@ -323,8 +380,17 @@ const configs: Record<EntityKind, EntityConfig> = {
         create: true,
         detail: true,
         defaultValue: 0,
+        showWhenItemType: 'PRODUCT',
       },
-      { name: 'reorderLevel', label: 'Reorder level', type: 'number', create: true, detail: true, defaultValue: 0 },
+      {
+        name: 'reorderLevel',
+        label: 'Reorder level',
+        type: 'number',
+        create: true,
+        detail: true,
+        defaultValue: 0,
+        showWhenItemType: 'PRODUCT',
+      },
     ],
   },
   categories: {
@@ -376,6 +442,10 @@ const configs: Record<EntityKind, EntityConfig> = {
 }
 
 function formatValue(field: FieldConfig, value: unknown) {
+  if (field.optionsKey === 'itemTypes') {
+    if (value === 'SERVICE') return <Badge className="bg-sky-50 text-sky-800">Service</Badge>
+    if (value === 'PRODUCT') return <Badge>Product</Badge>
+  }
   if (typeof value === 'boolean')
     return <Badge className={value ? 'bg-emerald-100 text-emerald-700' : ''}>{value ? 'Yes' : 'No'}</Badge>
   if (field.type === 'number' && typeof value === 'number') return currency(value)
@@ -552,12 +622,13 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
     fields.filter((f) => f.defaultValue !== undefined).map((f) => [f.name, f.defaultValue]),
   )
   const form = useForm<Record<string, unknown>>({
-    resolver: zodResolver(config.schema as z.ZodObject<z.ZodRawShape>),
+    resolver: zodResolver(config.schema as z.ZodType<Record<string, unknown>>),
     defaultValues,
   })
   const needsUnits = fields.some((f) => f.optionsKey === 'units')
   const needsCategories = fields.some((f) => f.optionsKey === 'categories')
   const needsTaxRates = fields.some((f) => f.optionsKey === 'taxRates')
+  const needsWarehouses = fields.some((f) => f.optionsKey === 'warehouses')
   const { data: units = [] } = useQuery({ queryKey: ['units'], queryFn: unitApi.list, enabled: needsUnits })
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -569,11 +640,28 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
     queryFn: taxRateApi.list,
     enabled: needsTaxRates,
   })
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: warehouseApi.list,
+    enabled: needsWarehouses,
+  })
+  const { data: orgSettings } = useQuery({
+    queryKey: ['organization', 'settings'],
+    queryFn: organizationApi.settings,
+    enabled: needsWarehouses && !isEdit,
+  })
   const { data: existing, isLoading: loadingExisting } = useQuery({
     queryKey: [kind, id],
     queryFn: () => config.get(id),
     enabled: isEdit && !!id,
   })
+
+  useEffect(() => {
+    if (isEdit || !needsWarehouses || !warehouses.length) return
+    if (form.getValues('warehouseId')) return
+    const defaultId = resolveDefaultWarehouseId(warehouses, orgSettings?.defaultWarehouseId)
+    if (defaultId) form.setValue('warehouseId', defaultId as never, { shouldValidate: false })
+  }, [form, isEdit, needsWarehouses, orgSettings?.defaultWarehouseId, warehouses])
 
   useEffect(() => {
     if (!isEdit || !existing) return
@@ -621,9 +709,21 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
     if (key === 'units') return units.map((u) => ({ id: u.id, label: u.name }))
     if (key === 'categories') return categories.map((c) => ({ id: c.id, label: c.name }))
     if (key === 'taxRates') {
-      return taxRates.map((t) => ({
-        id: t.id,
-        label: `${t.name} · ${t.taxType ?? 'GST'} (${t.rate}%)`,
+      return taxRates.map((t) => {
+        const share =
+          t.taxType === 'GST' || t.splitStrategy === 'PLACE_OF_SUPPLY' || t.splitStrategy === 'CUSTOM_PERCENT'
+            ? ` ${Number(t.cgstSharePercent ?? 50)}/${Number(t.sgstSharePercent ?? 50)}`
+            : ''
+        return {
+          id: t.id,
+          label: `${t.name} · ${t.taxType ?? 'GST'}${share} (${t.rate}%)`,
+        }
+      })
+    }
+    if (key === 'warehouses') {
+      return warehouses.map((w) => ({
+        id: w.id,
+        label: w.defaultWarehouse ? `${w.warehouseName} (default)` : w.warehouseName,
       }))
     }
     if (key === 'itemTypes')
@@ -681,6 +781,8 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
         <CardContent className="p-6">
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
             {fields.map((field) => {
+              const itemType = String(form.watch('itemType' as never) ?? 'PRODUCT')
+              if (field.showWhenItemType && field.showWhenItemType !== itemType) return null
               const options = selectOptions(field.optionsKey)
               const current = String(form.watch(field.name as never) ?? '')
               const selectedLabel = options.find((o) => o.id === current)?.label
@@ -707,10 +809,17 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                         ))}
                       </SelectContent>
                     </Select>
+                  ) : field.type === 'number' ? (
+                    <NumberInput
+                      readOnly={readOnly}
+                      className={readOnly ? 'bg-slate-50 text-slate-600' : undefined}
+                      value={Number(form.watch(field.name as never) ?? 0)}
+                      onValueChange={(value) => form.setValue(field.name as never, value as never, { shouldDirty: true })}
+                    />
                   ) : (
                     <>
                       <Input
-                        type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'}
+                        type={field.type === 'email' ? 'email' : 'text'}
                         readOnly={readOnly}
                         className={readOnly ? 'bg-slate-50 text-slate-600' : undefined}
                         {...form.register(field.name as never)}
@@ -722,6 +831,12 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                       ) : null}
                     </>
                   )}
+                  {field.name === 'itemType' ? (
+                    <p className="text-[11px] font-normal text-slate-400">
+                      Services need only name, rate, and tax. On invoices quantity starts at 1 (change it to bill by
+                      hours/days). Services are never tracked in warehouse stock.
+                    </p>
+                  ) : null}
                   {form.formState.errors[field.name as keyof typeof form.formState.errors] && (
                     <p className="text-xs text-rose-600">
                       {String(form.formState.errors[field.name as keyof typeof form.formState.errors]?.message)}
@@ -748,8 +863,14 @@ export function EntityDetailPage({ kind }: { kind: EntityKind }) {
   const config = configs[kind]
   const { can } = useAuth()
   const canWrite = can(config.writePermission)
-  const detailFields = config.fields.filter((field) => field.detail)
   const { data: item } = useQuery({ queryKey: [kind, id], queryFn: () => config.get(id), enabled: !!id })
+  const detailFields = config.fields.filter((field) => {
+    if (!field.detail) return false
+    if (field.showWhenItemType && item && field.showWhenItemType !== String(item.itemType ?? 'PRODUCT')) {
+      return false
+    }
+    return true
+  })
   const needsUnits = detailFields.some((f) => f.optionsKey === 'units')
   const needsCategories = detailFields.some((f) => f.optionsKey === 'categories')
   const needsTaxRates = detailFields.some((f) => f.optionsKey === 'taxRates')

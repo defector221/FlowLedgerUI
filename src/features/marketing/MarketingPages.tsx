@@ -14,6 +14,7 @@ import {
   Card,
   CardContent,
   Input,
+  NumberInput,
   Label,
   Select,
   SelectContent,
@@ -179,10 +180,10 @@ export function MarketingSequencesPage() {
                     <div key={field.id} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-12">
                       <div className="space-y-1.5 sm:col-span-2">
                         <Label>Delay (days)</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          {...form.register(`steps.${index}.delayDays`, { valueAsNumber: true })}
+                        <NumberInput
+                          allowDecimal={false}
+                          value={Number(form.watch(`steps.${index}.delayDays`) ?? 0)}
+                          onValueChange={(value) => form.setValue(`steps.${index}.delayDays`, value)}
                         />
                       </div>
                       <div className="space-y-1.5 sm:col-span-2">

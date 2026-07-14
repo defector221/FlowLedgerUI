@@ -54,7 +54,7 @@ const groups = [
     items: [
       { to: '/customers', label: 'Customers', icon: Users, module: 'customers' as const },
       { to: '/suppliers', label: 'Suppliers', icon: Building2, module: 'suppliers' as const },
-      { to: '/products', label: 'Products', icon: Package, module: 'products' as const },
+      { to: '/products', label: 'Products & services', icon: Package, module: 'products' as const },
       { to: '/categories', label: 'Categories', icon: FileText, module: 'categories' as const },
       { to: '/warehouses', label: 'Warehouses', icon: Building2, module: 'warehouses' as const },
     ],

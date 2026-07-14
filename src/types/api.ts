@@ -272,7 +272,7 @@ export interface SupplierResponse {
 export interface CreateProductRequest {
   sku?: string
   name: string
-  unitId: string
+  unitId?: string
   itemType?: string
   barcode?: string
   description?: string
@@ -284,6 +284,7 @@ export interface CreateProductRequest {
   mrp?: number
   taxRateId?: string
   openingStock?: number
+  warehouseId?: string
   minimumStockLevel?: number
   maximumStockLevel?: number
   reorderLevel?: number
@@ -399,6 +400,10 @@ export interface SalesInvoiceItemRequest {
   rate: number
   discountPercent?: number
   taxRate?: number
+  taxType?: string
+  splitStrategy?: string
+  cgstSharePercent?: number
+  sgstSharePercent?: number
 }
 
 export interface CreateSalesInvoiceRequest {
@@ -417,7 +422,29 @@ export interface CreateSalesInvoiceRequest {
   roundOff?: number
   notes?: string
   termsAndConditions?: string
+  templateId?: string
   items: SalesInvoiceItemRequest[]
+}
+
+export interface SalesInvoiceItemResponse {
+  id?: string
+  productId: string
+  productName?: string | null
+  itemType?: string | null
+  unitName?: string | null
+  description?: string | null
+  hsnSacCode?: string | null
+  quantity: number
+  rate: number
+  discountPercent?: number | null
+  discountAmount?: number | null
+  taxRate?: number
+  taxType?: string | null
+  splitStrategy?: string | null
+  cgstSharePercent?: number | null
+  sgstSharePercent?: number | null
+  lineTotal?: number
+  warehouseName?: string | null
 }
 
 export interface SalesInvoiceResponse {
@@ -427,9 +454,28 @@ export interface SalesInvoiceResponse {
   dueDate: string | null
   customerId: string
   warehouseId: string | null
+  warehouseName?: string | null
   status: string
   grandTotal: number
+  subtotal?: number | null
+  discountTotal?: number | null
+  taxableAmount?: number | null
+  cgstTotal?: number | null
+  sgstTotal?: number | null
+  igstTotal?: number | null
+  shippingCharges?: number | null
+  additionalCharges?: number | null
+  roundOff?: number | null
+  amountPaid?: number | null
+  outstandingAmount?: number | null
   paymentStatus: string
+  notes?: string | null
+  termsAndConditions?: string | null
+  templateId?: string | null
+  billingAddress?: string | null
+  shippingAddress?: string | null
+  placeOfSupply?: string | null
+  items?: SalesInvoiceItemResponse[] | null
 }
 
 export interface PaymentResponse {
@@ -449,6 +495,8 @@ export interface DashboardResponse {
   monthSales: number
   todayPurchases: number
   monthPurchases: number
+  todaySalesDiscount?: number
+  monthSalesDiscount?: number
   receivables: number
   payables: number
   overdueInvoices: number
@@ -465,6 +513,16 @@ export interface InventoryAlertResponse {
   productName: string
   available: number
   threshold: number
+}
+
+export interface InventoryStockPosition {
+  productId: string
+  productName: string
+  sku: string
+  available: number
+  draftReserved: number
+  minimumStockLevel: number
+  reorderLevel: number
 }
 
 export interface StockAdjustmentRequest {
@@ -486,17 +544,30 @@ export interface AuditLogResponse {
   id: string
   organizationId: string
   userId: string | null
+  userName: string | null
+  userEmail: string | null
   action: string
   entityType: string
   entityId: string | null
+  oldValue?: unknown
+  newValue?: unknown
+  ipAddress?: string | null
+  userAgent?: string | null
   createdAt: string
 }
 
 export interface InvoiceTemplateConfig {
+  layoutKey?: string
   logo?: { visible?: boolean; position?: string }
   header?: { title?: string; accentColor?: string; showGstin?: boolean }
   items?: { columns?: string[]; showHsn?: boolean; showTax?: boolean }
-  footer?: { showBankDetails?: boolean; showTerms?: boolean; showSignature?: boolean; note?: string }
+  footer?: {
+    showBankDetails?: boolean
+    showTerms?: boolean
+    showSignature?: boolean
+    note?: string
+    defaultTerms?: string
+  }
 }
 
 export interface InvoiceTemplateResponse {

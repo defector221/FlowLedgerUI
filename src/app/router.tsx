@@ -125,7 +125,7 @@ export const router = createBrowserRouter([
         path: 'sales/invoices',
         element: (
           <DocumentListPage
-            title="Tax invoices"
+            title="Sales invoices"
             endpoint="invoices"
             createPath="/sales/invoices/new"
             createLabel="Create invoice"
@@ -133,6 +133,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'sales/invoices/new', element: <CreateInvoicePage /> },
+      { path: 'sales/invoices/:id/edit', element: <CreateInvoicePage /> },
       { path: 'sales/invoices/:id', element: <SalesInvoiceDetailPage /> },
       {
         path: 'purchases/orders',

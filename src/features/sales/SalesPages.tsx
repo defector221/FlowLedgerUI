@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Download, Eye, Plus, Trash2 } from 'lucide-react'
+import { Download, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { customerApi, productApi, purchaseApi, paymentApi, salesApi, supplierApi, taxRateApi } from '@/services/api'
+import { customerApi, productApi, purchaseApi, paymentApi, salesApi, supplierApi, taxRateApi, templateApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { currency } from '@/lib/utils'
+import { currency, customerLabel, supplierLabel } from '@/lib/utils'
+import { PartySelectLabel } from '@/components/party/PartySelectLabel'
 import {
   Badge,
   Button,
@@ -16,6 +17,7 @@ import {
   CardContent,
   CardHeader,
   Input,
+  NumberInput,
   Label,
   Select,
   SelectContent,
@@ -90,11 +92,11 @@ export function DocumentListPage({
   })
   const rows = data ?? []
   const customerNameById = useMemo(
-    () => Object.fromEntries(customers.map((c) => [c.id, c.customerName])),
+    () => Object.fromEntries(customers.map((c) => [c.id, customerLabel(c)])),
     [customers],
   )
   const supplierNameById = useMemo(
-    () => Object.fromEntries(suppliers.map((s) => [s.id, s.supplierName])),
+    () => Object.fromEntries(suppliers.map((s) => [s.id, supplierLabel(s)])),
     [suppliers],
   )
   const partyLabel = (row: Record<string, unknown>) => {
@@ -123,6 +125,17 @@ export function DocumentListPage({
       toast.success('Invoice cancelled')
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Unable to cancel invoice'))
+    }
+  }
+
+  const confirmInvoice = async (id: string) => {
+    try {
+      await salesApi.confirmInvoice(id)
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      await queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      toast.success('Invoice confirmed')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to confirm invoice'))
     }
   }
 
@@ -183,7 +196,15 @@ export function DocumentListPage({
                 {rows.length ? (
                   rows.map((row) => (
                     <tr key={String(row.id)} className="border-b">
-                      <td className="p-3">{documentNumber(row)}</td>
+                      <td className="p-3">
+                        {endpoint === 'invoices' ? (
+                          <Link className="font-medium text-teal-700 hover:underline" to={`/sales/invoices/${row.id}`}>
+                            {documentNumber(row)}
+                          </Link>
+                        ) : (
+                          documentNumber(row)
+                        )}
+                      </td>
                       <td className="p-3">{partyLabel(row)}</td>
                       <td className="p-3">{documentDate(row)}</td>
                       <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
@@ -205,6 +226,19 @@ export function DocumentListPage({
                       {endpoint === 'invoices' && (
                         <td className="p-3">
                           <div className="flex flex-wrap gap-2">
+                            {String(row.status) === 'DRAFT' && (
+                              <>
+                                <Link
+                                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                  to={`/sales/invoices/${row.id}/edit`}
+                                >
+                                  Edit
+                                </Link>
+                                <Button variant="outline" size="sm" onClick={() => confirmInvoice(String(row.id))}>
+                                  Confirm
+                                </Button>
+                              </>
+                            )}
                             <Button variant="outline" size="sm" onClick={() => downloadPdf(String(row.id))}>
                               <Download className="size-3.5" />
                               PDF
@@ -242,19 +276,54 @@ export function DocumentListPage({
 }
 
 type TaxType = 'GST' | 'IGST' | 'OTHER'
+type SplitStrategy = 'PLACE_OF_SUPPLY' | 'NO_SPLIT_IGST' | 'NO_SPLIT_OTHER' | 'CUSTOM_PERCENT'
 type Line = {
   id: number
   productId: string
   quantity: number
   rate: number
+  discountPercent: number
   taxRate: number
   taxType: TaxType
+  splitStrategy: SplitStrategy
+  cgstSharePercent: number
+  sgstSharePercent: number
+}
+
+const defaultLine = (): Omit<Line, 'id'> => ({
+  productId: '',
+  quantity: 1,
+  rate: 0,
+  discountPercent: 0,
+  taxRate: 18,
+  taxType: 'GST',
+  splitStrategy: 'PLACE_OF_SUPPLY',
+  cgstSharePercent: 50,
+  sgstSharePercent: 50,
+})
+
+function lineGross(line: Pick<Line, 'quantity' | 'rate'>) {
+  return line.quantity * line.rate
+}
+
+function lineDiscount(line: Pick<Line, 'quantity' | 'rate' | 'discountPercent'>) {
+  return (lineGross(line) * (line.discountPercent || 0)) / 100
+}
+
+function lineTaxable(line: Pick<Line, 'quantity' | 'rate' | 'discountPercent'>) {
+  return lineGross(line) - lineDiscount(line)
+}
+
+function lineTaxAmount(line: Pick<Line, 'quantity' | 'rate' | 'discountPercent' | 'taxRate'>) {
+  return (lineTaxable(line) * (line.taxRate || 0)) / 100
+}
+
+function lineAmount(line: Pick<Line, 'quantity' | 'rate' | 'discountPercent' | 'taxRate'>) {
+  return lineTaxable(line) + lineTaxAmount(line)
 }
 
 function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellingPrice') {
-  const [lines, setLines] = useState<Line[]>([
-    { id: 1, productId: '', quantity: 1, rate: 0, taxRate: 18, taxType: 'GST' },
-  ])
+  const [lines, setLines] = useState<Line[]>([{ id: 1, ...defaultLine() }])
   const { data: products = [] } = useQuery({
     queryKey: ['products', 'document-lines'],
     queryFn: () => productApi.list({ active: true, size: 100 }),
@@ -265,11 +334,9 @@ function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellin
   })
   const update = (id: number, key: keyof Line, value: string | number) =>
     setLines((current) => current.map((line) => (line.id === id ? { ...line, [key]: value } : line)))
-  const addLine = () =>
-    setLines((current) => [
-      ...current,
-      { id: Date.now(), productId: '', quantity: 1, rate: 0, taxRate: 18, taxType: 'GST' },
-    ])
+  const patch = (id: number, values: Partial<Line>) =>
+    setLines((current) => current.map((line) => (line.id === id ? { ...line, ...values } : line)))
+  const addLine = () => setLines((current) => [...current, { id: Date.now(), ...defaultLine() }])
   const removeLine = (id: number) => setLines((current) => current.filter((item) => item.id !== id))
   const selectProduct = (lineId: number, productId: string) => {
     const product = products.find((item) => item.id === productId)
@@ -277,20 +344,53 @@ function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellin
     setLines((current) =>
       current.map((line) => {
         if (line.id !== lineId) return line
+        const taxType = (tax?.taxType ?? (product?.taxType as TaxType | undefined) ?? 'GST') as TaxType
+        const splitStrategy = (tax?.splitStrategy ??
+          (taxType === 'IGST'
+            ? 'NO_SPLIT_IGST'
+            : taxType === 'OTHER'
+              ? 'NO_SPLIT_OTHER'
+              : 'PLACE_OF_SUPPLY')) as SplitStrategy
+        const isService = product?.itemType === 'SERVICE'
         return {
           ...line,
           productId,
+          quantity: isService ? 1 : line.quantity,
           rate: product ? Number(product[defaultRateKey] ?? 0) : line.rate,
           taxRate: tax ? Number(tax.rate) : line.taxRate,
-          taxType: (tax?.taxType ?? (product?.taxType as TaxType | undefined) ?? 'GST') as TaxType,
+          taxType,
+          splitStrategy,
+          cgstSharePercent: Number(tax?.cgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50)),
+          sgstSharePercent: Number(tax?.sgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50)),
         }
       }),
     )
   }
   const validLines = () => lines.filter((line) => line.productId)
-  const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.rate, 0)
-  const tax = lines.reduce((sum, line) => sum + (line.quantity * line.rate * line.taxRate) / 100, 0)
-  return { lines, products, update, addLine, removeLine, selectProduct, validLines, subtotal, tax }
+  const subtotal = lines.reduce((sum, line) => sum + lineGross(line), 0)
+  const discountTotal = lines.reduce((sum, line) => sum + lineDiscount(line), 0)
+  const tax = lines.reduce((sum, line) => sum + lineTaxAmount(line), 0)
+  const replaceLines = (next: Omit<Line, 'id'>[]) => {
+    setLines(
+      next.length
+        ? next.map((line, index) => ({ id: Date.now() + index, ...defaultLine(), ...line }))
+        : [{ id: 1, ...defaultLine() }],
+    )
+  }
+  return {
+    lines,
+    products,
+    update,
+    patch,
+    addLine,
+    removeLine,
+    selectProduct,
+    replaceLines,
+    validLines,
+    subtotal,
+    discountTotal,
+    tax,
+  }
 }
 
 function LineItemsEditor({
@@ -298,13 +398,15 @@ function LineItemsEditor({
   products,
   onSelectProduct,
   onUpdate,
+  onPatch,
   onRemove,
   onAdd,
 }: {
   lines: Line[]
-  products: { id: string; name: string }[]
+  products: { id: string; name: string; itemType?: string; unitName?: string | null }[]
   onSelectProduct: (lineId: number, productId: string) => void
   onUpdate: (id: number, key: keyof Line, value: string | number) => void
+  onPatch: (id: number, values: Partial<Line>) => void
   onRemove: (id: number) => void
   onAdd: () => void
 }) {
@@ -321,9 +423,10 @@ function LineItemsEditor({
         <Table>
           <thead>
             <tr className="border-b">
-              <th className="p-2 text-xs text-slate-500">PRODUCT</th>
+              <th className="p-2 text-xs text-slate-500">ITEM</th>
               <th className="p-2 text-xs text-slate-500">QTY</th>
               <th className="p-2 text-xs text-slate-500">RATE</th>
+              <th className="p-2 text-xs text-slate-500">DISC %</th>
               <th className="p-2 text-xs text-slate-500">TAX %</th>
               <th className="p-2 text-xs text-slate-500">TYPE</th>
               <th className="p-2 text-right text-xs text-slate-500">AMOUNT</th>
@@ -331,51 +434,100 @@ function LineItemsEditor({
             </tr>
           </thead>
           <tbody>
-            {lines.map((line) => (
+            {lines.map((line) => {
+              const selected = products.find((p) => p.id === line.productId)
+              const isService = selected?.itemType === 'SERVICE'
+              return (
               <tr key={line.id} className="border-b">
                 <td className="min-w-[10rem] p-2 sm:min-w-[14rem]">
                   <Select value={line.productId} onValueChange={(value) => onSelectProduct(line.id, value)}>
-                    <SelectTrigger className="min-w-0">
-                      {products.find((p) => p.id === line.productId)?.name ?? 'Select product'}
+                    <SelectTrigger className="h-auto min-h-10 min-w-0 py-2">
+                      {selected ? (
+                        <span className="flex min-w-0 flex-col items-start text-left">
+                          <span className="truncate font-medium">{selected.name}</span>
+                          <span className="text-[11px] font-normal text-slate-500">
+                            {isService ? 'Service' : 'Product'}
+                            {selected.unitName ? ` · ${selected.unitName}` : ''}
+                          </span>
+                        </span>
+                      ) : (
+                        'Select item'
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
+                        <SelectItem key={product.id} value={product.id} textValue={product.name}>
+                          <span className="flex flex-col items-start">
+                            <span>{product.name}</span>
+                            <span className="text-[11px] text-slate-500">
+                              {product.itemType === 'SERVICE' ? 'Service' : 'Product'}
+                              {product.unitName ? ` · ${product.unitName}` : ''}
+                            </span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </td>
                 <td className="p-2">
-                  <Input
-                    className="w-16"
-                    type="number"
-                    min="1"
+                  <NumberInput
+                    className="w-20"
+                    allowDecimal
                     value={line.quantity}
-                    onChange={(event) => onUpdate(line.id, 'quantity', Number(event.target.value))}
+                    onValueChange={(value) => onUpdate(line.id, 'quantity', Math.max(0.001, value))}
                   />
                 </td>
                 <td className="p-2">
-                  <Input
+                  <NumberInput
                     className="w-24"
-                    type="number"
                     value={line.rate}
-                    onChange={(event) => onUpdate(line.id, 'rate', Number(event.target.value))}
+                    onValueChange={(value) => onUpdate(line.id, 'rate', value)}
                   />
                 </td>
                 <td className="p-2">
-                  <Input
+                  <NumberInput
                     className="w-16"
-                    type="number"
+                    value={line.discountPercent}
+                    onValueChange={(value) =>
+                      onUpdate(line.id, 'discountPercent', Math.min(100, Math.max(0, value)))
+                    }
+                  />
+                </td>
+                <td className="p-2">
+                  <NumberInput
+                    className="w-16"
                     value={line.taxRate}
-                    onChange={(event) => onUpdate(line.id, 'taxRate', Number(event.target.value))}
+                    onValueChange={(value) => onUpdate(line.id, 'taxRate', value)}
                   />
                 </td>
                 <td className="p-2">
                   <Select
                     value={line.taxType}
-                    onValueChange={(value) => onUpdate(line.id, 'taxType', value)}
+                    onValueChange={(value) => {
+                      const taxType = value as TaxType
+                      if (taxType === 'IGST') {
+                        onPatch(line.id, {
+                          taxType,
+                          splitStrategy: 'NO_SPLIT_IGST',
+                          cgstSharePercent: 0,
+                          sgstSharePercent: 0,
+                        })
+                      } else if (taxType === 'OTHER') {
+                        onPatch(line.id, {
+                          taxType,
+                          splitStrategy: 'NO_SPLIT_OTHER',
+                          cgstSharePercent: 0,
+                          sgstSharePercent: 0,
+                        })
+                      } else {
+                        onPatch(line.id, {
+                          taxType,
+                          splitStrategy: 'PLACE_OF_SUPPLY',
+                          cgstSharePercent: 50,
+                          sgstSharePercent: 50,
+                        })
+                      }
+                    }}
                   >
                     <SelectTrigger className="w-[5.5rem]">{line.taxType}</SelectTrigger>
                     <SelectContent>
@@ -385,14 +537,22 @@ function LineItemsEditor({
                     </SelectContent>
                   </Select>
                 </td>
-                <td className="p-2 text-right text-sm font-medium">{currency(line.quantity * line.rate)}</td>
+                <td className="p-2 text-right text-sm font-medium">
+                  <div>{currency(lineAmount(line))}</div>
+                  {line.discountPercent > 0 && (
+                    <div className="text-xs font-normal text-slate-500">
+                      −{currency(lineDiscount(line))} disc
+                    </div>
+                  )}
+                </td>
                 <td className="p-2">
                   <Button variant="ghost" size="icon" onClick={() => onRemove(line.id)}>
                     <Trash2 className="size-4 text-rose-500" />
                   </Button>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </Table>
       </CardContent>
@@ -403,52 +563,193 @@ function LineItemsEditor({
 const invoiceSchema = z.object({
   customerId: z.string().uuid('Select a customer'),
   invoiceDate: z.string().min(1),
-  warehouseId: z.string().uuid().optional(),
+  dueDate: z.string().optional(),
+  templateId: z.string().optional(),
   notes: z.string().optional(),
+  termsAndConditions: z.string().optional(),
 })
 
+function paymentTermsDays(paymentTerms?: string | null) {
+  if (!paymentTerms?.trim()) return 30
+  const match = paymentTerms.match(/(\d{1,3})/)
+  if (!match) return 30
+  const days = Number(match[1])
+  return Number.isFinite(days) && days >= 0 && days <= 365 ? days : 30
+}
+
+function defaultDueDate(invoiceDate: string, paymentTerms?: string | null) {
+  const base = new Date(`${invoiceDate}T00:00:00`)
+  if (Number.isNaN(base.getTime())) return ''
+  base.setDate(base.getDate() + paymentTermsDays(paymentTerms))
+  return base.toISOString().slice(0, 10)
+}
+
 export function CreateInvoicePage() {
+  const { id: editId } = useParams()
+  const isEdit = Boolean(editId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [savedInvoiceId, setSavedInvoiceId] = useState<string | null>(null)
+  const [savedInvoiceId, setSavedInvoiceId] = useState<string | null>(editId ?? null)
   const [shippingCharges, setShippingCharges] = useState(0)
-  const { lines, products, update, addLine, removeLine, selectProduct, validLines, subtotal, tax } = useLineItems()
+  const [invoiceStatus, setInvoiceStatus] = useState('DRAFT')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [dueDateTouched, setDueDateTouched] = useState(false)
+  const { lines, products, update, patch, addLine, removeLine, selectProduct, replaceLines, validLines, subtotal, discountTotal, tax } =
+    useLineItems()
   const form = useForm({
     resolver: zodResolver(invoiceSchema),
-    defaultValues: { customerId: '', invoiceDate: new Date().toISOString().slice(0, 10), notes: '' },
+    defaultValues: {
+      customerId: '',
+      invoiceDate: new Date().toISOString().slice(0, 10),
+      dueDate: defaultDueDate(new Date().toISOString().slice(0, 10)),
+      templateId: '',
+      notes: '',
+      termsAndConditions: '',
+    },
   })
   const { data: customers = [] } = useQuery({
     queryKey: ['customers', 'invoice'],
     queryFn: () => customerApi.list({ size: 100 }),
   })
+  const { data: invoiceTemplates = [] } = useQuery({
+    queryKey: ['templates', 'SALES_INVOICE'],
+    queryFn: () => templateApi.list({ documentType: 'SALES_INVOICE' }),
+  })
+  const { data: existingInvoice, isLoading: loadingInvoice } = useQuery({
+    queryKey: ['sales-invoice', editId],
+    queryFn: () => salesApi.getInvoice(editId!),
+    enabled: isEdit && !!editId,
+  })
+  const customerId = form.watch('customerId')
+  const invoiceDate = form.watch('invoiceDate')
+  const selectedCustomer = customers.find((c) => c.id === customerId)
+  const defaultTemplateId = invoiceTemplates.find((t) => t.isDefault)?.id ?? invoiceTemplates[0]?.id ?? ''
 
-  const total = Math.round(subtotal + tax + shippingCharges)
+  useEffect(() => {
+    if (!existingInvoice) return
+    setSavedInvoiceId(existingInvoice.id)
+    setInvoiceStatus(existingInvoice.status)
+    setInvoiceNumber(existingInvoice.invoiceNumber ?? '')
+    setDueDateTouched(Boolean(existingInvoice.dueDate))
+    const invoiceDateValue = existingInvoice.invoiceDate?.slice(0, 10) || new Date().toISOString().slice(0, 10)
+    form.reset({
+      customerId: existingInvoice.customerId,
+      invoiceDate: invoiceDateValue,
+      dueDate: existingInvoice.dueDate?.slice(0, 10) || defaultDueDate(invoiceDateValue),
+      templateId: existingInvoice.templateId ?? defaultTemplateId,
+      notes: existingInvoice.notes ?? '',
+      termsAndConditions: existingInvoice.termsAndConditions ?? '',
+    })
+    setShippingCharges(Number(existingInvoice.shippingCharges ?? 0))
+    const items = existingInvoice.items ?? []
+    replaceLines(
+      items.map((item) => {
+        const taxType = (item.taxType ?? 'GST') as TaxType
+        const splitStrategy = (item.splitStrategy ??
+          (taxType === 'IGST' ? 'NO_SPLIT_IGST' : taxType === 'OTHER' ? 'NO_SPLIT_OTHER' : 'PLACE_OF_SUPPLY')) as SplitStrategy
+        return {
+          productId: item.productId,
+          quantity: Number(item.quantity ?? 1),
+          rate: Number(item.rate ?? 0),
+          discountPercent: Number(item.discountPercent ?? 0),
+          taxRate: Number(item.taxRate ?? 18),
+          taxType,
+          splitStrategy,
+          cgstSharePercent: Number(
+            item.cgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50),
+          ),
+          sgstSharePercent: Number(
+            item.sgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50),
+          ),
+        }
+      }),
+    )
+    // replaceLines is stable enough for initial hydrate; avoid depending on it each render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingInvoice, form, defaultTemplateId])
+
+  useEffect(() => {
+    if (isEdit || form.getValues('templateId') || !defaultTemplateId) return
+    form.setValue('templateId', defaultTemplateId)
+  }, [defaultTemplateId, form, isEdit])
+
+  useEffect(() => {
+    if (dueDateTouched || !invoiceDate) return
+    form.setValue('dueDate', defaultDueDate(invoiceDate, selectedCustomer?.paymentTerms))
+  }, [customerId, invoiceDate, selectedCustomer?.paymentTerms, dueDateTouched, form])
+
+  const isDraft = invoiceStatus === 'DRAFT'
+  const total = Math.round(subtotal - discountTotal + tax + shippingCharges)
+
+  const applyTemplateDefaults = (templateId: string) => {
+    form.setValue('templateId', templateId)
+    const selected = invoiceTemplates.find((t) => t.id === templateId)
+    if (!selected) return
+    try {
+      const config =
+        typeof selected.configJson === 'string'
+          ? (JSON.parse(selected.configJson) as { footer?: { defaultTerms?: string; note?: string } })
+          : selected.configJson
+      const terms = config?.footer?.defaultTerms || config?.footer?.note || ''
+      if (terms && !form.getValues('termsAndConditions')?.trim()) {
+        form.setValue('termsAndConditions', terms)
+      }
+    } catch {
+      // ignore malformed template config
+    }
+  }
 
   const save = (confirm = false) =>
     form.handleSubmit(async (values) => {
       try {
+        if (!isDraft) throw new Error('Only draft invoices can be edited')
         const items = validLines()
         if (!items.length) throw new Error('Add at least one line item')
         const payload = {
           customerId: values.customerId,
           invoiceDate: values.invoiceDate,
-          warehouseId: values.warehouseId,
+          dueDate: values.dueDate || undefined,
+          templateId: values.templateId || undefined,
           notes: values.notes,
+          termsAndConditions: values.termsAndConditions || undefined,
           shippingCharges,
-          items: items.map(({ productId, quantity, rate, taxRate, taxType }) => ({
-            productId,
-            quantity,
-            rate,
-            taxRate,
-            taxType,
-          })),
+          items: items.map(
+            ({
+              productId,
+              quantity,
+              rate,
+              discountPercent,
+              taxRate,
+              taxType,
+              splitStrategy,
+              cgstSharePercent,
+              sgstSharePercent,
+            }) => ({
+              productId,
+              quantity,
+              rate,
+              discountPercent,
+              taxRate,
+              taxType,
+              splitStrategy,
+              cgstSharePercent,
+              sgstSharePercent,
+            }),
+          ),
         }
         const invoice = savedInvoiceId
           ? await salesApi.updateInvoice(savedInvoiceId, payload)
           : await salesApi.createInvoice(payload)
         setSavedInvoiceId(invoice.id)
-        if (confirm) await salesApi.confirmInvoice(invoice.id)
+        setInvoiceNumber(invoice.invoiceNumber ?? '')
+        setInvoiceStatus(invoice.status)
+        if (confirm) {
+          const confirmed = await salesApi.confirmInvoice(invoice.id)
+          setInvoiceStatus(confirmed.status)
+          await queryClient.invalidateQueries({ queryKey: ['inventory'] })
+        }
         await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+        await queryClient.invalidateQueries({ queryKey: ['sales-invoice', invoice.id] })
         toast.success(confirm ? 'Invoice confirmed' : 'Invoice saved as draft')
         if (confirm) navigate('/sales/invoices')
       } catch (error) {
@@ -489,32 +790,58 @@ export function CreateInvoicePage() {
     }
   }
 
+  if (isEdit && loadingInvoice) {
+    return <p className="py-16 text-center text-sm text-slate-500">Loading invoice…</p>
+  }
+
+  if (isEdit && existingInvoice && existingInvoice.status !== 'DRAFT') {
+    return (
+      <Card>
+        <CardContent className="space-y-4 py-10 text-center">
+          <p className="text-sm text-slate-600">
+            Invoice {existingInvoice.invoiceNumber} is {existingInvoice.status} and can no longer be edited.
+          </p>
+          <div className="flex justify-center gap-2">
+            <Button variant="outline" onClick={() => navigate(`/sales/invoices/${existingInvoice.id}`)}>
+              View invoice
+            </Button>
+            <Button onClick={() => navigate('/sales/invoices')}>Back to list</Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create tax invoice</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {isEdit ? `Edit sales invoice` : 'Create sales invoice'}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Payload aligned with backend SalesDtos.Invoice. PDF output uses the invoice template or your org default
-            from Templates.
+            {invoiceNumber
+              ? `${invoiceNumber} · ${invoiceStatus}`
+              : 'Stocked products use the organization default warehouse on confirm; services are not stocked.'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => window.print()}>
-            <Eye className="size-4" />
-            Preview
+          <Button variant="outline" onClick={() => navigate('/sales/invoices')}>
+            Back
           </Button>
           <Button variant="outline" onClick={downloadPdf} disabled={!savedInvoiceId}>
             <Download className="size-4" />
             Download PDF
           </Button>
-          <Button variant="outline" onClick={cancelInvoice}>
+          <Button variant="outline" onClick={cancelInvoice} disabled={!isDraft && !!savedInvoiceId}>
             Cancel invoice
           </Button>
-          <Button variant="outline" onClick={() => save(false)()}>
+          <Button variant="outline" onClick={() => save(false)()} disabled={!isDraft}>
             Save draft
           </Button>
-          <Button onClick={() => save(true)()}>Confirm invoice</Button>
+          <Button onClick={() => save(true)()} disabled={!isDraft}>
+            Confirm invoice
+          </Button>
         </div>
       </div>
       <div className="grid gap-6 xl:grid-cols-3">
@@ -524,13 +851,16 @@ export function CreateInvoicePage() {
               <div className="space-y-1.5">
                 <Label>Customer</Label>
                 <Select value={form.watch('customerId')} onValueChange={(value) => form.setValue('customerId', value)}>
-                  <SelectTrigger>
-                    {customers.find((c) => c.id === form.watch('customerId'))?.customerName ?? 'Select customer'}
+                  <SelectTrigger className="h-auto min-h-10 py-2">
+                    {(() => {
+                      const selected = customers.find((c) => c.id === form.watch('customerId'))
+                      return selected ? <PartySelectLabel party={selected} /> : 'Select customer'
+                    })()}
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.customerName}
+                      <SelectItem key={customer.id} value={customer.id} textValue={customerLabel(customer)}>
+                        <PartySelectLabel party={customer} />
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -540,6 +870,43 @@ export function CreateInvoicePage() {
                 <Label>Invoice date</Label>
                 <Input type="date" {...form.register('invoiceDate')} />
               </div>
+              <div className="space-y-1.5">
+                <Label>Due date</Label>
+                <Input
+                  type="date"
+                  {...form.register('dueDate', {
+                    onChange: () => setDueDateTouched(true),
+                  })}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Invoice template</Label>
+                <Select
+                  value={form.watch('templateId') || '__none__'}
+                  onValueChange={(value) => applyTemplateDefaults(value === '__none__' ? '' : value)}
+                >
+                  <SelectTrigger>
+                    {invoiceTemplates.find((t) => t.id === form.watch('templateId'))?.templateName ??
+                      'Organization default'}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Organization default</SelectItem>
+                    {invoiceTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.templateName}
+                        {template.isDefault ? ' (default)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  PDF uses this fixed layout. Manage designs under Templates.
+                </p>
+              </div>
+              <p className="text-xs font-normal text-slate-500 sm:col-span-2">
+                Due date defaults to customer payment terms (or 30 days). Stocked products deduct from the organization
+                default warehouse when confirmed; services never touch inventory.
+              </p>
             </CardContent>
           </Card>
           <LineItemsEditor
@@ -547,6 +914,7 @@ export function CreateInvoicePage() {
             products={products}
             onSelectProduct={selectProduct}
             onUpdate={update}
+            onPatch={patch}
             onRemove={removeLine}
             onAdd={addLine}
           />
@@ -561,13 +929,16 @@ export function CreateInvoicePage() {
                 <span>Subtotal</span>
                 <b>{currency(subtotal)}</b>
               </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Discount</span>
+                <b>−{currency(discountTotal)}</b>
+              </div>
               <div className="flex items-center justify-between gap-3">
                 <span>Shipping charges</span>
-                <Input
+                <NumberInput
                   className="w-28 text-right"
-                  type="number"
                   value={shippingCharges}
-                  onChange={(event) => setShippingCharges(Number(event.target.value))}
+                  onValueChange={setShippingCharges}
                 />
               </div>
               <div className="flex justify-between">
@@ -581,9 +952,18 @@ export function CreateInvoicePage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-5">
-              <Label>Notes</Label>
-              <Textarea className="mt-2" {...form.register('notes')} />
+            <CardContent className="space-y-4 p-5">
+              <div>
+                <Label>Notes</Label>
+                <Textarea className="mt-2" {...form.register('notes')} />
+              </div>
+              <div>
+                <Label>Terms &amp; conditions</Label>
+                <Textarea className="mt-2" rows={4} {...form.register('termsAndConditions')} />
+                <p className="mt-1 text-xs text-slate-500">
+                  Shown on the PDF. Leave blank to use the template defaults.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -601,7 +981,7 @@ const quotationSchema = z.object({
 export function CreateQuotationPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { lines, products, update, addLine, removeLine, selectProduct, validLines, subtotal, tax } = useLineItems()
+  const { lines, products, update, patch, addLine, removeLine, selectProduct, validLines, subtotal, discountTotal, tax } = useLineItems()
   const form = useForm({
     resolver: zodResolver(quotationSchema),
     defaultValues: { customerId: '', quotationDate: new Date().toISOString().slice(0, 10), notes: '' },
@@ -619,13 +999,29 @@ export function CreateQuotationPage() {
         customerId: values.customerId,
         quotationDate: values.quotationDate,
         notes: values.notes,
-        items: items.map(({ productId, quantity, rate, taxRate, taxType }) => ({
-          productId,
-          quantity,
-          rate,
-          taxRate,
-          taxType,
-        })),
+        items: items.map(
+          ({
+            productId,
+            quantity,
+            rate,
+            discountPercent,
+            taxRate,
+            taxType,
+            splitStrategy,
+            cgstSharePercent,
+            sgstSharePercent,
+          }) => ({
+            productId,
+            quantity,
+            rate,
+            discountPercent,
+            taxRate,
+            taxType,
+            splitStrategy,
+            cgstSharePercent,
+            sgstSharePercent,
+          }),
+        ),
       })
       await queryClient.invalidateQueries({ queryKey: ['quotations'] })
       toast.success('Quotation created')
@@ -651,13 +1047,16 @@ export function CreateQuotationPage() {
               <div className="space-y-1.5">
                 <Label>Customer</Label>
                 <Select value={form.watch('customerId')} onValueChange={(value) => form.setValue('customerId', value)}>
-                  <SelectTrigger>
-                    {customers.find((c) => c.id === form.watch('customerId'))?.customerName ?? 'Select customer'}
+                  <SelectTrigger className="h-auto min-h-10 py-2">
+                    {(() => {
+                      const selected = customers.find((c) => c.id === form.watch('customerId'))
+                      return selected ? <PartySelectLabel party={selected} /> : 'Select customer'
+                    })()}
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.customerName}
+                      <SelectItem key={customer.id} value={customer.id} textValue={customerLabel(customer)}>
+                        <PartySelectLabel party={customer} />
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -674,6 +1073,7 @@ export function CreateQuotationPage() {
             products={products}
             onSelectProduct={selectProduct}
             onUpdate={update}
+            onPatch={patch}
             onRemove={removeLine}
             onAdd={addLine}
           />
@@ -687,13 +1087,17 @@ export function CreateQuotationPage() {
               <span>Subtotal</span>
               <b>{currency(subtotal)}</b>
             </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Discount</span>
+              <b>−{currency(discountTotal)}</b>
+            </div>
             <div className="flex justify-between">
               <span>Tax</span>
               <b>{currency(tax)}</b>
             </div>
             <div className="flex justify-between border-t pt-3 text-base font-semibold">
               <span>Grand total</span>
-              <span>{currency(Math.round(subtotal + tax))}</span>
+              <span>{currency(Math.round(subtotal - discountTotal + tax))}</span>
             </div>
             <div className="pt-2">
               <Label>Notes</Label>
@@ -715,7 +1119,7 @@ const purchaseOrderSchema = z.object({
 export function CreatePurchaseOrderPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { lines, products, update, addLine, removeLine, selectProduct, validLines, subtotal, tax } =
+  const { lines, products, update, patch, addLine, removeLine, selectProduct, validLines, subtotal, discountTotal, tax } =
     useLineItems('purchasePrice')
   const form = useForm({
     resolver: zodResolver(purchaseOrderSchema),
@@ -734,13 +1138,29 @@ export function CreatePurchaseOrderPage() {
         supplierId: values.supplierId,
         orderDate: values.orderDate,
         notes: values.notes,
-        items: items.map(({ productId, quantity, rate, taxRate, taxType }) => ({
-          productId,
-          quantity,
-          rate,
-          taxRate,
-          taxType,
-        })),
+        items: items.map(
+          ({
+            productId,
+            quantity,
+            rate,
+            discountPercent,
+            taxRate,
+            taxType,
+            splitStrategy,
+            cgstSharePercent,
+            sgstSharePercent,
+          }) => ({
+            productId,
+            quantity,
+            rate,
+            discountPercent,
+            taxRate,
+            taxType,
+            splitStrategy,
+            cgstSharePercent,
+            sgstSharePercent,
+          }),
+        ),
       })
       await queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
       toast.success('Purchase order created')
@@ -766,13 +1186,16 @@ export function CreatePurchaseOrderPage() {
               <div className="space-y-1.5">
                 <Label>Supplier</Label>
                 <Select value={form.watch('supplierId')} onValueChange={(value) => form.setValue('supplierId', value)}>
-                  <SelectTrigger>
-                    {suppliers.find((s) => s.id === form.watch('supplierId'))?.supplierName ?? 'Select supplier'}
+                  <SelectTrigger className="h-auto min-h-10 py-2">
+                    {(() => {
+                      const selected = suppliers.find((s) => s.id === form.watch('supplierId'))
+                      return selected ? <PartySelectLabel party={selected} /> : 'Select supplier'
+                    })()}
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.supplierName}
+                      <SelectItem key={supplier.id} value={supplier.id} textValue={supplierLabel(supplier)}>
+                        <PartySelectLabel party={supplier} />
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -789,6 +1212,7 @@ export function CreatePurchaseOrderPage() {
             products={products}
             onSelectProduct={selectProduct}
             onUpdate={update}
+            onPatch={patch}
             onRemove={removeLine}
             onAdd={addLine}
           />
@@ -802,13 +1226,17 @@ export function CreatePurchaseOrderPage() {
               <span>Subtotal</span>
               <b>{currency(subtotal)}</b>
             </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Discount</span>
+              <b>−{currency(discountTotal)}</b>
+            </div>
             <div className="flex justify-between">
               <span>Tax</span>
               <b>{currency(tax)}</b>
             </div>
             <div className="flex justify-between border-t pt-3 text-base font-semibold">
               <span>Grand total</span>
-              <span>{currency(Math.round(subtotal + tax))}</span>
+              <span>{currency(Math.round(subtotal - discountTotal + tax))}</span>
             </div>
             <div className="pt-2">
               <Label>Notes</Label>
@@ -838,18 +1266,21 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const initialType = (searchParams.get('type') as 'RECEIPT' | 'PAYMENT' | null) ?? defaultType
+  const prefillCustomerId = searchParams.get('customerId') ?? ''
+  const prefillInvoiceId = searchParams.get('invoiceId') ?? ''
+  const prefillAmount = Number(searchParams.get('amount') ?? 0)
   const form = useForm({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
       paymentType: initialType,
       partyType: initialType === 'RECEIPT' ? 'CUSTOMER' : 'SUPPLIER',
-      partyId: '',
-      amount: 0,
+      partyId: prefillCustomerId,
+      amount: Number.isFinite(prefillAmount) && prefillAmount > 0 ? prefillAmount : 0,
       paymentDate: new Date().toISOString().slice(0, 10),
       paymentMode: 'BANK_TRANSFER',
       referenceNumber: '',
       notes: '',
-      invoiceId: '',
+      invoiceId: prefillInvoiceId,
     },
   })
   const paymentType = form.watch('paymentType')
@@ -896,6 +1327,11 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
       })
       await queryClient.invalidateQueries({ queryKey: ['received'] })
       await queryClient.invalidateQueries({ queryKey: ['suppliers-payments'] })
+      if (values.invoiceId) {
+        await queryClient.invalidateQueries({ queryKey: ['sales-invoice', values.invoiceId] })
+        await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      }
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success('Payment recorded')
       navigate(values.paymentType === 'RECEIPT' ? '/payments/received' : '/payments/suppliers')
     } catch (error) {
@@ -905,8 +1341,8 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
 
   const partyOptions =
     partyType === 'CUSTOMER'
-      ? customers.map((c) => ({ id: c.id, label: c.customerName }))
-      : suppliers.map((s) => ({ id: s.id, label: s.supplierName }))
+      ? customers.map((c) => ({ id: c.id, label: customerLabel(c), party: c }))
+      : suppliers.map((s) => ({ id: s.id, label: supplierLabel(s), party: s }))
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -957,13 +1393,16 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{partyType === 'CUSTOMER' ? 'Customer' : 'Supplier'}</Label>
             <Select value={form.watch('partyId')} onValueChange={(value) => form.setValue('partyId', value)}>
-              <SelectTrigger>
-                {partyOptions.find((p) => p.id === form.watch('partyId'))?.label ?? 'Select party'}
+              <SelectTrigger className="h-auto min-h-10 py-2">
+                {(() => {
+                  const selected = partyOptions.find((p) => p.id === form.watch('partyId'))
+                  return selected ? <PartySelectLabel party={selected.party} /> : 'Select party'
+                })()}
               </SelectTrigger>
               <SelectContent>
                 {partyOptions.map((party) => (
-                  <SelectItem key={party.id} value={party.id}>
-                    {party.label}
+                  <SelectItem key={party.id} value={party.id} textValue={party.label}>
+                    <PartySelectLabel party={party.party} />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -971,7 +1410,10 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
           </div>
           <div className="space-y-1.5">
             <Label>Amount</Label>
-            <Input type="number" step="0.01" {...form.register('amount')} />
+            <NumberInput
+              value={Number(form.watch('amount') ?? 0)}
+              onValueChange={(value) => form.setValue('amount', value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Payment date</Label>

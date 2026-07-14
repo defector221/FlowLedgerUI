@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -61,15 +62,31 @@ function Shell({ title, subtitle, children }: { title: string; subtitle: string;
 }
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, session } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const form = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
+
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session_expired') {
+      toast.message('Your session expired. Please sign in again.')
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!session?.activeOrganization?.id) return
+    const fromQuery = searchParams.get('from')
+    const fromState = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
+    navigate(fromQuery || fromState || '/', { replace: true })
+  }, [session, navigate, location.state, searchParams])
+
   const submit = form.handleSubmit(async (values) => {
     try {
       await login(values.email, values.password)
       toast.success('Welcome back')
-      navigate(location.state?.from?.pathname ?? '/')
+      const fromQuery = searchParams.get('from')
+      navigate(fromQuery || location.state?.from?.pathname || '/')
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Unable to sign in. Check your credentials.'))
     }

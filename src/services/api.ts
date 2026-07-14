@@ -31,6 +31,7 @@ import type {
   CategoryResponse,
   PaymentResponse,
   InventoryAlertResponse,
+  InventoryStockPosition,
   StockAdjustmentRequest,
   StockTransferRequest,
   AuditLogResponse,
@@ -259,6 +260,7 @@ export const paymentApi = {
 export const inventoryApi = {
   lowStockAlerts: () => api.get('/inventory/alerts/low-stock').then((r) => unwrapList<InventoryAlertResponse>(r)),
   reorderAlerts: () => api.get('/inventory/alerts/reorder').then((r) => unwrapList<InventoryAlertResponse>(r)),
+  overview: () => api.get('/inventory/overview').then((r) => unwrapList<InventoryStockPosition>(r)),
   adjust: (payload: StockAdjustmentRequest) => api.post('/inventory/adjustments', payload),
   transfer: (payload: StockTransferRequest) => api.post('/inventory/transfers', payload),
   openingStock: (payload: StockAdjustmentRequest) =>
@@ -333,6 +335,7 @@ export const templateApi = {
 export const auditApi = {
   list: (params?: { page?: number; size?: number }) =>
     api.get('/audit-logs', { params }).then((r) => unwrapPage<AuditLogResponse>(r)),
+  get: (id: string) => api.get(`/audit-logs/${id}`).then((r) => unwrapApi<AuditLogResponse>(r)),
 }
 
 export const unitApi = {
@@ -342,11 +345,15 @@ export const unitApi = {
 }
 
 export type TaxType = 'GST' | 'IGST' | 'OTHER'
+export type SplitStrategy = 'PLACE_OF_SUPPLY' | 'NO_SPLIT_IGST' | 'NO_SPLIT_OTHER' | 'CUSTOM_PERCENT'
 
 export type TaxRate = {
   id: string
   name: string
   taxType: TaxType
+  splitStrategy?: SplitStrategy
+  cgstSharePercent?: number
+  sgstSharePercent?: number
   rate: number
   cgstRate?: number
   sgstRate?: number
@@ -356,8 +363,15 @@ export type TaxRate = {
 
 export const taxRateApi = {
   list: () => api.get('/tax-rates').then((r) => unwrapList<TaxRate>(r)),
-  create: (payload: { name: string; rate: number; taxType: TaxType; cessRate?: number }) =>
-    api.post('/tax-rates', payload).then((r) => unwrapApi<TaxRate>(r)),
+  create: (payload: {
+    name: string
+    rate: number
+    taxType: TaxType
+    splitStrategy?: SplitStrategy
+    cgstSharePercent?: number
+    sgstSharePercent?: number
+    cessRate?: number
+  }) => api.post('/tax-rates', payload).then((r) => unwrapApi<TaxRate>(r)),
 }
 
 export type MarketingStep = {

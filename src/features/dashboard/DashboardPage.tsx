@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, CreditCard, IndianRupee, Package, Users } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { dashboardApi } from '@/services/api'
@@ -14,7 +15,10 @@ export function DashboardPage() {
     {
       label: 'Sales this month',
       value: Number(data?.monthSales ?? 0),
-      delta: 'Current month',
+      delta:
+        Number(data?.monthSalesDiscount ?? 0) > 0
+          ? `Incl. ${currency(Number(data?.monthSalesDiscount ?? 0))} discounts`
+          : 'Posted invoices',
       icon: IndianRupee,
       up: true,
       money: true,
@@ -22,7 +26,7 @@ export function DashboardPage() {
     {
       label: 'Outstanding receivables',
       value: Number(data?.receivables ?? 0),
-      delta: 'Open invoices',
+      delta: 'Unpaid balances',
       icon: CreditCard,
       up: false,
       money: true,
@@ -38,7 +42,7 @@ export function DashboardPage() {
     {
       label: 'Overdue invoices',
       value: Number(data?.overdueInvoices ?? 0),
-      delta: 'Follow up',
+      delta: 'Past due date',
       icon: Users,
       up: false,
       money: false,
@@ -118,10 +122,23 @@ export function DashboardPage() {
           <CardContent className="space-y-4">
             <AttentionItem
               title={`${data?.overdueInvoices ?? 0} overdue invoices`}
-              detail={`${currency(Number(data?.receivables ?? 0))} receivable`}
+              detail="Past due date with unpaid balance"
+              to="/sales/invoices"
             />
-            <AttentionItem title={`${data?.lowStock ?? 0} low stock items`} detail="Reorder recommended" />
-            <AttentionItem title={`${data?.payables ?? 0} payables outstanding`} detail="Review supplier payments" />
+            <AttentionItem
+              title={`${currency(Number(data?.receivables ?? 0))} receivables`}
+              detail="Unpaid confirmed invoice balances"
+              to="/sales/invoices"
+            />
+            <AttentionItem
+              title={`${data?.lowStock ?? 0} low stock items`}
+              detail="At or below minimum stock level"
+              to="/inventory"
+            />
+            <AttentionItem
+              title={`${currency(Number(data?.payables ?? 0))} payables`}
+              detail="Unpaid supplier invoice balances"
+            />
           </CardContent>
         </Card>
       </section>
@@ -129,12 +146,18 @@ export function DashboardPage() {
   )
 }
 
-function AttentionItem({ title, detail }: { title: string; detail: string }) {
+function AttentionItem({ title, detail, to }: { title: string; detail: string; to?: string }) {
   return (
     <div className="flex gap-3">
       <div className="mt-1 size-2 rounded-full bg-amber-500" />
       <div>
-        <p className="text-sm font-medium text-slate-800">{title}</p>
+        {to ? (
+          <Link to={to} className="text-sm font-medium text-slate-800 hover:text-teal-700 hover:underline">
+            {title}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-slate-800">{title}</p>
+        )}
         <p className="text-xs text-slate-500">{detail}</p>
       </div>
     </div>

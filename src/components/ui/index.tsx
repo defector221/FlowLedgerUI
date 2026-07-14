@@ -6,7 +6,7 @@ import * as SwitchPrimitive from '@radix-ui/react-switch'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import * as LabelPrimitive from '@radix-ui/react-label'
 import { Check, ChevronDown, X } from 'lucide-react'
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 export const Button = forwardRef<
@@ -47,6 +47,88 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   ),
 )
 Input.displayName = 'Input'
+
+/** Plain text field that only accepts numbers — no spinner, no sticky leading zero. */
+export const NumberInput = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> & {
+    value: number | string | null | undefined
+    onValueChange: (value: number) => void
+    allowDecimal?: boolean
+  }
+>(({ className, value, onValueChange, allowDecimal = true, onFocus, onBlur, ...props }, ref) => {
+  const [focused, setFocused] = useState(false)
+  const [raw, setRaw] = useState(() => editableNumber(value))
+
+  useEffect(() => {
+    if (!focused) setRaw(editableNumber(value))
+  }, [value, focused])
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode={allowDecimal ? 'decimal' : 'numeric'}
+      autoComplete="off"
+      className={cn(
+        'flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 shadow-[0_1px_2px_rgb(15_23_42/0.03)] outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-50',
+        className,
+      )}
+      value={focused ? raw : editableNumber(value)}
+      onFocus={(event) => {
+        setFocused(true)
+        setRaw(editableNumber(value))
+        event.target.select()
+        onFocus?.(event)
+      }}
+      onBlur={(event) => {
+        setFocused(false)
+        const parsed = parseEditableNumber(raw)
+        onValueChange(parsed)
+        setRaw(editableNumber(parsed))
+        onBlur?.(event)
+      }}
+      onChange={(event) => {
+        const next = sanitizeNumericInput(event.target.value, allowDecimal)
+        setRaw(next)
+        if (next === '' || next === '-' || next === '.' || next === '-.') {
+          onValueChange(0)
+          return
+        }
+        const parsed = Number(next)
+        if (Number.isFinite(parsed)) onValueChange(parsed)
+      }}
+      {...props}
+    />
+  )
+})
+NumberInput.displayName = 'NumberInput'
+
+function editableNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === '') return ''
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return ''
+  if (Number.isInteger(n)) return String(n)
+  // Keep at most 2 decimal places when not editing (avoids 1.0000 / 12000.0000)
+  return String(Number(n.toFixed(2)))
+}
+
+function sanitizeNumericInput(value: string, allowDecimal: boolean) {
+  let next = value.replace(allowDecimal ? /[^0-9.-]/g : /[^0-9-]/g, '')
+  const negative = next.startsWith('-')
+  next = next.replace(/-/g, '')
+  if (allowDecimal) {
+    const [whole, ...rest] = next.split('.')
+    next = rest.length > 0 ? `${whole}.${rest.join('').replace(/\./g, '')}` : whole
+  }
+  return `${negative ? '-' : ''}${next}`
+}
+
+function parseEditableNumber(value: string) {
+  if (!value || value === '-' || value === '.' || value === '-.') return 0
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, ...props }, ref) => (
     <textarea
@@ -203,15 +285,17 @@ export const SelectItem = ({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>) => (
   <SelectPrimitive.Item
     className={cn(
-      'relative flex cursor-pointer select-none items-center rounded px-8 py-2 text-sm outline-none data-[highlighted]:bg-slate-100',
+      'relative flex cursor-pointer select-none items-start rounded-lg px-8 py-2.5 text-sm outline-none data-[highlighted]:bg-teal-50/80 data-[highlighted]:text-teal-950',
       className,
     )}
     {...props}
   >
-    <SelectPrimitive.ItemIndicator className="absolute left-2">
-      <Check className="size-4" />
+    <SelectPrimitive.ItemIndicator className="absolute left-2 top-3">
+      <Check className="size-4 text-teal-700" />
     </SelectPrimitive.ItemIndicator>
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    <SelectPrimitive.ItemText asChild>
+      <span className="min-w-0 flex-1">{children}</span>
+    </SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 )
 export const Tabs = TabsPrimitive.Root

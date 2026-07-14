@@ -1,5 +1,7 @@
 /** Professional starter designs for Unlayer (`react-email-editor` loadDesign). */
 
+import { styledInvoicePresets } from '@/lib/unlayer-invoice-styles'
+
 type UnlayerDesign = Record<string, unknown>
 
 function meta(id: string, className: string) {
@@ -130,10 +132,10 @@ function column(id: string, contents: unknown[]) {
   }
 }
 
-function row(id: string, columns: unknown[], backgroundColor = '#ffffff') {
+function row(id: string, columns: unknown[], backgroundColor = '#ffffff', cells?: number[]) {
   return {
     id,
-    cells: columns.map(() => 1),
+    cells: cells && cells.length === columns.length ? cells : columns.map(() => 1),
     columns,
     values: {
       backgroundColor,
@@ -143,7 +145,7 @@ function row(id: string, columns: unknown[], backgroundColor = '#ffffff') {
       anchor: '',
       hideDesktop: false,
       displayCondition: null,
-      columns: columns.length === 2 ? false : false,
+      columns: false,
       _meta: meta(id, 'u_row'),
       _styleGuide: null,
     },
@@ -470,6 +472,16 @@ export const documentPresets: UnlayerPreset[] = [
       },
     ),
   },
+  ...styledInvoicePresets.map(
+    (preset): UnlayerPreset => ({
+      key: preset.key,
+      name: preset.name,
+      description: preset.description,
+      category: 'document',
+      documentType: 'SALES_INVOICE',
+      design: preset.design,
+    }),
+  ),
   {
     key: 'quotation-pro',
     name: 'Professional quotation',

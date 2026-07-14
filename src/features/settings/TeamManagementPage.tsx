@@ -81,7 +81,7 @@ export function TeamManagementPage() {
       await queryClient.invalidateQueries({ queryKey: ['users'] })
       form.reset({ firstName: '', lastName: '', email: '', role: values.role })
       setOpen(false)
-      toast.success('Employee invited')
+      toast.success('Employee invited. They will receive an email to accept the invitation.')
     } catch (error) {
       toast.error(getApiErrorMessage(error))
     }
@@ -183,18 +183,22 @@ export function TeamManagementPage() {
                       </td>
                       <td className="p-3">{user.email}</td>
                       <td className="p-3">
-                        <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
-                          <SelectTrigger className="h-8 w-44">
-                            {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.code} value={role.code}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {user.id === session?.user.id ? (
+                          <Badge>{roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}</Badge>
+                        ) : (
+                          <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
+                            <SelectTrigger className="h-8 w-44">
+                              {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role.code} value={role.code}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="p-3">
                         <Badge>{user.status}</Badge>

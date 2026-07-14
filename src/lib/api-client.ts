@@ -121,8 +121,28 @@ export function forceLogoutToLogin(reason?: string) {
   window.location.assign(query ? `/login?${query}` : '/login')
 }
 
+function resolveApiBaseUrl(): string {
+  const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+  const tunnelApi = 'https://apiflowledger.valiantxgroup.com/api/v1'
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location
+    const onLocalHost = hostname === 'localhost' || hostname === '127.0.0.1'
+    const pointsAtLocalApi = !!configured && /localhost|127\.0\.0\.1/i.test(configured)
+
+    // Public HTTPS pages must never call http://localhost (Safari mixed-content block).
+    // Cloudflare tunnel: apiflowledger.valiantxgroup.com → localhost:7070
+    if (!onLocalHost && (pointsAtLocalApi || !configured)) {
+      return tunnelApi
+    }
+    if (protocol === 'https:' && configured?.startsWith('http://')) {
+      return tunnelApi
+    }
+  }
+  return configured || 'http://localhost:7070/api/v1'
+}
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:7070/api/v1',
+  baseURL: resolveApiBaseUrl(),
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {

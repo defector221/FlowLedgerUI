@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -6,14 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Download, Eye, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  customerApi,
-  productApi,
-  purchaseApi,
-  paymentApi,
-  salesApi,
-  supplierApi,
-} from '@/services/api'
+import { customerApi, productApi, purchaseApi, paymentApi, salesApi, supplierApi, taxRateApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { currency } from '@/lib/utils'
 import {
@@ -87,7 +80,30 @@ export function DocumentListPage({
 }) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: [endpoint], queryFn: loaders[endpoint], enabled: !unavailable })
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers', 'party-labels'],
+    queryFn: () => customerApi.list({ size: 200 }),
+  })
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers', 'party-labels'],
+    queryFn: () => supplierApi.list({ size: 200 }),
+  })
   const rows = data ?? []
+  const customerNameById = useMemo(
+    () => Object.fromEntries(customers.map((c) => [c.id, c.customerName])),
+    [customers],
+  )
+  const supplierNameById = useMemo(
+    () => Object.fromEntries(suppliers.map((s) => [s.id, s.supplierName])),
+    [suppliers],
+  )
+  const partyLabel = (row: Record<string, unknown>) => {
+    const customerId = row.customerId ? String(row.customerId) : ''
+    const supplierId = row.supplierId ? String(row.supplierId) : ''
+    if (customerId) return customerNameById[customerId] ?? customerId
+    if (supplierId) return supplierNameById[supplierId] ?? supplierId
+    return '—'
+  }
 
   const convertQuotation = async (id: string) => {
     try {
@@ -126,14 +142,14 @@ export function DocumentListPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
           <p className="mt-1 text-sm text-slate-500">Create and track {title.toLowerCase()}.</p>
         </div>
         {createPath && (
           <Link
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 sm:w-auto"
             to={createPath}
           >
             <Plus className="size-4" />
@@ -168,7 +184,7 @@ export function DocumentListPage({
                   rows.map((row) => (
                     <tr key={String(row.id)} className="border-b">
                       <td className="p-3">{documentNumber(row)}</td>
-                      <td className="p-3">{String(row.customerId ?? row.supplierId ?? '—')}</td>
+                      <td className="p-3">{partyLabel(row)}</td>
                       <td className="p-3">{documentDate(row)}</td>
                       <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
                       <td className="p-3">
@@ -225,23 +241,51 @@ export function DocumentListPage({
   )
 }
 
-type Line = { id: number; productId: string; quantity: number; rate: number; taxRate: number }
+type TaxType = 'GST' | 'IGST' | 'OTHER'
+type Line = {
+  id: number
+  productId: string
+  quantity: number
+  rate: number
+  taxRate: number
+  taxType: TaxType
+}
 
 function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellingPrice') {
-  const [lines, setLines] = useState<Line[]>([{ id: 1, productId: '', quantity: 1, rate: 0, taxRate: 18 }])
+  const [lines, setLines] = useState<Line[]>([
+    { id: 1, productId: '', quantity: 1, rate: 0, taxRate: 18, taxType: 'GST' },
+  ])
   const { data: products = [] } = useQuery({
     queryKey: ['products', 'document-lines'],
     queryFn: () => productApi.list({ active: true, size: 100 }),
   })
+  const { data: taxRates = [] } = useQuery({
+    queryKey: ['tax-rates'],
+    queryFn: taxRateApi.list,
+  })
   const update = (id: number, key: keyof Line, value: string | number) =>
     setLines((current) => current.map((line) => (line.id === id ? { ...line, [key]: value } : line)))
   const addLine = () =>
-    setLines((current) => [...current, { id: Date.now(), productId: '', quantity: 1, rate: 0, taxRate: 18 }])
+    setLines((current) => [
+      ...current,
+      { id: Date.now(), productId: '', quantity: 1, rate: 0, taxRate: 18, taxType: 'GST' },
+    ])
   const removeLine = (id: number) => setLines((current) => current.filter((item) => item.id !== id))
   const selectProduct = (lineId: number, productId: string) => {
     const product = products.find((item) => item.id === productId)
-    update(lineId, 'productId', productId)
-    if (product) update(lineId, 'rate', Number(product[defaultRateKey] ?? 0))
+    const tax = product?.taxRateId ? taxRates.find((item) => item.id === product.taxRateId) : undefined
+    setLines((current) =>
+      current.map((line) => {
+        if (line.id !== lineId) return line
+        return {
+          ...line,
+          productId,
+          rate: product ? Number(product[defaultRateKey] ?? 0) : line.rate,
+          taxRate: tax ? Number(tax.rate) : line.taxRate,
+          taxType: (tax?.taxType ?? (product?.taxType as TaxType | undefined) ?? 'GST') as TaxType,
+        }
+      }),
+    )
   }
   const validLines = () => lines.filter((line) => line.productId)
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.rate, 0)
@@ -281,6 +325,7 @@ function LineItemsEditor({
               <th className="p-2 text-xs text-slate-500">QTY</th>
               <th className="p-2 text-xs text-slate-500">RATE</th>
               <th className="p-2 text-xs text-slate-500">TAX %</th>
+              <th className="p-2 text-xs text-slate-500">TYPE</th>
               <th className="p-2 text-right text-xs text-slate-500">AMOUNT</th>
               <th />
             </tr>
@@ -288,9 +333,9 @@ function LineItemsEditor({
           <tbody>
             {lines.map((line) => (
               <tr key={line.id} className="border-b">
-                <td className="p-2">
+                <td className="min-w-[10rem] p-2 sm:min-w-[14rem]">
                   <Select value={line.productId} onValueChange={(value) => onSelectProduct(line.id, value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="min-w-0">
                       {products.find((p) => p.id === line.productId)?.name ?? 'Select product'}
                     </SelectTrigger>
                     <SelectContent>
@@ -326,6 +371,19 @@ function LineItemsEditor({
                     value={line.taxRate}
                     onChange={(event) => onUpdate(line.id, 'taxRate', Number(event.target.value))}
                   />
+                </td>
+                <td className="p-2">
+                  <Select
+                    value={line.taxType}
+                    onValueChange={(value) => onUpdate(line.id, 'taxType', value)}
+                  >
+                    <SelectTrigger className="w-[5.5rem]">{line.taxType}</SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GST">GST</SelectItem>
+                      <SelectItem value="IGST">IGST</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </td>
                 <td className="p-2 text-right text-sm font-medium">{currency(line.quantity * line.rate)}</td>
                 <td className="p-2">
@@ -377,7 +435,13 @@ export function CreateInvoicePage() {
           warehouseId: values.warehouseId,
           notes: values.notes,
           shippingCharges,
-          items: items.map(({ productId, quantity, rate, taxRate }) => ({ productId, quantity, rate, taxRate })),
+          items: items.map(({ productId, quantity, rate, taxRate, taxType }) => ({
+            productId,
+            quantity,
+            rate,
+            taxRate,
+            taxType,
+          })),
         }
         const invoice = savedInvoiceId
           ? await salesApi.updateInvoice(savedInvoiceId, payload)
@@ -555,7 +619,13 @@ export function CreateQuotationPage() {
         customerId: values.customerId,
         quotationDate: values.quotationDate,
         notes: values.notes,
-        items: items.map(({ productId, quantity, rate, taxRate }) => ({ productId, quantity, rate, taxRate })),
+        items: items.map(({ productId, quantity, rate, taxRate, taxType }) => ({
+          productId,
+          quantity,
+          rate,
+          taxRate,
+          taxType,
+        })),
       })
       await queryClient.invalidateQueries({ queryKey: ['quotations'] })
       toast.success('Quotation created')
@@ -664,7 +734,13 @@ export function CreatePurchaseOrderPage() {
         supplierId: values.supplierId,
         orderDate: values.orderDate,
         notes: values.notes,
-        items: items.map(({ productId, quantity, rate, taxRate }) => ({ productId, quantity, rate, taxRate })),
+        items: items.map(({ productId, quantity, rate, taxRate, taxType }) => ({
+          productId,
+          quantity,
+          rate,
+          taxRate,
+          taxType,
+        })),
       })
       await queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
       toast.success('Purchase order created')

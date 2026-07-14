@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -6,9 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/features/auth/auth'
 import { categoryApi, customerApi, productApi, supplierApi, taxRateApi, unitApi, warehouseApi } from '@/services/api'
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { stripEmpty } from '@/lib/api-payload'
+import { generateEntityCode, slugifyName } from '@/lib/entity-code'
 import { currency } from '@/lib/utils'
 import {
   Badge,
@@ -35,13 +37,24 @@ type FieldConfig = {
   list?: boolean
   detail?: boolean
   create?: boolean
+  /** Shown on edit form. Defaults to create && !createOnly. */
+  edit?: boolean
+  /** Create-only (codes, opening stock, etc.) — not sent on update. */
+  createOnly?: boolean
   optionsKey?: 'units' | 'categories' | 'taxRates' | 'itemTypes'
+  /** Prefer this response field on detail/list when present (e.g. parentName). */
+  displayField?: string
   defaultValue?: string | number | boolean
+  /** When set, this code field is auto-filled from the named field (+ salt). */
+  autoCodeFrom?: string
+  autoCodePrefix?: string
+  readOnlyOnCreate?: boolean
 }
 
 type EntityConfig = {
   title: string
   singular: string
+  writePermission: string
   list: (params?: Record<string, unknown>) => Promise<Record<string, unknown>[]>
   get: (id: string) => Promise<Record<string, unknown>>
   create: (payload: Record<string, unknown>) => Promise<unknown>
@@ -53,8 +66,19 @@ type EntityConfig = {
   buildPayload?: (values: Record<string, unknown>) => Record<string, unknown>
 }
 
+function formFields(config: EntityConfig, isEdit: boolean) {
+  return config.fields.filter((field) => {
+    if (isEdit) {
+      if (field.createOnly) return false
+      if (field.edit !== undefined) return field.edit
+      return !!field.create
+    }
+    return !!field.create
+  })
+}
+
 const customerSchema = z.object({
-  customerCode: z.string().min(1, 'Customer code is required'),
+  customerCode: z.string().optional(),
   customerName: z.string().min(1, 'Customer name is required'),
   companyName: z.string().optional(),
   gstin: z.string().optional(),
@@ -96,7 +120,7 @@ const supplierSchema = z.object({
 })
 
 const productSchema = z.object({
-  sku: z.string().min(1, 'SKU is required'),
+  sku: z.string().optional(),
   name: z.string().min(1, 'Product name is required'),
   unitId: z.string().uuid('Unit is required'),
   itemType: z.string().min(1),
@@ -121,7 +145,7 @@ const categorySchema = z.object({
 })
 
 const warehouseSchema = z.object({
-  warehouseCode: z.string().min(1, 'Warehouse code is required'),
+  warehouseCode: z.string().optional(),
   warehouseName: z.string().min(1, 'Warehouse name is required'),
   address: z.string().optional(),
   contactPerson: z.string().optional(),
@@ -159,6 +183,7 @@ const configs: Record<EntityKind, EntityConfig> = {
   customers: {
     title: 'Customers',
     singular: 'Customer',
+    writePermission: 'customers:write',
     titleField: 'customerName',
     searchable: true,
     list: (params) => customerApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
@@ -168,7 +193,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: customerSchema,
     buildPayload: withCountryDefaults,
     fields: [
-      { name: 'customerCode', label: 'Customer code', required: true, list: true, create: true, detail: true },
+      { name: 'customerCode', label: 'Customer code (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'customerName', autoCodePrefix: 'CUST', readOnlyOnCreate: true },
       { name: 'customerName', label: 'Customer name', required: true, list: true, create: true, detail: true },
       { name: 'companyName', label: 'Company name', create: true, detail: true },
       { name: 'phone', label: 'Phone', list: true, create: true, detail: true },
@@ -181,7 +206,15 @@ const configs: Record<EntityKind, EntityConfig> = {
       { name: 'state', label: 'State', create: true, detail: true },
       { name: 'stateCode', label: 'State code', create: true, detail: true },
       { name: 'country', label: 'Country', required: true, create: true, detail: true, defaultValue: 'India' },
-      { name: 'creditLimit', label: 'Credit limit', type: 'number', list: true, create: true, detail: true, defaultValue: 0 },
+      {
+        name: 'creditLimit',
+        label: 'Credit limit',
+        type: 'number',
+        list: true,
+        create: true,
+        detail: true,
+        defaultValue: 0,
+      },
       { name: 'openingBalance', label: 'Opening balance', type: 'number', create: true, detail: true, defaultValue: 0 },
       { name: 'paymentTerms', label: 'Payment terms', create: true, detail: true },
       { name: 'notes', label: 'Notes', create: true, detail: true },
@@ -190,6 +223,7 @@ const configs: Record<EntityKind, EntityConfig> = {
   suppliers: {
     title: 'Suppliers',
     singular: 'Supplier',
+    writePermission: 'suppliers:write',
     titleField: 'supplierName',
     searchable: true,
     list: (params) => supplierApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
@@ -199,7 +233,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: supplierSchema,
     buildPayload: withCountryDefaults,
     fields: [
-      { name: 'supplierCode', label: 'Supplier code', required: true, list: true, create: true, detail: true },
+      { name: 'supplierCode', label: 'Supplier code', required: true, list: true, create: true, detail: true, createOnly: true },
       { name: 'supplierName', label: 'Supplier name', required: true, list: true, create: true, detail: true },
       { name: 'companyName', label: 'Company name', create: true, detail: true },
       { name: 'phone', label: 'Phone', list: true, create: true, detail: true },
@@ -212,7 +246,15 @@ const configs: Record<EntityKind, EntityConfig> = {
       { name: 'state', label: 'State', create: true, detail: true },
       { name: 'stateCode', label: 'State code', create: true, detail: true },
       { name: 'country', label: 'Country', required: true, create: true, detail: true, defaultValue: 'India' },
-      { name: 'openingBalance', label: 'Opening balance', type: 'number', list: true, create: true, detail: true, defaultValue: 0 },
+      {
+        name: 'openingBalance',
+        label: 'Opening balance',
+        type: 'number',
+        list: true,
+        create: true,
+        detail: true,
+        defaultValue: 0,
+      },
       { name: 'paymentTerms', label: 'Payment terms', create: true, detail: true },
       { name: 'bankName', label: 'Bank name', create: true, detail: true },
       { name: 'bankAccountNumber', label: 'Account number', create: true, detail: true },
@@ -223,6 +265,7 @@ const configs: Record<EntityKind, EntityConfig> = {
   products: {
     title: 'Products',
     singular: 'Product',
+    writePermission: 'products:write',
     titleField: 'name',
     searchable: true,
     list: (params) => productApi.list(params).then((rows) => rows as unknown as Record<string, unknown>[]),
@@ -232,27 +275,62 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: productSchema,
     buildPayload: withProductDefaults,
     fields: [
-      { name: 'sku', label: 'SKU', required: true, list: true, create: true, detail: true },
+      { name: 'sku', label: 'SKU (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'name', autoCodePrefix: 'SKU', readOnlyOnCreate: true },
       { name: 'name', label: 'Name', required: true, list: true, create: true, detail: true },
-      { name: 'itemType', label: 'Item type', type: 'select', optionsKey: 'itemTypes', required: true, create: true, detail: true, defaultValue: 'PRODUCT' },
+      {
+        name: 'itemType',
+        label: 'Item type',
+        type: 'select',
+        optionsKey: 'itemTypes',
+        required: true,
+        create: true,
+        detail: true,
+        createOnly: true,
+        defaultValue: 'PRODUCT',
+      },
       { name: 'barcode', label: 'Barcode', list: true, create: true, detail: true },
-      { name: 'categoryId', label: 'Category', type: 'select', optionsKey: 'categories', create: true, detail: true },
-      { name: 'unitId', label: 'Unit', type: 'select', optionsKey: 'units', required: true, create: true, detail: true },
-      { name: 'taxRateId', label: 'Tax rate', type: 'select', optionsKey: 'taxRates', create: true, detail: true },
+      { name: 'categoryId', label: 'Category', type: 'select', optionsKey: 'categories', create: true, detail: true, displayField: 'categoryName' },
+      {
+        name: 'unitId',
+        label: 'Unit',
+        type: 'select',
+        optionsKey: 'units',
+        required: true,
+        create: true,
+        detail: true,
+        displayField: 'unitName',
+      },
+      { name: 'taxRateId', label: 'Tax rate', type: 'select', optionsKey: 'taxRates', create: true, detail: true, displayField: 'taxRateName' },
       { name: 'brand', label: 'Brand', create: true, detail: true },
       { name: 'hsnSacCode', label: 'HSN/SAC', create: true, detail: true },
       { name: 'description', label: 'Description', create: true, detail: true },
-      { name: 'sellingPrice', label: 'Selling price', type: 'number', list: true, create: true, detail: true, defaultValue: 0 },
+      {
+        name: 'sellingPrice',
+        label: 'Selling price',
+        type: 'number',
+        list: true,
+        create: true,
+        detail: true,
+        defaultValue: 0,
+      },
       { name: 'purchasePrice', label: 'Purchase price', type: 'number', create: true, detail: true, defaultValue: 0 },
       { name: 'mrp', label: 'MRP', type: 'number', create: true, detail: true, defaultValue: 0 },
-      { name: 'openingStock', label: 'Opening stock', type: 'number', create: true, detail: true, defaultValue: 0 },
-      { name: 'minimumStockLevel', label: 'Minimum stock', type: 'number', create: true, detail: true, defaultValue: 0 },
+      { name: 'openingStock', label: 'Opening stock', type: 'number', create: true, detail: true, createOnly: true, defaultValue: 0 },
+      {
+        name: 'minimumStockLevel',
+        label: 'Minimum stock',
+        type: 'number',
+        create: true,
+        detail: true,
+        defaultValue: 0,
+      },
       { name: 'reorderLevel', label: 'Reorder level', type: 'number', create: true, detail: true, defaultValue: 0 },
     ],
   },
   categories: {
     title: 'Product categories',
     singular: 'Category',
+    writePermission: 'categories:write',
     titleField: 'name',
     searchable: true,
     list: () => categoryApi.list().then((rows) => rows as unknown as Record<string, unknown>[]),
@@ -263,13 +341,22 @@ const configs: Record<EntityKind, EntityConfig> = {
     fields: [
       { name: 'name', label: 'Name', required: true, list: true, create: true, detail: true },
       { name: 'description', label: 'Description', list: true, create: true, detail: true },
-      { name: 'parentId', label: 'Parent category', type: 'select', optionsKey: 'categories', create: true, detail: true },
-      { name: 'active', label: 'Active', type: 'boolean', list: true, detail: true },
+      {
+        name: 'parentId',
+        label: 'Parent category',
+        type: 'select',
+        optionsKey: 'categories',
+        create: true,
+        detail: true,
+        displayField: 'parentName',
+      },
+      { name: 'active', label: 'Active', type: 'boolean', list: true, detail: true, edit: true },
     ],
   },
   warehouses: {
     title: 'Warehouses',
     singular: 'Warehouse',
+    writePermission: 'warehouses:write',
     titleField: 'warehouseName',
     searchable: true,
     list: () => warehouseApi.list().then((rows) => rows as unknown as Record<string, unknown>[]),
@@ -278,7 +365,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     update: (id, payload) => warehouseApi.update(id, payload as never),
     schema: warehouseSchema,
     fields: [
-      { name: 'warehouseCode', label: 'Warehouse code', required: true, list: true, create: true, detail: true },
+      { name: 'warehouseCode', label: 'Warehouse code (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'warehouseName', autoCodePrefix: 'WH', readOnlyOnCreate: true },
       { name: 'warehouseName', label: 'Warehouse name', required: true, list: true, create: true, detail: true },
       { name: 'address', label: 'Address', list: true, create: true, detail: true },
       { name: 'contactPerson', label: 'Contact person', create: true, detail: true },
@@ -295,8 +382,26 @@ function formatValue(field: FieldConfig, value: unknown) {
   return String(value ?? '—')
 }
 
+function resolveDisplayValue(
+  field: FieldConfig,
+  item: Record<string, unknown> | undefined,
+  optionLabel?: string,
+) {
+  if (!item) return '—'
+  if (field.displayField) {
+    const labeled = item[field.displayField]
+    if (labeled !== undefined && labeled !== null && String(labeled).trim()) return String(labeled)
+  }
+  if (optionLabel) return optionLabel
+  const raw = item[field.name]
+  if (raw === undefined || raw === null || raw === '') return '—'
+  return formatValue(field, raw)
+}
+
 export function EntityListPage({ kind }: { kind: EntityKind }) {
   const config = configs[kind]
+  const { can } = useAuth()
+  const canWrite = can(config.writePermission)
   const listFields = config.fields.filter((field) => field.list)
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
@@ -330,23 +435,29 @@ export function EntityListPage({ kind }: { kind: EntityKind }) {
     if (serverSearchable || !deferredSearch) return all
     const needle = deferredSearch.toLowerCase()
     return all.filter((row) =>
-      listFields.some((field) => String(row[field.name] ?? '').toLowerCase().includes(needle)),
+      listFields.some((field) =>
+        String(row[field.name] ?? '')
+          .toLowerCase()
+          .includes(needle),
+      ),
     )
   }, [data, deferredSearch, listFields, serverSearchable])
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{config.title}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{config.title}</h1>
           <p className="mt-1 text-sm text-slate-500">Manage your {config.title.toLowerCase()}.</p>
         </div>
-        <Link
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800"
-          to={`/${kind}/new`}
-        >
-          <Plus className="size-4" />
-          Add {config.singular}
-        </Link>
+        {canWrite ? (
+          <Link
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 sm:w-auto"
+            to={`/${kind}/new`}
+          >
+            <Plus className="size-4" />
+            Add {config.singular}
+          </Link>
+        ) : null}
       </div>
       <Card>
         <CardContent className="p-4">
@@ -394,9 +505,19 @@ export function EntityListPage({ kind }: { kind: EntityKind }) {
                         </td>
                       ))}
                       <td className="px-3 py-3 text-right">
-                        <Link className="text-sm font-medium text-teal-700 hover:underline" to={`/${kind}/${row.id}`}>
-                          View
-                        </Link>
+                        <div className="flex justify-end gap-3">
+                          <Link className="text-sm font-medium text-teal-700 hover:underline" to={`/${kind}/${row.id}`}>
+                            View
+                          </Link>
+                          {canWrite && config.update ? (
+                            <Link
+                              className="text-sm font-medium text-slate-700 hover:underline"
+                              to={`/${kind}/${row.id}/edit`}
+                            >
+                              Edit
+                            </Link>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -420,19 +541,23 @@ export function EntityListPage({ kind }: { kind: EntityKind }) {
 
 export function EntityFormPage({ kind }: { kind: EntityKind }) {
   const config = configs[kind]
+  const { id = '' } = useParams()
+  const isEdit = Boolean(id)
+  const { can } = useAuth()
+  const canWrite = can(config.writePermission)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const createFields = config.fields.filter((field) => field.create)
+  const fields = formFields(config, isEdit)
   const defaultValues = Object.fromEntries(
-    createFields.filter((f) => f.defaultValue !== undefined).map((f) => [f.name, f.defaultValue]),
+    fields.filter((f) => f.defaultValue !== undefined).map((f) => [f.name, f.defaultValue]),
   )
   const form = useForm<Record<string, unknown>>({
     resolver: zodResolver(config.schema as z.ZodObject<z.ZodRawShape>),
     defaultValues,
   })
-  const needsUnits = createFields.some((f) => f.optionsKey === 'units')
-  const needsCategories = createFields.some((f) => f.optionsKey === 'categories')
-  const needsTaxRates = createFields.some((f) => f.optionsKey === 'taxRates')
+  const needsUnits = fields.some((f) => f.optionsKey === 'units')
+  const needsCategories = fields.some((f) => f.optionsKey === 'categories')
+  const needsTaxRates = fields.some((f) => f.optionsKey === 'taxRates')
   const { data: units = [] } = useQuery({ queryKey: ['units'], queryFn: unitApi.list, enabled: needsUnits })
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -444,11 +569,63 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
     queryFn: taxRateApi.list,
     enabled: needsTaxRates,
   })
+  const { data: existing, isLoading: loadingExisting } = useQuery({
+    queryKey: [kind, id],
+    queryFn: () => config.get(id),
+    enabled: isEdit && !!id,
+  })
+
+  useEffect(() => {
+    if (!isEdit || !existing) return
+    const values: Record<string, unknown> = { ...defaultValues }
+    for (const field of config.fields) {
+      if (!(field.create || field.edit)) continue
+      const value = existing[field.name]
+      values[field.name] = value ?? field.defaultValue ?? (field.type === 'boolean' ? false : '')
+    }
+    form.reset(values)
+  }, [config.fields, existing, form, isEdit, defaultValues])
+
+  useEffect(() => {
+    if (!canWrite) navigate(`/${kind}`, { replace: true })
+  }, [canWrite, kind, navigate])
+
+  // Auto-generate code fields from name (+ salt). Salt stays stable until the name slug changes.
+  const lastSlugs = useRef<Record<string, string>>({})
+  useEffect(() => {
+    if (isEdit) return
+    const autoFields = fields.filter((field) => field.autoCodeFrom)
+    if (!autoFields.length) return
+    const subscription = form.watch((values, info) => {
+      for (const field of autoFields) {
+        if (!field.autoCodeFrom) continue
+        if (info.name && info.name !== field.autoCodeFrom) continue
+        const source = String(values[field.autoCodeFrom] ?? '').trim()
+        if (!source) {
+          lastSlugs.current[field.name] = ''
+          form.setValue(field.name, '' as never, { shouldValidate: false })
+          continue
+        }
+        const slug = slugifyName(source)
+        if (lastSlugs.current[field.name] === slug && String(values[field.name] ?? '')) continue
+        lastSlugs.current[field.name] = slug
+        form.setValue(field.name, generateEntityCode(source, field.autoCodePrefix) as never, {
+          shouldValidate: false,
+        })
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [fields, form, isEdit])
 
   const selectOptions = (key?: FieldConfig['optionsKey']) => {
     if (key === 'units') return units.map((u) => ({ id: u.id, label: u.name }))
     if (key === 'categories') return categories.map((c) => ({ id: c.id, label: c.name }))
-    if (key === 'taxRates') return taxRates.map((t) => ({ id: t.id, label: `${t.name} (${t.rate}%)` }))
+    if (key === 'taxRates') {
+      return taxRates.map((t) => ({
+        id: t.id,
+        label: `${t.name} · ${t.taxType ?? 'GST'} (${t.rate}%)`,
+      }))
+    }
     if (key === 'itemTypes')
       return [
         { id: 'PRODUCT', label: 'Product' },
@@ -460,28 +637,54 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
   const submit = form.handleSubmit(async (values) => {
     try {
       const payload = config.buildPayload ? config.buildPayload(values) : stripEmpty(values)
-      await config.create(payload)
-      await queryClient.invalidateQueries({ queryKey: [kind] })
-      toast.success(`${config.singular} created`)
-      navigate(`/${kind}`)
+      if (isEdit) {
+        for (const field of config.fields) {
+          if (field.createOnly) delete payload[field.name]
+        }
+        if (!config.update) throw new Error('Update is not supported')
+        await config.update(id, payload)
+        await queryClient.invalidateQueries({ queryKey: [kind] })
+        await queryClient.invalidateQueries({ queryKey: [kind, id] })
+        toast.success(`${config.singular} updated`)
+        navigate(`/${kind}/${id}`)
+      } else {
+        await config.create(payload)
+        await queryClient.invalidateQueries({ queryKey: [kind] })
+        toast.success(`${config.singular} created`)
+        navigate(`/${kind}`)
+      }
     } catch (error) {
       if (!applyApiFieldErrors(error, form.setError)) toast.error(getApiErrorMessage(error))
     }
   })
 
+  if (isEdit && loadingExisting) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New {config.singular}</h1>
-        <p className="mt-1 text-sm text-slate-500">Add details aligned with backend validation.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {isEdit ? `Edit ${config.singular}` : `New ${config.singular}`}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {isEdit ? `Update this ${config.singular.toLowerCase()}.` : 'Add details aligned with backend validation.'}
+        </p>
       </div>
       <Card>
         <CardContent className="p-6">
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
-            {createFields.map((field) => {
+            {fields.map((field) => {
               const options = selectOptions(field.optionsKey)
               const current = String(form.watch(field.name as never) ?? '')
               const selectedLabel = options.find((o) => o.id === current)?.label
+              const readOnly = !isEdit && !!field.readOnlyOnCreate
               return (
                 <label key={field.name} className="space-y-1.5 text-sm font-medium text-slate-700">
                   {field.label}
@@ -505,10 +708,19 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <Input
-                      type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'}
-                      {...form.register(field.name as never)}
-                    />
+                    <>
+                      <Input
+                        type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : 'text'}
+                        readOnly={readOnly}
+                        className={readOnly ? 'bg-slate-50 text-slate-600' : undefined}
+                        {...form.register(field.name as never)}
+                      />
+                      {!isEdit && field.autoCodeFrom ? (
+                        <p className="text-[11px] font-normal text-slate-400">
+                          Generated from {field.autoCodeFrom.replace(/([A-Z])/g, ' $1').toLowerCase()} + salt
+                        </p>
+                      ) : null}
+                    </>
                   )}
                   {form.formState.errors[field.name as keyof typeof form.formState.errors] && (
                     <p className="text-xs text-rose-600">
@@ -522,7 +734,7 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                 Cancel
               </Button>
-              <Button type="submit">Save {config.singular}</Button>
+              <Button type="submit">{isEdit ? `Update ${config.singular}` : `Save ${config.singular}`}</Button>
             </div>
           </form>
         </CardContent>
@@ -534,22 +746,68 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
 export function EntityDetailPage({ kind }: { kind: EntityKind }) {
   const { id = '' } = useParams()
   const config = configs[kind]
+  const { can } = useAuth()
+  const canWrite = can(config.writePermission)
   const detailFields = config.fields.filter((field) => field.detail)
   const { data: item } = useQuery({ queryKey: [kind, id], queryFn: () => config.get(id), enabled: !!id })
+  const needsUnits = detailFields.some((f) => f.optionsKey === 'units')
+  const needsCategories = detailFields.some((f) => f.optionsKey === 'categories')
+  const needsTaxRates = detailFields.some((f) => f.optionsKey === 'taxRates')
+  const { data: units = [] } = useQuery({ queryKey: ['units'], queryFn: unitApi.list, enabled: needsUnits })
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: categoryApi.list,
+    enabled: needsCategories,
+  })
+  const { data: taxRates = [] } = useQuery({
+    queryKey: ['tax-rates'],
+    queryFn: taxRateApi.list,
+    enabled: needsTaxRates,
+  })
+
+  const selectLabel = (field: FieldConfig) => {
+    const raw = item?.[field.name]
+    if (raw === undefined || raw === null || raw === '') return undefined
+    const value = String(raw)
+    if (field.optionsKey === 'units') return units.find((u) => u.id === value)?.name
+    if (field.optionsKey === 'categories') return categories.find((c) => c.id === value)?.name
+    if (field.optionsKey === 'taxRates') {
+      const tax = taxRates.find((t) => t.id === value)
+      return tax ? `${tax.name} · ${tax.taxType ?? 'GST'} (${tax.rate}%)` : undefined
+    }
+    if (field.optionsKey === 'itemTypes') {
+      if (value === 'PRODUCT') return 'Product'
+      if (value === 'SERVICE') return 'Service'
+    }
+    return undefined
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {String(item?.[config.titleField] ?? config.singular)}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">{config.singular} record</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+            {String(item?.[config.titleField] ?? config.singular)}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">{config.singular} record</p>
+        </div>
+        {canWrite && config.update ? (
+          <Link
+            className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
+            to={`/${kind}/${id}/edit`}
+          >
+            Edit
+          </Link>
+        ) : null}
       </div>
       <Card>
         <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
           {detailFields.map((field) => (
             <div key={field.name}>
               <p className="text-xs uppercase tracking-wide text-slate-500">{field.label}</p>
-              <p className="mt-1 text-sm font-medium text-slate-800">{formatValue(field, item?.[field.name])}</p>
+              <p className="mt-1 text-sm font-medium text-slate-800">
+                {resolveDisplayValue(field, item, selectLabel(field))}
+              </p>
             </div>
           ))}
         </CardContent>

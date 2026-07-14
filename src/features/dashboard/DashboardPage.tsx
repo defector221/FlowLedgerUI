@@ -48,26 +48,28 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Good morning, {session?.user.firstName}</h1>
-        <p className="mt-1 text-sm text-slate-500">Here is an overview of your business today.</p>
+        <h1 className="page-title">Good morning, {session?.user.firstName}</h1>
+        <p className="page-subtitle">Here is an overview of your business today.</p>
       </div>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label}>
+          <Card key={metric.label} className="metric-card">
             <CardContent className="p-5">
               {isLoading ? (
                 <Skeleton className="h-20" />
               ) : (
                 <>
                   <div className="flex justify-between">
-                    <span className="text-sm text-slate-500">{metric.label}</span>
-                    <metric.icon className="size-4 text-teal-700" />
+                    <span className="text-sm font-medium text-slate-500">{metric.label}</span>
+                    <span className="grid size-8 place-items-center rounded-xl bg-teal-50 text-teal-700">
+                      <metric.icon className="size-4" />
+                    </span>
                   </div>
-                  <p className="mt-3 text-2xl font-semibold text-slate-900">
+                  <p className="font-display mt-3 text-2xl font-semibold tracking-tight text-slate-900">
                     {metric.money ? currency(metric.value) : metric.value.toLocaleString()}
                   </p>
                   <span
-                    className={`mt-2 inline-flex items-center gap-1 text-xs ${metric.up ? 'text-emerald-600' : 'text-rose-600'}`}
+                    className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${metric.up ? 'text-emerald-600' : 'text-rose-600'}`}
                   >
                     {metric.up ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
                     {metric.delta}

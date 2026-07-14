@@ -177,47 +177,44 @@ export function TeamManagementPage() {
               <tbody>
                 {filteredUsers.length ? (
                   filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-b">
-                    <td className="p-3">
-                      {user.firstName} {user.lastName}
-                    </td>
-                    <td className="p-3">{user.email}</td>
-                    <td className="p-3">
-                      <Select
-                        value={user.roles[0]}
-                        onValueChange={(role) => changeRole(user.id, role)}
-                      >
-                        <SelectTrigger className="h-8 w-44">
-                          {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles.map((role) => (
-                            <SelectItem key={role.code} value={role.code}>
-                              {role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="p-3">
-                      <Badge>{user.status}</Badge>
-                    </td>
-                    <td className="p-3">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '—'}</td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
-                        {user.status === 'INVITED' && (
-                          <Button size="sm" variant="outline" onClick={() => resend(user.id)}>
-                            Resend
-                          </Button>
-                        )}
-                        {user.status !== 'INACTIVE' && user.id !== session?.user.id && (
-                          <Button size="sm" variant="outline" onClick={() => deactivate(user.id)}>
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                    <tr key={user.id} className="border-b">
+                      <td className="p-3">
+                        {user.firstName} {user.lastName}
+                      </td>
+                      <td className="p-3">{user.email}</td>
+                      <td className="p-3">
+                        <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
+                          <SelectTrigger className="h-8 w-44">
+                            {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((role) => (
+                              <SelectItem key={role.code} value={role.code}>
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="p-3">
+                        <Badge>{user.status}</Badge>
+                      </td>
+                      <td className="p-3">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '—'}</td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          {user.status === 'INVITED' && (
+                            <Button size="sm" variant="outline" onClick={() => resend(user.id)}>
+                              Resend
+                            </Button>
+                          )}
+                          {user.status !== 'INACTIVE' && user.id !== session?.user.id && (
+                            <Button size="sm" variant="outline" onClick={() => deactivate(user.id)}>
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   ))
                 ) : (
                   <tr>
@@ -260,9 +257,7 @@ export function TeamManagementPage() {
                 value={form.watch('role')}
                 onValueChange={(value) => form.setValue('role', value, { shouldValidate: true })}
               >
-                <SelectTrigger>
-                  {roles.find((r) => r.code === form.watch('role'))?.name ?? 'Select role'}
-                </SelectTrigger>
+                <SelectTrigger>{roles.find((r) => r.code === form.watch('role'))?.name ?? 'Select role'}</SelectTrigger>
                 <SelectContent>
                   {roles.length ? (
                     roles.map((role) => (

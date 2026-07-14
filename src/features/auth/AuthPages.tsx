@@ -32,14 +32,27 @@ const resetSchema = z.object({
 
 function Shell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-7">
-          <Link to="/" className="mb-8 block text-2xl font-semibold text-slate-950">
-            Flow<span className="text-teal-700">Ledger</span>
+    <main className="relative grid min-h-screen place-items-center overflow-hidden p-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_20%_0%,rgb(20_184_166/0.22),transparent_55%),radial-gradient(ellipse_50%_40%_at_90%_10%,rgb(14_165_233/0.16),transparent_50%),linear-gradient(160deg,#0b1a2b_0%,#10263d_45%,#0f766e_140%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.08]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgb(255 255 255 / 40%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 40%) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+      <Card className="relative w-full max-w-md border-white/60 bg-white/95 shadow-[0_24px_80px_rgb(2_6_23/0.35)]">
+        <CardContent className="p-8">
+          <Link to="/" className="font-display mb-8 block text-2xl font-semibold tracking-tight text-slate-950">
+            Flow<span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">Ledger</span>
           </Link>
-          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{subtitle}</p>
           {children}
         </CardContent>
       </Card>

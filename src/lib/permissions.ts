@@ -10,8 +10,11 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'payments:write',
     'reports:read',
     'customers:read',
+    'customers:write',
     'suppliers:read',
     'products:read',
+    'products:write',
+    'inventory:read',
   ],
   SALES_MANAGER: [
     'sales:read',

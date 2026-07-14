@@ -60,12 +60,7 @@ export function BillingPage() {
               limit={usage.organizationLimit}
               percent={orgPct}
             />
-            <UsageBar
-              label="Users in current org"
-              used={usage.userCount}
-              limit={usage.userLimit}
-              percent={userPct}
-            />
+            <UsageBar label="Users in current org" used={usage.userCount} limit={usage.userLimit} percent={userPct} />
           </CardContent>
         </Card>
       </div>
@@ -73,17 +68,7 @@ export function BillingPage() {
   )
 }
 
-function UsageBar({
-  label,
-  used,
-  limit,
-  percent,
-}: {
-  label: string
-  used: number
-  limit: number
-  percent: number
-}) {
+function UsageBar({ label, used, limit, percent }: { label: string; used: number; limit: number; percent: number }) {
   return (
     <div>
       <div className="mb-1.5 flex justify-between text-sm">

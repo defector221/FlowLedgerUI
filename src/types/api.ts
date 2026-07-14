@@ -127,7 +127,7 @@ export interface UpdateOrganizationSettingsRequest {
 }
 
 export interface CreateWarehouseRequest {
-  warehouseCode: string
+  warehouseCode?: string
   warehouseName: string
   defaultWarehouse?: boolean
   address?: string
@@ -155,7 +155,7 @@ export interface WarehouseResponse {
 }
 
 export interface CreateCustomerRequest {
-  customerCode: string
+  customerCode?: string
   customerName: string
   companyName?: string
   gstin?: string
@@ -270,7 +270,7 @@ export interface SupplierResponse {
 }
 
 export interface CreateProductRequest {
-  sku: string
+  sku?: string
   name: string
   unitId: string
   itemType?: string
@@ -315,13 +315,17 @@ export interface ProductResponse {
   name: string
   description: string | null
   categoryId: string | null
+  categoryName?: string | null
   brand: string | null
   hsnSacCode: string | null
   unitId: string
+  unitName?: string | null
   purchasePrice: number
   sellingPrice: number
   mrp: number
   taxRateId: string | null
+  taxRateName?: string | null
+  taxType?: string | null
   minimumStockLevel: number
   reorderLevel: number
   active: boolean
@@ -345,6 +349,7 @@ export interface CategoryResponse {
   name: string
   description: string | null
   parentId: string | null
+  parentName?: string | null
   active: boolean
 }
 
@@ -500,12 +505,37 @@ export interface InvoiceTemplateResponse {
   documentType?: string
   presetKey: string | null
   isDefault: boolean
+  editorMode?: string
   configJson: InvoiceTemplateConfig | string
+  designJson?: Record<string, unknown> | null
+  html?: string | null
 }
 
 export interface CreateInvoiceTemplateRequest {
   templateName: string
   presetKey?: string
   documentType?: string
+  editorMode?: string
   configJson?: InvoiceTemplateConfig
+  designJson?: Record<string, unknown>
+  html?: string
+}
+
+export interface GlobalSearchHit {
+  entityId: string
+  entityType: SearchEntityType
+  title: string
+  subtitle?: string | null
+  referenceNumber?: string | null
+}
+
+export type SearchEntityType = 'PRODUCT' | 'CUSTOMER' | 'SUPPLIER' | 'SALES_INVOICE' | 'PURCHASE_INVOICE'
+
+export interface GlobalSearchResponse {
+  query: string
+  results: GlobalSearchHit[]
+  total: number
+  page: number
+  size: number
+  hasMore: boolean
 }

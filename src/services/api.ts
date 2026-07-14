@@ -37,6 +37,7 @@ import type {
   InvoiceTemplateResponse,
   CreateInvoiceTemplateRequest,
   InvoiceTemplateConfig,
+  GlobalSearchResponse,
 } from '@/types/api'
 
 export const authApi = {
@@ -216,10 +217,10 @@ export const purchaseApi = {
     api.post(`/purchases/grn/from-order/${poId}`, body).then((r) => unwrapApi<Record<string, unknown>>(r)),
   confirmGrn: (id: string) =>
     api.post(`/purchases/grn/${id}/confirm`).then((r) => unwrapApi<Record<string, unknown>>(r)),
-  cancelGrn: (id: string) =>
-    api.post(`/purchases/grn/${id}/cancel`).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  cancelGrn: (id: string) => api.post(`/purchases/grn/${id}/cancel`).then((r) => unwrapApi<Record<string, unknown>>(r)),
 
   listInvoices: () => api.get('/purchases/invoices').then((r) => unwrapList<Record<string, unknown>>(r)),
+  getInvoice: (id: string) => api.get(`/purchases/invoices/${id}`).then((r) => unwrapApi<Record<string, unknown>>(r)),
   createInvoiceFromOrder: (poId: string, body: Record<string, unknown>) =>
     api.post(`/purchases/invoices/from-order/${poId}`, body).then((r) => unwrapApi<Record<string, unknown>>(r)),
   createInvoiceFromGrn: (grnId: string, body: Record<string, unknown>) =>
@@ -281,8 +282,7 @@ export const leadApi = {
   delete: (id: string) => api.delete(`/leads/${id}`),
   addFollowUp: (id: string, payload: { followUpAt: string; notes?: string }) =>
     api.post(`/leads/${id}/follow-ups`, payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
-  listFollowUps: (id: string) =>
-    api.get(`/leads/${id}/follow-ups`).then((r) => unwrapList<Record<string, unknown>>(r)),
+  listFollowUps: (id: string) => api.get(`/leads/${id}/follow-ups`).then((r) => unwrapList<Record<string, unknown>>(r)),
   completeFollowUp: (id: string, followUpId: string) =>
     api.post(`/leads/${id}/follow-ups/${followUpId}/complete`).then((r) => unwrapApi<Record<string, unknown>>(r)),
   convert: (id: string, payload?: { customerId?: string }) =>
@@ -307,17 +307,19 @@ export const templateApi = {
     api.post('/templates', payload).then((r) => unwrapApi<InvoiceTemplateResponse>(r)),
   update: (id: string, payload: CreateInvoiceTemplateRequest) =>
     api.put(`/templates/${id}`, payload).then((r) => unwrapApi<InvoiceTemplateResponse>(r)),
-  setDefault: (id: string) =>
-    api.post(`/templates/${id}/default`).then((r) => unwrapApi<InvoiceTemplateResponse>(r)),
+  setDefault: (id: string) => api.post(`/templates/${id}/default`).then((r) => unwrapApi<InvoiceTemplateResponse>(r)),
   delete: (id: string) => api.delete(`/templates/${id}`),
   presets: () =>
-    api.get('/templates/presets').then((r) =>
-      unwrapList<{ key: string; name: string; documentType?: string; config: InvoiceTemplateConfig }>(r),
-    ),
+    api
+      .get('/templates/presets')
+      .then((r) => unwrapList<{ key: string; name: string; documentType?: string; config: InvoiceTemplateConfig }>(r)),
   preview: async (payload: {
-    configJson: InvoiceTemplateConfig
+    configJson?: InvoiceTemplateConfig
     documentType?: string
     sampleInvoiceId?: string
+    editorMode?: string
+    html?: string
+    designJson?: Record<string, unknown>
   }) => {
     const response = await api.post('/templates/preview', payload, { responseType: 'blob' })
     return response.data as Blob
@@ -339,11 +341,23 @@ export const unitApi = {
     api.post('/units', payload).then((r) => unwrapApi<{ id: string; code: string; name: string }>(r)),
 }
 
+export type TaxType = 'GST' | 'IGST' | 'OTHER'
+
+export type TaxRate = {
+  id: string
+  name: string
+  taxType: TaxType
+  rate: number
+  cgstRate?: number
+  sgstRate?: number
+  igstRate?: number
+  active: boolean
+}
+
 export const taxRateApi = {
-  list: () =>
-    api.get('/tax-rates').then((r) => unwrapList<{ id: string; name: string; rate: number; active: boolean }>(r)),
-  create: (payload: { name: string; rate: number; cessRate?: number }) =>
-    api.post('/tax-rates', payload).then((r) => unwrapApi<{ id: string; name: string; rate: number }>(r)),
+  list: () => api.get('/tax-rates').then((r) => unwrapList<TaxRate>(r)),
+  create: (payload: { name: string; rate: number; taxType: TaxType; cessRate?: number }) =>
+    api.post('/tax-rates', payload).then((r) => unwrapApi<TaxRate>(r)),
 }
 
 export type MarketingStep = {
@@ -355,6 +369,7 @@ export type MarketingStep = {
   bodyTemplate?: string
   subject?: string
   body?: string
+  emailTemplateId?: string | null
 }
 
 export type MarketingSequence = {
@@ -366,6 +381,44 @@ export type MarketingSequence = {
   steps: MarketingStep[]
   createdAt?: string
   updatedAt?: string
+}
+
+export type EmailTemplate = {
+  id: string
+  name: string
+  subject: string
+  designJson?: Record<string, unknown> | null
+  html?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type MarketingCampaign = {
+  id: string
+  name: string
+  status: string
+  audienceType: string
+  filterJson?: Record<string, unknown> | null
+  emailTemplateId: string
+  scheduledAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  totalCount: number
+  sentCount: number
+  failedCount: number
+  skippedCount: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type MarketingCampaignRecipient = {
+  id: string
+  recipientType: string
+  recipientId: string
+  email?: string | null
+  status: string
+  errorMessage?: string | null
+  sentAt?: string | null
 }
 
 export type BillingCurrent = {
@@ -396,14 +449,87 @@ export const marketingApi = {
     description?: string
     status?: string
     triggerType: string
-    steps: { delayDays: number; channel: string; subject?: string; body: string }[]
+    steps: {
+      delayDays: number
+      channel: string
+      subject?: string
+      body?: string
+      emailTemplateId?: string
+    }[]
   }) => api.post('/marketing/sequences', payload).then((r) => unwrapApi<MarketingSequence>(r)),
   enrollLead: (sequenceId: string, leadId: string) =>
     api.post(`/marketing/sequences/${sequenceId}/enroll/${leadId}`).then((r) => unwrapApi<Record<string, unknown>>(r)),
   cancelEnrollment: (id: string) =>
     api.post(`/marketing/enrollments/${id}/cancel`).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  listCampaigns: () => api.get('/marketing/campaigns').then((r) => unwrapList<MarketingCampaign>(r)),
+  getCampaign: (id: string) => api.get(`/marketing/campaigns/${id}`).then((r) => unwrapApi<MarketingCampaign>(r)),
+  createCampaign: (payload: {
+    name: string
+    audienceType: string
+    emailTemplateId: string
+    filterJson?: Record<string, unknown>
+    leadIds?: string[]
+    customerIds?: string[]
+  }) => api.post('/marketing/campaigns', payload).then((r) => unwrapApi<MarketingCampaign>(r)),
+  updateCampaign: (
+    id: string,
+    payload: {
+      name: string
+      audienceType: string
+      emailTemplateId: string
+      filterJson?: Record<string, unknown>
+      leadIds?: string[]
+      customerIds?: string[]
+    },
+  ) => api.put(`/marketing/campaigns/${id}`, payload).then((r) => unwrapApi<MarketingCampaign>(r)),
+  previewAudience: (payload: {
+    name: string
+    audienceType: string
+    emailTemplateId: string
+    filterJson?: Record<string, unknown>
+  }) =>
+    api
+      .post('/marketing/campaigns/preview-audience', payload)
+      .then((r) => unwrapApi<{ count: number; cappedAt: number }>(r)),
+  scheduleCampaign: (id: string, scheduledAt?: string) =>
+    api
+      .post(`/marketing/campaigns/${id}/schedule`, scheduledAt ? { scheduledAt } : {})
+      .then((r) => unwrapApi<MarketingCampaign>(r)),
+  cancelCampaign: (id: string) =>
+    api.post(`/marketing/campaigns/${id}/cancel`).then((r) => unwrapApi<MarketingCampaign>(r)),
+  listRecipients: (id: string) =>
+    api.get(`/marketing/campaigns/${id}/recipients`).then((r) => unwrapPage<MarketingCampaignRecipient>(r)),
+}
+
+export const emailTemplateApi = {
+  list: () => api.get('/email-templates').then((r) => unwrapList<EmailTemplate>(r)),
+  get: (id: string) => api.get(`/email-templates/${id}`).then((r) => unwrapApi<EmailTemplate>(r)),
+  create: (payload: { name: string; subject?: string; designJson?: Record<string, unknown>; html: string }) =>
+    api.post('/email-templates', payload).then((r) => unwrapApi<EmailTemplate>(r)),
+  update: (
+    id: string,
+    payload: {
+      name: string
+      subject?: string
+      designJson?: Record<string, unknown>
+      html: string
+    },
+  ) => api.put(`/email-templates/${id}`, payload).then((r) => unwrapApi<EmailTemplate>(r)),
+  delete: (id: string) => api.delete(`/email-templates/${id}`),
+  preview: (id: string, mergeTags?: Record<string, string>) =>
+    api
+      .post(`/email-templates/${id}/preview`, { mergeTags })
+      .then((r) => unwrapApi<{ subject: string; html: string }>(r)),
 }
 
 export const billingApi = {
   current: () => api.get('/billing/current').then((r) => unwrapApi<BillingCurrent>(r)),
+}
+
+export const searchApi = {
+  search: (q: string, params?: { types?: string; limit?: number; page?: number }) =>
+    api
+      .get('/search', { params: { q, types: params?.types, limit: params?.limit, page: params?.page } })
+      .then((r) => unwrapApi<GlobalSearchResponse>(r)),
+  reindex: () => api.post('/search/reindex').then((r) => unwrapApi<{ indexed: number; failed: number }>(r)),
 }

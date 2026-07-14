@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,6 +9,7 @@ import { useAuth } from '@/features/auth/auth'
 import { organizationApi, roleApi, userApi, warehouseApi } from '@/services/api'
 import { getApiErrorMessage, getApiFieldErrors } from '@/lib/api-error'
 import { mergeDefined } from '@/lib/api-payload'
+import { generateEntityCode, slugifyName } from '@/lib/entity-code'
 import {
   Button,
   Card,
@@ -88,7 +89,7 @@ const bankSchema = z.object({
 })
 
 const warehouseSchema = z.object({
-  warehouseCode: z.string().min(1, 'Warehouse code is required'),
+  warehouseCode: z.string().optional(),
   warehouseName: z.string().min(1, 'Warehouse name is required'),
   address: z.string().optional(),
   contactPerson: z.string().optional(),
@@ -174,7 +175,7 @@ export function OnboardingPage() {
   const warehouseForm = useForm({
     resolver: zodResolver(warehouseSchema),
     defaultValues: {
-      warehouseCode: 'MAIN',
+      warehouseCode: generateEntityCode('Main Warehouse', 'WH'),
       warehouseName: 'Main Warehouse',
       address: '',
       contactPerson: '',
@@ -186,6 +187,26 @@ export function OnboardingPage() {
     resolver: zodResolver(inviteSchema),
     defaultValues: { firstName: '', lastName: '', email: '', role: 'SALES_MANAGER' },
   })
+
+  const lastWarehouseSlug = useRef(slugifyName('Main Warehouse'))
+  useEffect(() => {
+    const subscription = warehouseForm.watch((values, info) => {
+      if (info.name && info.name !== 'warehouseName') return
+      const source = String(values.warehouseName ?? '').trim()
+      if (!source) {
+        lastWarehouseSlug.current = ''
+        warehouseForm.setValue('warehouseCode', '', { shouldValidate: false })
+        return
+      }
+      const slug = slugifyName(source)
+      if (lastWarehouseSlug.current === slug && values.warehouseCode) return
+      lastWarehouseSlug.current = slug
+      warehouseForm.setValue('warehouseCode', generateEntityCode(source, 'WH'), {
+        shouldValidate: false,
+      })
+    })
+    return () => subscription.unsubscribe()
+  }, [warehouseForm])
 
   const progress = Math.round(((step + 1) / steps.length) * 100)
 
@@ -518,11 +539,16 @@ export function OnboardingPage() {
             {step === 8 && (
               <form className="space-y-4" onSubmit={saveWarehouse}>
                 <h2 className="text-xl font-semibold text-slate-900">Default Warehouse</h2>
-                <Field label="Warehouse Code" error={warehouseForm.formState.errors.warehouseCode?.message}>
-                  <Input {...warehouseForm.register('warehouseCode')} />
-                </Field>
                 <Field label="Warehouse Name" error={warehouseForm.formState.errors.warehouseName?.message}>
                   <Input {...warehouseForm.register('warehouseName')} />
+                </Field>
+                <Field label="Warehouse Code" error={warehouseForm.formState.errors.warehouseCode?.message}>
+                  <Input
+                    {...warehouseForm.register('warehouseCode')}
+                    readOnly
+                    className="bg-slate-50 text-slate-600"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">Generated from the warehouse name</p>
                 </Field>
                 <Field label="Address">
                   <Input {...warehouseForm.register('address')} />

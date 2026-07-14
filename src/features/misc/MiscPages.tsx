@@ -1,13 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Download, Eye, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { auditApi, organizationApi, reportApi, salesApi, taxRateApi, templateApi, unitApi, warehouseApi } from '@/services/api'
+import {
+  auditApi,
+  organizationApi,
+  reportApi,
+  salesApi,
+  taxRateApi,
+  templateApi,
+  unitApi,
+  warehouseApi,
+} from '@/services/api'
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
+import { EmailDesignEditor, type EmailDesignEditorHandle } from '@/components/email/EmailDesignEditor'
 import {
   Button,
   Card,
@@ -25,7 +35,8 @@ import {
 } from '@/components/ui'
 
 import { mergeDefined } from '@/lib/api-payload'
-import type { InvoiceTemplateConfig, UpdateOrganizationRequest } from '@/types/api'
+import { documentPresets, getDocumentPreset } from '@/lib/unlayer-presets'
+import type { CreateInvoiceTemplateRequest, InvoiceTemplateConfig, UpdateOrganizationRequest } from '@/types/api'
 
 const orgSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -222,7 +233,11 @@ function OrgOperationalSettings() {
           </Select>
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={taxInclusiveDefault} onChange={(e) => setTaxInclusiveDefault(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={taxInclusiveDefault}
+            onChange={(e) => setTaxInclusiveDefault(e.target.checked)}
+          />
           Tax inclusive by default
         </label>
         <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -341,6 +356,7 @@ export function ReportsPage() {
 
 export function TemplateDesignerPage() {
   const queryClient = useQueryClient()
+  const editorRef = useRef<EmailDesignEditorHandle>(null)
   const { data: templates = [] } = useQuery({ queryKey: ['templates'], queryFn: () => templateApi.list() })
   const { data: presets = [] } = useQuery({ queryKey: ['template-presets'], queryFn: templateApi.presets })
   const { data: invoices = [] } = useQuery({
@@ -350,6 +366,7 @@ export function TemplateDesignerPage() {
 
   const [templateName, setTemplateName] = useState('Tax Invoice')
   const [documentType, setDocumentType] = useState('SALES_INVOICE')
+  const [editorMode, setEditorMode] = useState<'SECTION' | 'UNLAYER'>('SECTION')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [previewInvoiceId, setPreviewInvoiceId] = useState('')
   const [config, setConfig] = useState<InvoiceTemplateConfig>(defaultTemplateConfig())
@@ -359,6 +376,7 @@ export function TemplateDesignerPage() {
   const applyPreset = (preset: { key: string; name: string; documentType?: string; config: InvoiceTemplateConfig }) => {
     setTemplateName(preset.name)
     setDocumentType(preset.documentType ?? 'SALES_INVOICE')
+    setEditorMode('SECTION')
     setConfig(normalizeTemplateConfig(preset.config))
     setEditingId(null)
   }
@@ -367,15 +385,27 @@ export function TemplateDesignerPage() {
     setEditingId(template.id)
     setTemplateName(template.templateName)
     setDocumentType(template.documentType ?? 'SALES_INVOICE')
+    setEditorMode(template.editorMode === 'UNLAYER' ? 'UNLAYER' : 'SECTION')
     setConfig(normalizeTemplateConfig(template.configJson))
+    if (template.editorMode === 'UNLAYER' && template.designJson && typeof template.designJson === 'object') {
+      setTimeout(() => editorRef.current?.loadDesign(template.designJson as Record<string, unknown>), 0)
+    }
   }
 
   const save = async () => {
     try {
-      const payload = {
+      const payload: CreateInvoiceTemplateRequest = {
         templateName: templateName.trim() || `Template ${templates.length + 1}`,
         documentType,
-        configJson: config,
+        editorMode,
+      }
+      if (editorMode === 'UNLAYER') {
+        const exported = await editorRef.current!.exportHtml()
+        payload.designJson = exported.design
+        payload.html = exported.html
+        payload.configJson = config
+      } else {
+        payload.configJson = config
       }
       if (editingId) await templateApi.update(editingId, payload)
       else {
@@ -405,6 +435,7 @@ export function TemplateDesignerPage() {
       if (editingId === id) {
         setEditingId(null)
         setConfig(defaultTemplateConfig())
+        setEditorMode('SECTION')
       }
       await queryClient.invalidateQueries({ queryKey: ['templates'] })
       toast.success('Template deleted')
@@ -415,11 +446,24 @@ export function TemplateDesignerPage() {
 
   const preview = async () => {
     try {
-      const blob = await templateApi.preview({
-        configJson: config,
+      const payload: {
+        configJson?: InvoiceTemplateConfig
+        documentType?: string
+        sampleInvoiceId?: string
+        editorMode?: string
+        html?: string
+      } = {
         documentType,
         sampleInvoiceId: previewInvoiceId || undefined,
-      })
+        editorMode,
+      }
+      if (editorMode === 'UNLAYER') {
+        const exported = await editorRef.current!.exportHtml()
+        payload.html = exported.html
+      } else {
+        payload.configJson = config
+      }
+      const blob = await templateApi.preview(payload)
       const url = URL.createObjectURL(blob)
       window.open(url, '_blank', 'noopener,noreferrer')
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
@@ -434,7 +478,7 @@ export function TemplateDesignerPage() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Invoice template designer</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Toggle sections and save a structured config used by invoice PDF rendering.
+            Use section toggles or a full Unlayer drag-and-drop design for PDF rendering.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -444,6 +488,7 @@ export function TemplateDesignerPage() {
               setEditingId(null)
               setTemplateName('Tax Invoice')
               setDocumentType('SALES_INVOICE')
+              setEditorMode('SECTION')
               setConfig(defaultTemplateConfig())
             }}
           >
@@ -484,97 +529,177 @@ export function TemplateDesignerPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Header title</Label>
-                <Input
-                  value={config.header?.title ?? ''}
-                  onChange={(e) =>
-                    patchConfig({ ...config, header: { ...config.header, title: e.target.value } })
-                  }
-                />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Editor mode</Label>
+                <Select
+                  value={editorMode}
+                  onValueChange={(value) => setEditorMode(value === 'UNLAYER' ? 'UNLAYER' : 'SECTION')}
+                >
+                  <SelectTrigger>{editorMode}</SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SECTION">SECTION (OpenPDF)</SelectItem>
+                    <SelectItem value="UNLAYER">UNLAYER (drag-and-drop HTML)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Accent color</Label>
-                <Input
-                  type="color"
-                  className="h-10 p-1"
-                  value={config.header?.accentColor ?? '#1F4E78'}
-                  onChange={(e) =>
-                    patchConfig({ ...config, header: { ...config.header, accentColor: e.target.value } })
-                  }
-                />
-              </div>
+              {editorMode === 'SECTION' && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Header title</Label>
+                    <Input
+                      value={config.header?.title ?? ''}
+                      onChange={(e) => patchConfig({ ...config, header: { ...config.header, title: e.target.value } })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Accent color</Label>
+                    <Input
+                      type="color"
+                      className="h-10 p-1"
+                      value={config.header?.accentColor ?? '#1F4E78'}
+                      onChange={(e) =>
+                        patchConfig({ ...config, header: { ...config.header, accentColor: e.target.value } })
+                      }
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="space-y-3 rounded-lg border border-slate-200 p-4">
-              <p className="text-sm font-medium text-slate-800">Sections</p>
-              {(
-                [
-                  {
-                    key: 'logo',
-                    label: 'Show logo',
-                    checked: config.logo?.visible !== false,
-                    onChange: (checked: boolean) =>
-                      patchConfig({ ...config, logo: { ...config.logo, visible: checked } }),
-                  },
-                  {
-                    key: 'gstin',
-                    label: 'Show GSTIN',
-                    checked: config.header?.showGstin !== false,
-                    onChange: (checked: boolean) =>
-                      patchConfig({ ...config, header: { ...config.header, showGstin: checked } }),
-                  },
-                  {
-                    key: 'hsn',
-                    label: 'Show HSN/SAC column',
-                    checked: config.items?.showHsn !== false,
-                    onChange: (checked: boolean) =>
-                      patchConfig({ ...config, items: { ...config.items, showHsn: checked } }),
-                  },
-                  {
-                    key: 'bank',
-                    label: 'Show bank details',
-                    checked: config.footer?.showBankDetails !== false,
-                    onChange: (checked: boolean) =>
-                      patchConfig({
-                        ...config,
-                        footer: { ...config.footer, showBankDetails: checked },
-                      }),
-                  },
-                  {
-                    key: 'terms',
-                    label: 'Show terms',
-                    checked: config.footer?.showTerms !== false,
-                    onChange: (checked: boolean) =>
-                      patchConfig({ ...config, footer: { ...config.footer, showTerms: checked } }),
-                  },
-                ] as const
-              ).map((row) => (
-                <div key={row.key} className="flex items-center justify-between gap-3">
-                  <Label htmlFor={`toggle-${row.key}`}>{row.label}</Label>
-                  <Switch id={`toggle-${row.key}`} checked={row.checked} onCheckedChange={row.onChange} />
+            {editorMode === 'UNLAYER' ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-800">Professional document starters</p>
+                  <p className="text-xs text-slate-500">
+                    Load a tax invoice or quotation layout with logo, full customer details, and{' '}
+                    <code className="rounded bg-slate-100 px-1">{'{{lineItemsHtml}}'}</code> for every bill line. Pick a
+                    real invoice in preview to fill live data. Upload an org logo under Settings for{' '}
+                    <code className="rounded bg-slate-100 px-1">{'{{logoHtml}}'}</code>.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {documentPresets.map((preset) => (
+                      <Button
+                        key={preset.key}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const next = getDocumentPreset(preset.key)
+                          if (!next) return
+                          if (next.documentType) setDocumentType(next.documentType)
+                          setTemplateName(next.name)
+                          editorRef.current?.loadDesign(next.design)
+                          toast.success(`Loaded “${next.name}”`)
+                        }}
+                      >
+                        {preset.name}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Footer note</Label>
-              <Textarea
-                value={config.footer?.note ?? ''}
-                onChange={(e) => patchConfig({ ...config, footer: { ...config.footer, note: e.target.value } })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Presets</Label>
-              <div className="flex flex-wrap gap-2">
-                {presets.map((preset) => (
-                  <Button key={preset.key} variant="outline" size="sm" onClick={() => applyPreset(preset)}>
-                    {preset.name}
-                  </Button>
-                ))}
+                <EmailDesignEditor
+                  ref={editorRef}
+                  minHeight={640}
+                  displayMode="email"
+                  mergeTags={{
+                    logoHtml: { name: 'Organization logo', value: '{{logoHtml}}', sample: '[logo]' },
+                    customerDetails: {
+                      name: 'Customer details block',
+                      value: '{{customerDetails}}',
+                      sample: 'Bill to…',
+                    },
+                    lineItemsHtml: {
+                      name: 'All line items table',
+                      value: '{{lineItemsHtml}}',
+                      sample: 'Items…',
+                    },
+                    invoiceNumber: { name: 'Invoice number', value: '{{invoiceNumber}}', sample: 'INV-001' },
+                    customerName: { name: 'Customer name', value: '{{customerName}}', sample: 'Acme' },
+                    customerEmail: { name: 'Customer email', value: '{{customerEmail}}', sample: 'a@x.com' },
+                    customerPhone: { name: 'Customer phone', value: '{{customerPhone}}', sample: '+91…' },
+                    customerGstin: { name: 'Customer GSTIN', value: '{{customerGstin}}', sample: '27…' },
+                    grandTotal: { name: 'Grand total', value: '{{grandTotal}}', sample: '11,800.00' },
+                    organizationName: { name: 'Organization', value: '{{organizationName}}', sample: 'FlowLedger' },
+                    invoiceDate: { name: 'Invoice date', value: '{{invoiceDate}}', sample: '13-07-2026' },
+                    gstin: { name: 'Org GSTIN', value: '{{gstin}}', sample: '27AAAAA0000A1Z5' },
+                    notes: { name: 'Notes', value: '{{notes}}', sample: 'Thank you' },
+                    terms: { name: 'Terms', value: '{{terms}}', sample: 'Net 15' },
+                  }}
+                />
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+                  <p className="text-sm font-medium text-slate-800">Sections</p>
+                  {(
+                    [
+                      {
+                        key: 'logo',
+                        label: 'Show logo',
+                        checked: config.logo?.visible !== false,
+                        onChange: (checked: boolean) =>
+                          patchConfig({ ...config, logo: { ...config.logo, visible: checked } }),
+                      },
+                      {
+                        key: 'gstin',
+                        label: 'Show GSTIN',
+                        checked: config.header?.showGstin !== false,
+                        onChange: (checked: boolean) =>
+                          patchConfig({ ...config, header: { ...config.header, showGstin: checked } }),
+                      },
+                      {
+                        key: 'hsn',
+                        label: 'Show HSN/SAC column',
+                        checked: config.items?.showHsn !== false,
+                        onChange: (checked: boolean) =>
+                          patchConfig({ ...config, items: { ...config.items, showHsn: checked } }),
+                      },
+                      {
+                        key: 'bank',
+                        label: 'Show bank details',
+                        checked: config.footer?.showBankDetails !== false,
+                        onChange: (checked: boolean) =>
+                          patchConfig({
+                            ...config,
+                            footer: { ...config.footer, showBankDetails: checked },
+                          }),
+                      },
+                      {
+                        key: 'terms',
+                        label: 'Show terms',
+                        checked: config.footer?.showTerms !== false,
+                        onChange: (checked: boolean) =>
+                          patchConfig({ ...config, footer: { ...config.footer, showTerms: checked } }),
+                      },
+                    ] as const
+                  ).map((row) => (
+                    <div key={row.key} className="flex items-center justify-between gap-3">
+                      <Label htmlFor={`toggle-${row.key}`}>{row.label}</Label>
+                      <Switch id={`toggle-${row.key}`} checked={row.checked} onCheckedChange={row.onChange} />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Footer note</Label>
+                  <Textarea
+                    value={config.footer?.note ?? ''}
+                    onChange={(e) => patchConfig({ ...config, footer: { ...config.footer, note: e.target.value } })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Presets</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {presets.map((preset) => (
+                      <Button key={preset.key} variant="outline" size="sm" onClick={() => applyPreset(preset)}>
+                        {preset.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-1.5">
               <Label>Preview with invoice (optional)</Label>
@@ -614,11 +739,15 @@ export function TemplateDesignerPage() {
                 <div key={template.id} className="rounded-lg border border-slate-200 p-3 text-sm">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <button type="button" className="font-semibold text-slate-900 hover:underline" onClick={() => loadTemplate(template)}>
+                      <button
+                        type="button"
+                        className="font-semibold text-slate-900 hover:underline"
+                        onClick={() => loadTemplate(template)}
+                      >
                         {template.templateName}
                       </button>
                       <p className="text-slate-500">
-                        {template.documentType ?? 'SALES_INVOICE'}
+                        {template.documentType ?? 'SALES_INVOICE'} · {template.editorMode ?? 'SECTION'}
                         {template.isDefault ? ' · Default' : ''}
                         {template.presetKey ? ` · ${template.presetKey}` : ''}
                       </p>
@@ -688,11 +817,13 @@ export function TaxRatesPage() {
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['tax-rates'], queryFn: taxRateApi.list })
   const [name, setName] = useState('')
+  const [taxType, setTaxType] = useState<'GST' | 'IGST' | 'OTHER'>('GST')
   const [rate, setRate] = useState(18)
   const create = async () => {
     try {
-      await taxRateApi.create({ name, rate })
+      await taxRateApi.create({ name, rate, taxType })
       setName('')
+      setTaxType('GST')
       setRate(18)
       await queryClient.invalidateQueries({ queryKey: ['tax-rates'] })
       toast.success('Tax rate created')
@@ -700,6 +831,12 @@ export function TaxRatesPage() {
       toast.error(getApiErrorMessage(error))
     }
   }
+  const typeHint =
+    taxType === 'GST'
+      ? 'GST splits into CGST + SGST within state, or IGST across states.'
+      : taxType === 'IGST'
+        ? 'IGST always applies the full rate; it never splits into CGST/SGST.'
+        : 'Other taxes apply the rate as marked, with no GST split.'
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -707,15 +844,26 @@ export function TaxRatesPage() {
         <p className="mt-1 text-sm text-slate-500">Manage GST and other tax rates used on documents.</p>
       </div>
       <Card>
-        <CardContent className="grid gap-3 p-5 sm:grid-cols-3">
-          <Input placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
-          <Input
-            type="number"
-            placeholder="Rate %"
-            value={rate}
-            onChange={(event) => setRate(Number(event.target.value))}
-          />
-          <Button onClick={create}>Add tax rate</Button>
+        <CardContent className="space-y-3 p-5">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Input placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
+            <Select value={taxType} onValueChange={(value) => setTaxType(value as 'GST' | 'IGST' | 'OTHER')}>
+              <SelectTrigger>{taxType}</SelectTrigger>
+              <SelectContent>
+                <SelectItem value="GST">GST (CGST + SGST / IGST)</SelectItem>
+                <SelectItem value="IGST">IGST (full rate)</SelectItem>
+                <SelectItem value="OTHER">Other (flat rate)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              placeholder="Rate %"
+              value={rate}
+              onChange={(event) => setRate(Number(event.target.value))}
+            />
+            <Button onClick={create}>Add tax rate</Button>
+          </div>
+          <p className="text-xs text-slate-500">{typeHint}</p>
         </CardContent>
       </Card>
       <Card>
@@ -724,7 +872,9 @@ export function TaxRatesPage() {
             <thead>
               <tr className="border-b">
                 <th className="p-3 text-xs text-slate-500">NAME</th>
+                <th className="p-3 text-xs text-slate-500">TYPE</th>
                 <th className="p-3 text-xs text-slate-500">RATE</th>
+                <th className="p-3 text-xs text-slate-500">COMPONENTS</th>
                 <th className="p-3 text-xs text-slate-500">STATUS</th>
               </tr>
             </thead>
@@ -732,7 +882,15 @@ export function TaxRatesPage() {
               {data.map((row) => (
                 <tr key={row.id} className="border-b">
                   <td className="p-3">{row.name}</td>
+                  <td className="p-3 font-medium text-slate-800">{row.taxType ?? 'GST'}</td>
                   <td className="p-3">{row.rate}%</td>
+                  <td className="p-3 text-xs text-slate-500">
+                    {row.taxType === 'IGST'
+                      ? `IGST ${row.rate}%`
+                      : row.taxType === 'OTHER'
+                        ? `Flat ${row.rate}%`
+                        : `CGST ${(Number(row.cgstRate) || Number(row.rate) / 2).toFixed(2)}% + SGST ${(Number(row.sgstRate) || Number(row.rate) / 2).toFixed(2)}%`}
+                  </td>
                   <td className="p-3">{row.active ? 'Active' : 'Inactive'}</td>
                 </tr>
               ))}

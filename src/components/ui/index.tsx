@@ -19,12 +19,15 @@ export const Button = forwardRef<
   <button
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
-      variant === 'default' && 'bg-teal-700 text-white hover:bg-teal-800',
-      variant === 'outline' && 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-      variant === 'ghost' && 'text-slate-600 hover:bg-slate-100',
-      variant === 'destructive' && 'bg-rose-600 text-white hover:bg-rose-700',
-      size === 'sm' ? 'h-8 px-3 text-xs' : size === 'lg' ? 'h-11 px-5' : size === 'icon' ? 'size-9' : 'h-9 px-4',
+      'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold tracking-tight transition-all duration-150 disabled:pointer-events-none disabled:opacity-50',
+      variant === 'default' &&
+        'bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_8px_18px_rgb(13_148_136/0.28)] hover:from-teal-500 hover:to-teal-700',
+      variant === 'outline' &&
+        'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-teal-200 hover:bg-teal-50/60 hover:text-teal-900',
+      variant === 'ghost' && 'font-medium text-slate-600 hover:bg-slate-100/90 hover:text-slate-900',
+      variant === 'destructive' &&
+        'bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-[0_8px_18px_rgb(225_29_72/0.25)] hover:from-rose-400 hover:to-rose-600',
+      size === 'sm' ? 'h-8 px-3 text-xs' : size === 'lg' ? 'h-11 px-5' : size === 'icon' ? 'size-9' : 'h-10 px-4',
       className,
     )}
     {...props}
@@ -36,7 +39,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'flex h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-50',
+        'flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 shadow-[0_1px_2px_rgb(15_23_42/0.03)] outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-50',
         className,
       )}
       {...props}
@@ -49,7 +52,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
     <textarea
       ref={ref}
       className={cn(
-        'flex min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100',
+        'flex min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-[0_1px_2px_rgb(15_23_42/0.03)] outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10',
         className,
       )}
       {...props}
@@ -58,21 +61,27 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
 )
 Textarea.displayName = 'Textarea'
 export const Label = ({ className, ...props }: React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>) => (
-  <LabelPrimitive.Root className={cn('text-sm font-medium text-slate-700', className)} {...props} />
+  <LabelPrimitive.Root className={cn('text-sm font-semibold text-slate-700', className)} {...props} />
 )
 export const Card = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('rounded-xl border border-slate-200 bg-white shadow-sm', className)} {...props} />
+  <div
+    className={cn(
+      'rounded-2xl border border-slate-200/90 bg-white/90 shadow-[0_1px_2px_rgb(15_23_42/0.04),0_10px_28px_rgb(15_23_42/0.05)] backdrop-blur-sm',
+      className,
+    )}
+    {...props}
+  />
 )
 export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex items-center justify-between p-5 pb-3', className)} {...props} />
+  <div className={cn('flex flex-wrap items-center justify-between gap-3 p-4 pb-3 sm:p-5 sm:pb-3', className)} {...props} />
 )
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('p-5 pt-2', className)} {...props} />
+  <div className={cn('p-4 pt-2 sm:p-5 sm:pt-2', className)} {...props} />
 )
 export const Badge = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
   <span
     className={cn(
-      'inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700',
+      'inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 text-xs font-semibold tracking-wide text-teal-800',
       className,
     )}
     {...props}
@@ -130,7 +139,7 @@ export const DialogContent = ({
     <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/30" />
     <DialogPrimitive.Content
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl',
+        'fixed left-1/2 top-1/2 z-50 max-h-[min(92dvh,48rem)] w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:w-[calc(100%-2rem)] sm:p-6',
         className,
       )}
       {...props}
@@ -152,7 +161,7 @@ export const SelectTrigger = ({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>) => (
   <SelectPrimitive.Trigger
     className={cn(
-      'flex h-9 w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm',
+      'flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 text-sm shadow-[0_1px_2px_rgb(15_23_42/0.03)] outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10',
       className,
     )}
     {...props}
@@ -173,18 +182,14 @@ export const SelectContent = ({
     <SelectPrimitive.Content
       className={cn(
         'z-[70] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg',
-        position === 'popper' &&
-          'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
+        position === 'popper' && 'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
         className,
       )}
       position={position}
       {...props}
     >
       <SelectPrimitive.Viewport
-        className={cn(
-          'p-1',
-          position === 'popper' && 'w-full min-w-[var(--radix-select-trigger-width)]',
-        )}
+        className={cn('p-1', position === 'popper' && 'w-full min-w-[var(--radix-select-trigger-width)]')}
       >
         {children}
       </SelectPrimitive.Viewport>
@@ -231,7 +236,10 @@ export const DropdownMenuContent = ({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
-      className={cn('z-[70] min-w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg', className)}
+      className={cn(
+        'z-[80] min-w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_12px_40px_rgb(15_23_42/0.16)]',
+        className,
+      )}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -241,7 +249,16 @@ export const DropdownMenuItem = ({
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>) => (
   <DropdownMenuPrimitive.Item
-    className={cn('cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-100', className)}
+    className={cn(
+      'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-100',
+      className,
+    )}
     {...props}
   />
+)
+export const DropdownMenuSeparator = ({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>) => (
+  <DropdownMenuPrimitive.Separator className={cn('my-1 h-px bg-slate-200', className)} {...props} />
 )

@@ -1,36 +1,133 @@
 @import 'tailwindcss';
 
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-ink-900: #0b1220;
+  --color-ink-800: #142033;
+  --color-surface: #f4f7fb;
+}
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f4f7fb;
+  --foreground: #0b1220;
   --card: #ffffff;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  --muted: #5b6b7c;
+  --border: #d7e0ea;
+  --accent: #0f766e;
+  --accent-soft: #ecfdf8;
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 4%), 0 8px 24px rgb(15 23 42 / 5%);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 4%), 0 16px 40px rgb(15 23 42 / 8%);
+  font-family: var(--font-sans);
   color: var(--foreground);
   background: var(--background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
 }
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 0% -10%, rgb(20 184 166 / 14%), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgb(14 165 233 / 10%), transparent 50%),
+    linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
+  color: var(--foreground);
 }
+
+#root {
+  min-height: 100vh;
+  min-width: 0;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
+}
+
+::selection {
+  background: rgb(20 184 166 / 25%);
+  color: #0b1220;
+}
+
+.app-shell-main {
+  animation: fade-up 280ms ease-out;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: #0b1220;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  margin-top: 0.35rem;
+  font-size: 0.925rem;
+  color: #5b6b7c;
+  line-height: 1.5;
+}
+
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  border-color: rgb(15 118 110 / 22%);
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -40% auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(20 184 166 / 16%), transparent 70%);
+  pointer-events: none;
 }

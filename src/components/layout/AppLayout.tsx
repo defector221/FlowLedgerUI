@@ -1,21 +1,16 @@
 import { Outlet } from 'react-router-dom'
 import { useState } from 'react'
-import { Menu } from 'lucide-react'
 import { AppSidebar } from './AppSidebar'
 import { Header } from './Header'
-import { Button } from '@/components/ui'
 
 export function AppLayout() {
   const [open, setOpen] = useState(false)
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen overflow-x-hidden">
       <AppSidebar mobileOpen={open} onMobileClose={() => setOpen(false)} />
-      <div className="lg:pl-64">
+      <div className="min-w-0 lg:pl-64">
         <Header onMenu={() => setOpen(true)} />
-        <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
-          <Button variant="ghost" size="icon" className="mb-3 lg:hidden" onClick={() => setOpen(true)}>
-            <Menu className="size-5" />
-          </Button>
+        <main className="app-shell-main mx-auto max-w-[1600px] px-3 py-4 sm:px-6 sm:py-6 lg:p-8">
           <Outlet />
         </main>
       </div>

@@ -15,8 +15,15 @@ import {
   DocumentListPage,
   PaymentCreatePage,
 } from '@/features/sales/SalesPages'
+import { PurchaseInvoiceDetailPage, SalesInvoiceDetailPage } from '@/features/sales/InvoiceDetailPages'
 import { LeadCreatePage, LeadDetailPage, LeadsListPage } from '@/features/leads/LeadsPage'
 import { MarketingSequencesPage } from '@/features/marketing/MarketingPages'
+import {
+  EmailTemplateEditorPage,
+  EmailTemplatesPage,
+  MarketingCampaignDetailPage,
+  MarketingCampaignsPage,
+} from '@/features/marketing/CampaignPages'
 import {
   AuditLogsPage,
   OrganizationSettingsPage,
@@ -36,6 +43,7 @@ const guarded = (element: ReactNode) => (
 const entityRoutes = (kind: 'customers' | 'suppliers' | 'products' | 'categories' | 'warehouses') => [
   { index: true, element: <EntityListPage kind={kind} /> },
   { path: 'new', element: <EntityFormPage kind={kind} /> },
+  { path: ':id/edit', element: <EntityFormPage kind={kind} /> },
   { path: ':id', element: <EntityDetailPage kind={kind} /> },
 ]
 
@@ -125,6 +133,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'sales/invoices/new', element: <CreateInvoicePage /> },
+      { path: 'sales/invoices/:id', element: <SalesInvoiceDetailPage /> },
       {
         path: 'purchases/orders',
         element: (
@@ -142,6 +151,7 @@ export const router = createBrowserRouter([
         path: 'purchases/invoices',
         element: <DocumentListPage title="Purchase invoices" endpoint="purchase-invoices" />,
       },
+      { path: 'purchases/invoices/:id', element: <PurchaseInvoiceDetailPage /> },
       {
         path: 'payments/received',
         element: (
@@ -170,6 +180,10 @@ export const router = createBrowserRouter([
       { path: 'leads/new', element: <LeadCreatePage /> },
       { path: 'leads/:id', element: <LeadDetailPage /> },
       { path: 'marketing/sequences', element: <MarketingSequencesPage /> },
+      { path: 'marketing/campaigns', element: <MarketingCampaignsPage /> },
+      { path: 'marketing/campaigns/:id', element: <MarketingCampaignDetailPage /> },
+      { path: 'marketing/email-templates', element: <EmailTemplatesPage /> },
+      { path: 'marketing/email-templates/:id', element: <EmailTemplateEditorPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'templates', element: <TemplateDesignerPage /> },
       {

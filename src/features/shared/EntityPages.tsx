@@ -912,14 +912,24 @@ export function EntityDetailPage({ kind }: { kind: EntityKind }) {
           </h1>
           <p className="mt-1 text-sm text-slate-500">{config.singular} record</p>
         </div>
-        {canWrite && config.update ? (
-          <Link
-            className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
-            to={`/${kind}/${id}/edit`}
-          >
-            Edit
-          </Link>
-        ) : null}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {canWrite && config.update ? (
+            <Link
+              className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
+              to={`/${kind}/${id}/edit`}
+            >
+              Edit
+            </Link>
+          ) : null}
+          {kind === 'customers' || kind === 'suppliers' ? (
+            <Link
+              className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-teal-200 px-4 text-sm font-medium text-teal-800 hover:bg-teal-50 sm:w-auto"
+              to={`/accounting/ledgers/${kind}/${id}`}
+            >
+              View ledger
+            </Link>
+          ) : null}
+        </div>
       </div>
       <Card>
         <CardContent className="grid gap-5 p-6 sm:grid-cols-2">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -16,6 +17,7 @@ import {
   warehouseApi,
 } from '@/services/api'
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
+import { currency, date, quantity } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth'
 import { EmailDesignEditor, type EmailDesignEditorHandle } from '@/components/email/EmailDesignEditor'
 import {
@@ -275,23 +277,36 @@ function OrgOperationalSettings() {
 }
 
 export function ReportsPage() {
-  const [report, setReport] = useState('sales')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [report, setReport] = useState('stock-summary')
+  const [from, setFrom] = useState(() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - 11)
+    d.setDate(1)
+    return d.toISOString().slice(0, 10)
+  })
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10))
+  const [ran, setRan] = useState(false)
   const {
     data = [],
     refetch,
     isFetching,
+    isError,
+    error,
   } = useQuery({
     queryKey: ['reports', report, from, to],
     queryFn: () => reportApi.run(report, { from, to }),
     enabled: false,
   })
+
+  const reportMeta = REPORT_OPTIONS.find((r) => r.id === report) ?? REPORT_OPTIONS[0]
+  const columns = data.length ? Object.keys(data[0]) : reportMeta.columns
+
   const run = async () => {
     try {
+      setRan(true)
       await refetch()
-    } catch (error) {
-      toast.error(getApiErrorMessage(error))
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
     }
   }
   const exportCsv = async () => {
@@ -303,75 +318,256 @@ export function ReportsPage() {
       anchor.download = `${report}.csv`
       anchor.click()
       URL.revokeObjectURL(url)
-    } catch (error) {
-      toast.error(getApiErrorMessage(error))
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
     }
   }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Reports</h1>
-        <p className="mt-1 text-sm text-slate-500">Analyze sales, purchases, taxes and inventory.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="page-title">Reports</h1>
+          <p className="page-subtitle">Operational views for sales, purchases, stock and receivables.</p>
+        </div>
+        <Link
+          to="/accounting/reports"
+          className="inline-flex h-9 shrink-0 items-center rounded-lg border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-100"
+        >
+          Accounting statements
+        </Link>
       </div>
+
       <Card>
-        <CardContent className="grid gap-4 p-5 md:grid-cols-4">
-          <div>
-            <Label>Report</Label>
-            <Select value={report} onValueChange={setReport}>
-              <SelectTrigger className="mt-1.5">{report}</SelectTrigger>
-              <SelectContent>
-                {['sales', 'purchase', 'stock-summary', 'outstanding-receivables', 'outstanding-payables', 'gstr1'].map(
-                  (name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
+        <CardContent className="space-y-3 p-5">
+          <p className="text-[0.8rem] text-slate-500">{reportMeta.hint}</p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="min-w-0 flex-1">
+              <Label>Report</Label>
+              <Select value={report} onValueChange={(v) => setReport(v ?? 'stock-summary')}>
+                <SelectTrigger className="mt-1.5">
+                  <span className="truncate">{reportMeta.label}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>
+                      {opt.label}
                     </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>From date</Label>
-            <Input className="mt-1.5" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-          </div>
-          <div>
-            <Label>To date</Label>
-            <Input className="mt-1.5" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-          </div>
-          <div className="flex items-end gap-2">
-            <Button onClick={run} disabled={isFetching}>
-              Run report
-            </Button>
-            <Button variant="outline" onClick={exportCsv}>
-              <Download className="size-4" />
-              Export
-            </Button>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full lg:w-44">
+              <Label>From date</Label>
+              <Input className="mt-1.5" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+            </div>
+            <div className="w-full lg:w-44">
+              <Label>To date</Label>
+              <Input className="mt-1.5" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button className="h-10" onClick={run} disabled={isFetching}>
+                {isFetching ? 'Running…' : 'Run report'}
+              </Button>
+              <Button className="h-10" variant="outline" onClick={exportCsv} disabled={!data.length}>
+                <Download className="size-4" />
+                Export
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
+
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-0">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="font-display text-[0.95rem] font-semibold text-slate-900">{reportMeta.label}</h2>
+            <p className="mt-0.5 text-[0.8rem] text-slate-500">
+              {data.length ? `${data.length} row${data.length === 1 ? '' : 's'}` : 'No results yet'}
+              {from && to ? ` · ${from} → ${to}` : ''}
+            </p>
+          </div>
+
+          {isError ? (
+            <p className="p-6 text-sm text-red-600">{getApiErrorMessage(error)}</p>
+          ) : null}
+
+          {!ran && !data.length ? (
+            <p className="py-20 text-center text-sm text-slate-500">Choose a report and click Run report.</p>
+          ) : null}
+
+          {ran && !isFetching && !data.length && !isError ? (
+            <p className="py-20 text-center text-sm text-slate-500">No rows for this report and date range.</p>
+          ) : null}
+
           {data.length ? (
-            <Table>
-              <tbody>
-                {data.map((row, index) => (
-                  <tr key={index} className="border-b">
-                    {Object.values(row).map((value, cell) => (
-                      <td key={cell} className="p-3">
-                        {String(value)}
-                      </td>
+            <div className="overflow-x-auto">
+              <Table>
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-[0.7rem] uppercase tracking-wide text-slate-500">
+                    {columns.map((col) => (
+                      <th key={col} className={`px-5 py-3 font-semibold ${isNumericColumn(col) ? 'text-right' : ''}`}>
+                        {columnLabel(col)}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <p className="py-24 text-center text-sm text-slate-500">Choose a report and date range to view results.</p>
-          )}
+                </thead>
+                <tbody>
+                  {data.map((row, index) => (
+                    <tr key={index} className="border-b border-slate-50 text-[0.875rem] text-slate-800">
+                      {columns.map((col) => (
+                        <td
+                          key={col}
+                          className={`px-5 py-3 ${isNumericColumn(col) ? 'text-right tabular-nums' : ''} ${
+                            col === 'quantity' || col === 'value' || col === 'outstanding' || col === 'grandTotal'
+                              ? 'font-medium'
+                              : ''
+                          }`}
+                        >
+                          {formatReportCell(col, row[col])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
   )
+}
+
+const REPORT_OPTIONS = [
+  {
+    id: 'stock-summary',
+    label: 'Stock summary',
+    hint: 'Quantity and valuation by product and warehouse',
+    columns: ['sku', 'product', 'warehouseCode', 'warehouse', 'quantity', 'value'],
+  },
+  {
+    id: 'sales',
+    label: 'Sales summary',
+    hint: 'Confirmed sales invoices with tax breakup',
+    columns: ['date', 'number', 'customer', 'subtotal', 'discount', 'cgst', 'sgst', 'igst', 'grandTotal'],
+  },
+  {
+    id: 'purchase',
+    label: 'Purchase summary',
+    hint: 'Confirmed / paid purchase invoices',
+    columns: ['date', 'number', 'supplier', 'subtotal', 'discount', 'cgst', 'sgst', 'igst', 'grandTotal'],
+  },
+  {
+    id: 'outstanding-receivables',
+    label: 'Outstanding receivables',
+    hint: 'Customer invoices with open balance',
+    columns: ['number', 'date', 'customer', 'grandTotal', 'amountPaid', 'outstanding'],
+  },
+  {
+    id: 'outstanding-payables',
+    label: 'Outstanding payables',
+    hint: 'Supplier invoices with open balance',
+    columns: ['number', 'date', 'supplier', 'grandTotal', 'amountPaid', 'outstanding'],
+  },
+  {
+    id: 'gstr1',
+    label: 'GSTR-1 style sales',
+    hint: 'Sales tax summary for the period',
+    columns: ['date', 'number', 'customer', 'subtotal', 'discount', 'cgst', 'sgst', 'igst', 'grandTotal'],
+  },
+  {
+    id: 'product-sales',
+    label: 'Product sales',
+    hint: 'Quantity and amount sold by product',
+    columns: ['sku', 'product', 'hsn', 'quantity', 'discount', 'amount'],
+  },
+  {
+    id: 'profit-summary',
+    label: 'Profit summary',
+    hint: 'Sales vs purchases snapshot for the period',
+    columns: ['grossSales', 'salesDiscount', 'netSales', 'salesTotal', 'purchaseDiscount', 'purchases', 'grossProfit'],
+  },
+] as const
+
+const COLUMN_LABELS: Record<string, string> = {
+  date: 'Date',
+  number: 'Document #',
+  customer: 'Customer',
+  supplier: 'Supplier',
+  sku: 'SKU',
+  product: 'Product',
+  hsn: 'HSN/SAC',
+  warehouse: 'Warehouse',
+  warehouseCode: 'WH code',
+  quantity: 'Qty',
+  value: 'Stock value',
+  subtotal: 'Subtotal',
+  discount: 'Discount',
+  cgst: 'CGST',
+  sgst: 'SGST',
+  igst: 'IGST',
+  grandTotal: 'Grand total',
+  amountPaid: 'Paid',
+  outstanding: 'Outstanding',
+  amount: 'Amount',
+  type: 'Type',
+  reference: 'Reference',
+  inward: 'Inward',
+  outward: 'Outward',
+  unitCost: 'Unit cost',
+  grossSales: 'Gross sales',
+  salesDiscount: 'Sales discount',
+  netSales: 'Net sales',
+  salesTotal: 'Sales total',
+  purchaseDiscount: 'Purchase discount',
+  purchases: 'Purchases',
+  grossProfit: 'Gross profit',
+}
+
+const MONEY_COLS = new Set([
+  'subtotal',
+  'discount',
+  'cgst',
+  'sgst',
+  'igst',
+  'grandTotal',
+  'amountPaid',
+  'outstanding',
+  'amount',
+  'value',
+  'unitCost',
+  'grossSales',
+  'salesDiscount',
+  'netSales',
+  'salesTotal',
+  'purchaseDiscount',
+  'purchases',
+  'grossProfit',
+])
+const QTY_COLS = new Set(['quantity', 'inward', 'outward'])
+const DATE_COLS = new Set(['date'])
+
+function columnLabel(key: string) {
+  return COLUMN_LABELS[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())
+}
+
+function isNumericColumn(key: string) {
+  return MONEY_COLS.has(key) || QTY_COLS.has(key)
+}
+
+function formatReportCell(key: string, value: unknown) {
+  if (value == null || value === '') return '—'
+  if (DATE_COLS.has(key)) {
+    try {
+      return date(String(value))
+    } catch {
+      return String(value)
+    }
+  }
+  if (MONEY_COLS.has(key)) return currency(Number(value))
+  if (QTY_COLS.has(key)) return quantity(Number(value))
+  return String(value)
 }
 
 const FIXED_DESIGNS = [

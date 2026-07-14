@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -184,6 +184,15 @@ export function SimpleInventoryPage({
     queryKey: ['products', 'inventory'],
     queryFn: () => productApi.list({ active: true, size: 100 }),
   })
+  const stockProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const type = (product.itemType ?? 'PRODUCT').toUpperCase()
+        return type === 'PRODUCT' || type === ''
+      }),
+    [products],
+  )
+  const ledgerProducts = mode === 'ledger' ? stockProducts : products
   const { data: warehouses = [] } = useQuery({ queryKey: ['warehouses'], queryFn: warehouseApi.list })
   const { data: orgSettings } = useQuery({
     queryKey: ['organization', 'settings'],
@@ -201,6 +210,13 @@ export function SimpleInventoryPage({
     if (!warehouseId) setWarehouseId(defaultId)
     if (!fromWarehouseId) setFromWarehouseId(defaultId)
   }, [fromWarehouseId, orgSettings?.defaultWarehouseId, warehouseId, warehouses])
+
+  useEffect(() => {
+    if (mode !== 'ledger' || !productId) return
+    if (!ledgerProducts.some((product) => product.id === productId)) {
+      setProductId('')
+    }
+  }, [ledgerProducts, mode, productId])
 
   const submit = async () => {
     try {
@@ -312,13 +328,13 @@ export function SimpleInventoryPage({
           <CardContent className="space-y-4 p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Product</Label>
+                <Label>Product (stocked items)</Label>
                 <Select value={productId} onValueChange={setProductId}>
                   <SelectTrigger>
-                    {products.find((p) => p.id === productId)?.name ?? 'Select product'}
+                    {ledgerProducts.find((p) => p.id === productId)?.name ?? 'Select product'}
                   </SelectTrigger>
                   <SelectContent>
-                    {products.map((product) => (
+                    {ledgerProducts.map((product) => (
                       <SelectItem key={product.id} value={product.id}>
                         {product.name}
                       </SelectItem>
@@ -353,17 +369,32 @@ export function SimpleInventoryPage({
                 </tr>
               </thead>
               <tbody>
-                {ledger.map((row, index) => (
-                  <tr key={`${String(row.date)}-${String(row.type)}-${index}`} className="border-b">
-                    <td className="p-2 text-left text-sm">{String(row.date ?? '—')}</td>
-                    <td className="p-2 text-left text-sm">{String(row.type ?? '—')}</td>
-                    <td className="p-2 text-right text-sm tabular-nums">{String(row.inward ?? 0)}</td>
-                    <td className="p-2 text-right text-sm tabular-nums">{String(row.outward ?? 0)}</td>
-                    <td className="p-2 text-right text-sm font-medium tabular-nums">
-                      {String(row.runningBalance ?? 0)}
+                {!productId ? (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-sm text-slate-500">
+                      Select a stocked product to view movements. Services do not appear on the stock ledger.
                     </td>
                   </tr>
-                ))}
+                ) : ledger.length ? (
+                  ledger.map((row, index) => (
+                    <tr key={`${String(row.date)}-${String(row.type)}-${index}`} className="border-b">
+                      <td className="p-2 text-left text-sm">{String(row.date ?? '—')}</td>
+                      <td className="p-2 text-left text-sm">{String(row.type ?? '—')}</td>
+                      <td className="p-2 text-right text-sm tabular-nums">{String(row.inward ?? 0)}</td>
+                      <td className="p-2 text-right text-sm tabular-nums">{String(row.outward ?? 0)}</td>
+                      <td className="p-2 text-right text-sm font-medium tabular-nums">
+                        {String(row.runningBalance ?? 0)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-sm text-slate-500">
+                      No stock movements for this product
+                      {warehouseId ? ' in the selected warehouse' : ''}.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </Table>
           </CardContent>

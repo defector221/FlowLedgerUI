@@ -9,9 +9,13 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { EntityDetailPage, EntityFormPage, EntityListPage } from '@/features/shared/EntityPages'
 import { InventoryPage, SimpleInventoryPage } from '@/features/inventory/InventoryPages'
 import {
+  CreateChallanPage,
+  CreateGrnPage,
   CreateInvoicePage,
+  CreatePurchaseInvoicePage,
   CreatePurchaseOrderPage,
   CreateQuotationPage,
+  CreateSalesOrderPage,
   DocumentListPage,
   PaymentCreatePage,
 } from '@/features/sales/SalesPages'
@@ -36,6 +40,15 @@ import { TeamManagementPage } from '@/features/settings/TeamManagementPage'
 import { BillingPage } from '@/features/settings/BillingPage'
 import { ReminderRulesPage } from '@/features/settings/ReminderRulesPage'
 import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
+import {
+  AccountingDashboardPage,
+  AccountingReportsPage,
+  ChartOfAccountsPage,
+  JournalCreatePage,
+  JournalDetailPage,
+  JournalsPage,
+  PartyLedgerPage,
+} from '@/features/accounting/AccountingPages'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -121,8 +134,30 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'sales/quotations/new', element: <CreateQuotationPage /> },
-      { path: 'sales/orders', element: <DocumentListPage title="Sales orders" endpoint="orders" /> },
-      { path: 'sales/challans', element: <DocumentListPage title="Delivery challans" endpoint="challans" /> },
+      {
+        path: 'sales/orders',
+        element: (
+          <DocumentListPage
+            title="Sales orders"
+            endpoint="orders"
+            createPath="/sales/orders/new"
+            createLabel="Create sales order"
+          />
+        ),
+      },
+      { path: 'sales/orders/new', element: <CreateSalesOrderPage /> },
+      {
+        path: 'sales/challans',
+        element: (
+          <DocumentListPage
+            title="Delivery challans"
+            endpoint="challans"
+            createPath="/sales/challans/new"
+            createLabel="Create challan"
+          />
+        ),
+      },
+      { path: 'sales/challans/new', element: <CreateChallanPage /> },
       {
         path: 'sales/invoices',
         element: (
@@ -149,11 +184,30 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'purchases/orders/new', element: <CreatePurchaseOrderPage /> },
-      { path: 'purchases/grn', element: <DocumentListPage title="Goods receipt notes" endpoint="grn" /> },
+      {
+        path: 'purchases/grn',
+        element: (
+          <DocumentListPage
+            title="Goods receipt notes"
+            endpoint="grn"
+            createPath="/purchases/grn/new"
+            createLabel="Create GRN"
+          />
+        ),
+      },
+      { path: 'purchases/grn/new', element: <CreateGrnPage /> },
       {
         path: 'purchases/invoices',
-        element: <DocumentListPage title="Purchase invoices" endpoint="purchase-invoices" />,
+        element: (
+          <DocumentListPage
+            title="Purchase invoices"
+            endpoint="purchase-invoices"
+            createPath="/purchases/invoices/new"
+            createLabel="Create purchase invoice"
+          />
+        ),
       },
+      { path: 'purchases/invoices/new', element: <CreatePurchaseInvoicePage /> },
       { path: 'purchases/invoices/:id', element: <PurchaseInvoiceDetailPage /> },
       {
         path: 'payments/received',
@@ -179,6 +233,15 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'payments/suppliers/new', element: <PaymentCreatePage defaultType="PAYMENT" /> },
+      { path: 'accounting', element: <AccountingDashboardPage /> },
+      { path: 'accounting/chart-of-accounts', element: <ChartOfAccountsPage /> },
+      { path: 'accounting/journals', element: <JournalsPage /> },
+      { path: 'accounting/journals/new', element: <JournalCreatePage /> },
+      { path: 'accounting/journals/:id', element: <JournalDetailPage /> },
+      { path: 'accounting/reports', element: <AccountingReportsPage /> },
+      { path: 'accounting/ledgers/accounts/:id', element: <PartyLedgerPage party="accounts" /> },
+      { path: 'accounting/ledgers/customers/:id', element: <PartyLedgerPage party="customers" /> },
+      { path: 'accounting/ledgers/suppliers/:id', element: <PartyLedgerPage party="suppliers" /> },
       { path: 'leads', element: <LeadsListPage /> },
       { path: 'leads/new', element: <LeadCreatePage /> },
       { path: 'leads/:id', element: <LeadDetailPage /> },

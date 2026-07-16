@@ -41,6 +41,9 @@ import {
 } from '@/components/ui'
 import type { AccountRequest, AccountResponse, AccountStatus, AccountTreeNode, AccountType } from '@/types/api'
 
+const COA_TREE_GRID =
+  'grid grid-cols-[5.5rem_minmax(12rem,1fr)_5.5rem_4.5rem_minmax(7rem,8.5rem)] items-center gap-x-3'
+
 const ACCOUNT_TYPES: AccountType[] = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']
 
 const accountSchema = z.object({
@@ -140,7 +143,14 @@ function CoaTreeNodeRow({
 
   return (
     <>
-      <div className={cn('coa-tree-row coa-tree-grid', isGroup ? 'coa-tree-row--group' : 'coa-tree-row--leaf')}>
+      <div
+        className={cn(
+          COA_TREE_GRID,
+          'border-b border-slate-100 px-4 py-2 transition-colors',
+          isGroup ? 'coa-tree-row--group' : 'coa-tree-row--leaf',
+          'hover:bg-slate-50/90',
+        )}
+      >
         <span className="font-mono text-xs text-slate-500">{node.accountCode}</span>
 
         <div className="coa-tree-account min-w-0">
@@ -438,14 +448,14 @@ export function ChartOfAccountsPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="coa-tree-grid coa-tree-header min-w-[52rem]">
+                <div className={cn(COA_TREE_GRID, 'coa-tree-header min-w-[52rem] px-4')}>
                   <span>Code</span>
                   <span>Account</span>
                   <span>Type</span>
                   <span>Status</span>
                   <span className="text-right">Actions</span>
                 </div>
-                <div className="min-w-[52rem]">
+                <div className="min-w-[52rem] divide-y divide-slate-100">
                   <CoaTreeView
                     nodes={tree}
                     expandedIds={expandedIds}

@@ -400,7 +400,9 @@ export function GlobalSearch() {
         <DialogContent className="top-[max(0.75rem,env(safe-area-inset-top))] max-h-[min(92dvh,40rem)] w-[calc(100%-1rem)] max-w-xl translate-y-0 gap-0 overflow-hidden p-0 sm:top-1/2 sm:-translate-y-1/2">
           <div className="border-b border-slate-200 px-4 py-3 pr-12">
             <DialogTitle className="sr-only">Global search</DialogTitle>
-            <DialogDescription className="sr-only">Search across your active organization via OpenSearch</DialogDescription>
+            <DialogDescription className="sr-only">
+              Search across your active organization via OpenSearch
+            </DialogDescription>
             <div className="relative">
               <Search className="absolute left-0 top-2.5 size-4 text-slate-400" />
               <Input

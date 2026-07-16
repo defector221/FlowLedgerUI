@@ -127,10 +127,7 @@ export function OrganizationSettingsPage() {
   })
   return (
     <div className="max-w-4xl space-y-6">
-      <PageHeader
-        title="Organization settings"
-        subtitle="Manage business details, tax and preferences."
-      />
+      <PageHeader title="Organization settings" subtitle="Manage business details, tax and preferences." />
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           <form className="contents" onSubmit={submit}>
@@ -163,7 +160,9 @@ export function OrganizationSettingsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-500">Used on invoices and PDFs (shown as {form.watch('currency') || 'INR'} …).</p>
+              <p className="text-xs text-slate-500">
+                Used on invoices and PDFs (shown as {form.watch('currency') || 'INR'} …).
+              </p>
             </div>
             <Input placeholder="Financial year start" {...form.register('financialYearStart')} />
             <Input placeholder="Invoice prefix" {...form.register('invoicePrefix')} />
@@ -389,9 +388,7 @@ export function ReportsPage() {
             </p>
           </div>
 
-          {isError ? (
-            <p className="p-6 text-sm text-red-600">{getApiErrorMessage(error)}</p>
-          ) : null}
+          {isError ? <p className="p-6 text-sm text-red-600">{getApiErrorMessage(error)}</p> : null}
 
           {!ran && !data.length ? (
             <p className="py-20 text-center text-sm text-slate-500">Choose a report and click Run report.</p>
@@ -606,17 +603,13 @@ const FIXED_DESIGNS = [
     key: 'ivonne-hosting',
     name: 'Ivonne Hosting',
     accent: '#0F766E',
-    defaultTerms:
-      'Here we can write additional notes for the client to get a better understanding of this invoice.',
+    defaultTerms: 'Here we can write additional notes for the client to get a better understanding of this invoice.',
   },
 ] as const
 
 const FIXED_LAYOUT_KEYS = new Set(FIXED_DESIGNS.map((d) => d.key))
 
-function configForFixedDesign(
-  key: string,
-  termsOverride?: string,
-): InvoiceTemplateConfig {
+function configForFixedDesign(key: string, termsOverride?: string): InvoiceTemplateConfig {
   const design = FIXED_DESIGNS.find((d) => d.key === key) ?? FIXED_DESIGNS[0]
   const terms = termsOverride?.trim() || design.defaultTerms
   return {
@@ -655,7 +648,9 @@ export function TemplateDesignerPage() {
   const [previewInvoiceId, setPreviewInvoiceId] = useState('')
   const [config, setConfig] = useState<InvoiceTemplateConfig>(() => configForFixedDesign('classic-sage'))
 
-  const otherPresets = presets.filter((preset) => !FIXED_LAYOUT_KEYS.has(preset.key as (typeof FIXED_DESIGNS)[number]['key']))
+  const otherPresets = presets.filter(
+    (preset) => !FIXED_LAYOUT_KEYS.has(preset.key as (typeof FIXED_DESIGNS)[number]['key']),
+  )
   const selectedLayout =
     config.layoutKey && FIXED_LAYOUT_KEYS.has(config.layoutKey as (typeof FIXED_DESIGNS)[number]['key'])
       ? config.layoutKey
@@ -668,10 +663,7 @@ export function TemplateDesignerPage() {
     setDocumentType(preset.documentType ?? 'SALES_INVOICE')
     setEditorMode('SECTION')
     if (FIXED_LAYOUT_KEYS.has(preset.key as (typeof FIXED_DESIGNS)[number]['key'])) {
-      const terms =
-        preset.config?.footer?.defaultTerms ||
-        preset.config?.footer?.note ||
-        undefined
+      const terms = preset.config?.footer?.defaultTerms || preset.config?.footer?.note || undefined
       setConfig(configForFixedDesign(preset.key, terms))
     } else {
       setConfig(normalizeTemplateConfig(preset.config))
@@ -1298,10 +1290,8 @@ export function TaxRatesPage() {
               {data.map((row) => {
                 const cgstSharePct = Number(row.cgstSharePercent ?? 50)
                 const sgstSharePct = Number(row.sgstSharePercent ?? 50)
-                const cgstComponent =
-                  Number(row.cgstRate) || (Number(row.rate) * cgstSharePct) / 100
-                const sgstComponent =
-                  Number(row.sgstRate) || (Number(row.rate) * sgstSharePct) / 100
+                const cgstComponent = Number(row.cgstRate) || (Number(row.rate) * cgstSharePct) / 100
+                const sgstComponent = Number(row.sgstRate) || (Number(row.rate) * sgstSharePct) / 100
                 return (
                   <tr key={row.id} className="border-b">
                     <td className="p-3">{row.name}</td>

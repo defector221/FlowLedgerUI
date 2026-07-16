@@ -36,10 +36,7 @@ export function ChangePasswordPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <PageHeader
-        title="Change password"
-        subtitle="Update the password you use to sign in to FlowLedger."
-      />
+      <PageHeader title="Change password" subtitle="Update the password you use to sign in to FlowLedger." />
       <Card>
         <CardContent className="p-6">
           <form className="space-y-4" onSubmit={submit}>

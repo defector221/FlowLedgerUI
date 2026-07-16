@@ -8,7 +8,16 @@ import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/auth'
 import { PageHeader } from '@/components/layout/PageChrome'
-import { categoryApi, customerApi, organizationApi, productApi, supplierApi, taxRateApi, unitApi, warehouseApi } from '@/services/api'
+import {
+  categoryApi,
+  customerApi,
+  organizationApi,
+  productApi,
+  supplierApi,
+  taxRateApi,
+  unitApi,
+  warehouseApi,
+} from '@/services/api'
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { stripEmpty } from '@/lib/api-payload'
 import { generateEntityCode, slugifyName } from '@/lib/entity-code'
@@ -223,7 +232,17 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: customerSchema,
     buildPayload: withCountryDefaults,
     fields: [
-      { name: 'customerCode', label: 'Customer code (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'companyName', autoCodePrefix: 'CUST', readOnlyOnCreate: true },
+      {
+        name: 'customerCode',
+        label: 'Customer code (auto)',
+        list: true,
+        create: true,
+        detail: true,
+        createOnly: true,
+        autoCodeFrom: 'companyName',
+        autoCodePrefix: 'CUST',
+        readOnlyOnCreate: true,
+      },
       { name: 'companyName', label: 'Company name', required: true, list: true, create: true, detail: true },
       { name: 'customerName', label: 'Contact name', required: true, list: true, create: true, detail: true },
       { name: 'phone', label: 'Phone', list: true, create: true, detail: true },
@@ -263,7 +282,15 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: supplierSchema,
     buildPayload: withCountryDefaults,
     fields: [
-      { name: 'supplierCode', label: 'Supplier code', required: true, list: true, create: true, detail: true, createOnly: true },
+      {
+        name: 'supplierCode',
+        label: 'Supplier code',
+        required: true,
+        list: true,
+        create: true,
+        detail: true,
+        createOnly: true,
+      },
       { name: 'companyName', label: 'Company name', required: true, list: true, create: true, detail: true },
       { name: 'supplierName', label: 'Contact name', required: true, list: true, create: true, detail: true },
       { name: 'phone', label: 'Phone', list: true, create: true, detail: true },
@@ -305,7 +332,17 @@ const configs: Record<EntityKind, EntityConfig> = {
     schema: productSchema,
     buildPayload: withProductDefaults,
     fields: [
-      { name: 'sku', label: 'SKU (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'name', autoCodePrefix: 'SKU', readOnlyOnCreate: true },
+      {
+        name: 'sku',
+        label: 'SKU (auto)',
+        list: true,
+        create: true,
+        detail: true,
+        createOnly: true,
+        autoCodeFrom: 'name',
+        autoCodePrefix: 'SKU',
+        readOnlyOnCreate: true,
+      },
       { name: 'name', label: 'Name', required: true, list: true, create: true, detail: true },
       {
         name: 'itemType',
@@ -320,7 +357,16 @@ const configs: Record<EntityKind, EntityConfig> = {
         defaultValue: 'PRODUCT',
       },
       { name: 'barcode', label: 'Barcode', list: true, create: true, detail: true, showWhenItemType: 'PRODUCT' },
-      { name: 'categoryId', label: 'Category', type: 'select', optionsKey: 'categories', create: true, detail: true, displayField: 'categoryName', showWhenItemType: 'PRODUCT' },
+      {
+        name: 'categoryId',
+        label: 'Category',
+        type: 'select',
+        optionsKey: 'categories',
+        create: true,
+        detail: true,
+        displayField: 'categoryName',
+        showWhenItemType: 'PRODUCT',
+      },
       {
         name: 'unitId',
         label: 'Unit',
@@ -332,7 +378,15 @@ const configs: Record<EntityKind, EntityConfig> = {
         displayField: 'unitName',
         showWhenItemType: 'PRODUCT',
       },
-      { name: 'taxRateId', label: 'Tax rate', type: 'select', optionsKey: 'taxRates', create: true, detail: true, displayField: 'taxRateName' },
+      {
+        name: 'taxRateId',
+        label: 'Tax rate',
+        type: 'select',
+        optionsKey: 'taxRates',
+        create: true,
+        detail: true,
+        displayField: 'taxRateName',
+      },
       { name: 'brand', label: 'Brand', create: true, detail: true, showWhenItemType: 'PRODUCT' },
       { name: 'hsnSacCode', label: 'HSN/SAC', create: true, detail: true, showWhenItemType: 'PRODUCT' },
       { name: 'description', label: 'Description', create: true, detail: true },
@@ -354,7 +408,15 @@ const configs: Record<EntityKind, EntityConfig> = {
         defaultValue: 0,
         showWhenItemType: 'PRODUCT',
       },
-      { name: 'mrp', label: 'MRP', type: 'number', create: true, detail: true, defaultValue: 0, showWhenItemType: 'PRODUCT' },
+      {
+        name: 'mrp',
+        label: 'MRP',
+        type: 'number',
+        create: true,
+        detail: true,
+        defaultValue: 0,
+        showWhenItemType: 'PRODUCT',
+      },
       {
         name: 'openingStock',
         label: 'Opening stock',
@@ -432,7 +494,17 @@ const configs: Record<EntityKind, EntityConfig> = {
     update: (id, payload) => warehouseApi.update(id, payload as never),
     schema: warehouseSchema,
     fields: [
-      { name: 'warehouseCode', label: 'Warehouse code (auto)', list: true, create: true, detail: true, createOnly: true, autoCodeFrom: 'warehouseName', autoCodePrefix: 'WH', readOnlyOnCreate: true },
+      {
+        name: 'warehouseCode',
+        label: 'Warehouse code (auto)',
+        list: true,
+        create: true,
+        detail: true,
+        createOnly: true,
+        autoCodeFrom: 'warehouseName',
+        autoCodePrefix: 'WH',
+        readOnlyOnCreate: true,
+      },
       { name: 'warehouseName', label: 'Warehouse name', required: true, list: true, create: true, detail: true },
       { name: 'address', label: 'Address', list: true, create: true, detail: true },
       { name: 'contactPerson', label: 'Contact person', create: true, detail: true },
@@ -453,11 +525,7 @@ function formatValue(field: FieldConfig, value: unknown) {
   return String(value ?? '—')
 }
 
-function resolveDisplayValue(
-  field: FieldConfig,
-  item: Record<string, unknown> | undefined,
-  optionLabel?: string,
-) {
+function resolveDisplayValue(field: FieldConfig, item: Record<string, unknown> | undefined, optionLabel?: string) {
   if (!item) return '—'
   if (field.displayField) {
     const labeled = item[field.displayField]
@@ -812,7 +880,9 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                       readOnly={readOnly}
                       className={readOnly ? 'bg-slate-50 text-slate-600' : undefined}
                       value={Number(form.watch(field.name as never) ?? 0)}
-                      onValueChange={(value) => form.setValue(field.name as never, value as never, { shouldDirty: true })}
+                      onValueChange={(value) =>
+                        form.setValue(field.name as never, value as never, { shouldDirty: true })
+                      }
                     />
                   ) : (
                     <>

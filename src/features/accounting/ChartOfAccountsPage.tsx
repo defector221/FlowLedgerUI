@@ -140,12 +140,7 @@ function CoaTreeNodeRow({
 
   return (
     <>
-      <div
-        className={cn(
-          'coa-tree-row coa-tree-grid',
-          isGroup ? 'coa-tree-row--group' : 'coa-tree-row--leaf',
-        )}
-      >
+      <div className={cn('coa-tree-row coa-tree-grid', isGroup ? 'coa-tree-row--group' : 'coa-tree-row--leaf')}>
         <span className="font-mono text-xs text-slate-500">{node.accountCode}</span>
 
         <div className="coa-tree-account min-w-0">
@@ -204,10 +199,7 @@ function CoaTreeNodeRow({
 
         <span className="text-xs font-medium text-slate-500">{node.accountType}</span>
 
-        <Badge
-          variant={node.status === 'ACTIVE' ? 'success' : 'neutral'}
-          className="w-fit text-[0.62rem]"
-        >
+        <Badge variant={node.status === 'ACTIVE' ? 'success' : 'neutral'} className="w-fit text-[0.62rem]">
           {node.status}
         </Badge>
 
@@ -262,11 +254,19 @@ export function ChartOfAccountsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<AccountResponse | AccountTreeNode | null>(null)
 
-  const { data: tree = [], isLoading: loadingTree, refetch: refetchTree } = useQuery({
+  const {
+    data: tree = [],
+    isLoading: loadingTree,
+    refetch: refetchTree,
+  } = useQuery({
     queryKey: ['accounting', 'accounts', 'tree'],
     queryFn: accountingApi.accountTree,
   })
-  const { data: list = [], isLoading: loadingList, refetch: refetchList } = useQuery({
+  const {
+    data: list = [],
+    isLoading: loadingList,
+    refetch: refetchList,
+  } = useQuery({
     queryKey: ['accounting', 'accounts'],
     queryFn: accountingApi.listAccounts,
   })
@@ -391,19 +391,11 @@ export function ChartOfAccountsPage() {
         subtitle="Organisation ledger structure with system posting accounts and custom accounts."
         actions={
           <>
-            <Button
-              variant={view === 'tree' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('tree')}
-            >
+            <Button variant={view === 'tree' ? 'default' : 'outline'} size="sm" onClick={() => setView('tree')}>
               <FolderTree className="mr-1.5 size-4" />
               Tree
             </Button>
-            <Button
-              variant={view === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('list')}
-            >
+            <Button variant={view === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setView('list')}>
               <List className="mr-1.5 size-4" />
               List
             </Button>
@@ -435,8 +427,7 @@ export function ChartOfAccountsPage() {
               <div className="coa-tree overflow-x-auto">
                 <div className="coa-tree-toolbar">
                   <p className="text-xs text-slate-500">
-                    {expandableIds.filter((id) => expandedIds.has(id)).length} of {expandableIds.length} groups
-                    expanded
+                    {expandableIds.filter((id) => expandedIds.has(id)).length} of {expandableIds.length} groups expanded
                   </p>
                   <div className="flex gap-1">
                     <Button type="button" variant="ghost" size="sm" onClick={expandAll}>
@@ -531,10 +522,7 @@ export function ChartOfAccountsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogTitle>{editing ? 'Edit account' : 'Create account'}</DialogTitle>
-          <form
-            className="space-y-4"
-            onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}
-          >
+          <form className="space-y-4" onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Account code</Label>
@@ -591,10 +579,7 @@ export function ChartOfAccountsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Status</Label>
-                <Select
-                  value={form.watch('status')}
-                  onValueChange={(v) => form.setValue('status', v as AccountStatus)}
-                >
+                <Select value={form.watch('status')} onValueChange={(v) => form.setValue('status', v as AccountStatus)}>
                   <SelectTrigger>{form.watch('status')}</SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">Active</SelectItem>

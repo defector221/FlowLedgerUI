@@ -4,13 +4,7 @@ import { partyParts, type PartyLike } from '@/lib/party-label'
 export type { PartyLike }
 
 /** Two-line professional party label for dropdowns and detail headers. */
-export function PartySelectLabel({
-  party,
-  className,
-}: {
-  party: PartyLike
-  className?: string
-}) {
+export function PartySelectLabel({ party, className }: { party: PartyLike; className?: string }) {
   const { primary, secondary, meta } = partyParts(party)
   return (
     <span className={cn('flex min-w-0 flex-col gap-0.5 text-left leading-tight', className)}>

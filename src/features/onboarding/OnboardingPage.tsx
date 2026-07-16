@@ -543,11 +543,7 @@ export function OnboardingPage() {
                   <Input {...warehouseForm.register('warehouseName')} />
                 </Field>
                 <Field label="Warehouse Code" error={warehouseForm.formState.errors.warehouseCode?.message}>
-                  <Input
-                    {...warehouseForm.register('warehouseCode')}
-                    readOnly
-                    className="bg-slate-50 text-slate-600"
-                  />
+                  <Input {...warehouseForm.register('warehouseCode')} readOnly className="bg-slate-50 text-slate-600" />
                   <p className="mt-1 text-xs text-slate-500">Generated from the warehouse name</p>
                 </Field>
                 <Field label="Address">

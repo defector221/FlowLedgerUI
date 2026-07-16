@@ -215,9 +215,7 @@ export function SimpleInventoryPage({
             <div className="space-y-1.5">
               <Label>Product</Label>
               <Select value={productId} onValueChange={setProductId}>
-                <SelectTrigger>
-                  {products.find((p) => p.id === productId)?.name ?? 'Select product'}
-                </SelectTrigger>
+                <SelectTrigger>{products.find((p) => p.id === productId)?.name ?? 'Select product'}</SelectTrigger>
                 <SelectContent>
                   {products.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
@@ -270,9 +268,7 @@ export function SimpleInventoryPage({
                   <SelectContent>
                     {warehouses.map((warehouse) => (
                       <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.defaultWarehouse
-                          ? `${warehouse.warehouseName} (default)`
-                          : warehouse.warehouseName}
+                        {warehouse.defaultWarehouse ? `${warehouse.warehouseName} (default)` : warehouse.warehouseName}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -29,9 +29,7 @@ export function OrganizationSwitcher() {
       </span>
       <div className="hidden min-w-0 text-left md:block">
         <p className="truncate text-sm font-medium text-slate-900">{activeOrganization.organizationName}</p>
-        <p className="truncate text-xs text-slate-500">
-          {activeOrganization.roles[0]?.replace(/_/g, ' ') ?? 'Member'}
-        </p>
+        <p className="truncate text-xs text-slate-500">{activeOrganization.roles[0]?.replace(/_/g, ' ') ?? 'Member'}</p>
       </div>
       {multiple && <ChevronDown className="size-4 shrink-0 text-slate-500" />}
     </div>

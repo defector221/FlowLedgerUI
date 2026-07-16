@@ -472,16 +472,14 @@ export const documentPresets: UnlayerPreset[] = [
       },
     ),
   },
-  ...styledInvoicePresets.map(
-    (preset): UnlayerPreset => ({
-      key: preset.key,
-      name: preset.name,
-      description: preset.description,
-      category: 'document',
-      documentType: 'SALES_INVOICE',
-      design: preset.design,
-    }),
-  ),
+  ...styledInvoicePresets.map((preset): UnlayerPreset => ({
+    key: preset.key,
+    name: preset.name,
+    description: preset.description,
+    category: 'document',
+    documentType: 'SALES_INVOICE',
+    design: preset.design,
+  })),
   {
     key: 'quotation-pro',
     name: 'Professional quotation',

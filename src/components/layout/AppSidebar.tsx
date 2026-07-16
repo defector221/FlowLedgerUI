@@ -73,7 +73,12 @@ const groups = [
       { to: '/payments/received', label: 'Payments received', icon: Wallet, module: 'payments' as const },
       { to: '/payments/suppliers', label: 'Supplier payments', icon: Wallet, module: 'payments' as const },
       { to: '/accounting', label: 'Accounting', icon: BookOpen, module: 'accounting' as const },
-      { to: '/accounting/chart-of-accounts', label: 'Chart of accounts', icon: FileText, module: 'accounting' as const },
+      {
+        to: '/accounting/chart-of-accounts',
+        label: 'Chart of accounts',
+        icon: FileText,
+        module: 'accounting' as const,
+      },
       { to: '/accounting/journals', label: 'Journals', icon: ReceiptText, module: 'accounting' as const },
       { to: '/accounting/reports', label: 'Accounting reports', icon: BarChart3, module: 'accounting' as const },
       { to: '/reports', label: 'Reports', icon: BarChart3, module: 'reports' as const },

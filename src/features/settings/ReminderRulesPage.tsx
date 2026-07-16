@@ -30,8 +30,7 @@ const emptyForm: PaymentReminderRuleRequest = {
   channel: 'EMAIL',
   enabled: true,
   subjectTemplate: 'Payment reminder for invoice {{invoiceNumber}}',
-  bodyTemplate:
-    'Dear {{customerName}}, outstanding amount for invoice {{invoiceNumber}} is {{outstanding}}.',
+  bodyTemplate: 'Dear {{customerName}}, outstanding amount for invoice {{invoiceNumber}} is {{outstanding}}.',
 }
 
 export function ReminderRulesPage() {
@@ -165,10 +164,7 @@ export function ReminderRulesPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Offset type</Label>
-                <Select
-                  value={form.offsetType}
-                  onValueChange={(offsetType) => setForm((f) => ({ ...f, offsetType }))}
-                >
+                <Select value={form.offsetType} onValueChange={(offsetType) => setForm((f) => ({ ...f, offsetType }))}>
                   <SelectTrigger>
                     {form.offsetType === 'BEFORE_DUE'
                       ? 'Before due'
@@ -210,10 +206,7 @@ export function ReminderRulesPage() {
                 <p className="text-sm font-medium text-slate-900">Enabled</p>
                 <p className="text-xs text-slate-500">Include this rule in the daily 9:00 job</p>
               </div>
-              <Switch
-                checked={!!form.enabled}
-                onCheckedChange={(enabled) => setForm((f) => ({ ...f, enabled }))}
-              />
+              <Switch checked={!!form.enabled} onCheckedChange={(enabled) => setForm((f) => ({ ...f, enabled }))} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="subject">Subject template</Label>

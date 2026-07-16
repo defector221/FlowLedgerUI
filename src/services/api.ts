@@ -187,13 +187,9 @@ export const salesApi = {
   cancelOrder: (id: string) =>
     api.post(`/sales/orders/${id}/cancel`).then((r) => unwrapApi<Record<string, unknown>>(r)),
   convertOrderToChallan: (id: string, body: { warehouseId: string }) =>
-    api
-      .post(`/sales/orders/${id}/convert-to-challan`, body)
-      .then((r) => unwrapApi<Record<string, unknown>>(r)),
+    api.post(`/sales/orders/${id}/convert-to-challan`, body).then((r) => unwrapApi<Record<string, unknown>>(r)),
   convertOrderToInvoice: (id: string, body: { warehouseId?: string }) =>
-    api
-      .post(`/sales/orders/${id}/convert-to-invoice`, body)
-      .then((r) => unwrapApi<Record<string, unknown>>(r)),
+    api.post(`/sales/orders/${id}/convert-to-invoice`, body).then((r) => unwrapApi<Record<string, unknown>>(r)),
 
   listChallans: () => api.get('/sales/challans').then((r) => unwrapList<Record<string, unknown>>(r)),
   getChallan: (id: string) => api.get(`/sales/challans/${id}`).then((r) => unwrapApi<Record<string, unknown>>(r)),
@@ -268,8 +264,7 @@ export const paymentApi = {
     api
       .post(`/payment-reminders/invoices/${invoiceId}/send`, channels ? { channels } : {})
       .then((r) => unwrapApi<{ reminderId: string; sent: boolean; message: string }>(r)),
-  listReminderRules: () =>
-    api.get('/payment-reminders/rules').then((r) => unwrapList<PaymentReminderRuleResponse>(r)),
+  listReminderRules: () => api.get('/payment-reminders/rules').then((r) => unwrapList<PaymentReminderRuleResponse>(r)),
   createReminderRule: (payload: PaymentReminderRuleRequest) =>
     api.post('/payment-reminders/rules', payload).then((r) => unwrapApi<PaymentReminderRuleResponse>(r)),
   updateReminderRule: (id: string, payload: PaymentReminderRuleRequest) =>
@@ -281,8 +276,7 @@ export const notificationApi = {
   list: (params?: { page?: number; size?: number }) =>
     api.get('/notifications', { params }).then((r) => unwrapPage<InAppNotificationResponse>(r)),
   unreadCount: () => api.get('/notifications/unread-count').then((r) => unwrapApi<{ count: number }>(r)),
-  markRead: (id: string) =>
-    api.post(`/notifications/${id}/read`).then((r) => unwrapApi<InAppNotificationResponse>(r)),
+  markRead: (id: string) => api.post(`/notifications/${id}/read`).then((r) => unwrapApi<InAppNotificationResponse>(r)),
   markAllRead: () => api.post('/notifications/read-all').then((r) => unwrapApi<{ count: number }>(r)),
 }
 
@@ -601,21 +595,37 @@ export const accountingApi = {
   reverseJournal: (id: string) =>
     api.post(`/accounting/journals/${id}/reverse`).then((r) => unwrapApi<import('@/types/api').JournalResponse>(r)),
   accountLedger: (id: string, params?: Record<string, string>) =>
-    api.get(`/accounting/ledgers/accounts/${id}`, { params }).then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
+    api
+      .get(`/accounting/ledgers/accounts/${id}`, { params })
+      .then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
   customerLedger: (id: string, params?: Record<string, string>) =>
-    api.get(`/accounting/ledgers/customers/${id}`, { params }).then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
+    api
+      .get(`/accounting/ledgers/customers/${id}`, { params })
+      .then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
   supplierLedger: (id: string, params?: Record<string, string>) =>
-    api.get(`/accounting/ledgers/suppliers/${id}`, { params }).then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
+    api
+      .get(`/accounting/ledgers/suppliers/${id}`, { params })
+      .then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
   trialBalance: (params?: Record<string, string>) =>
-    api.get('/accounting/reports/trial-balance', { params }).then((r) => unwrapApi<import('@/types/api').TrialBalanceResponse>(r)),
+    api
+      .get('/accounting/reports/trial-balance', { params })
+      .then((r) => unwrapApi<import('@/types/api').TrialBalanceResponse>(r)),
   profitAndLoss: (params?: Record<string, string>) =>
-    api.get('/accounting/reports/profit-loss', { params }).then((r) => unwrapApi<import('@/types/api').ProfitAndLossResponse>(r)),
+    api
+      .get('/accounting/reports/profit-loss', { params })
+      .then((r) => unwrapApi<import('@/types/api').ProfitAndLossResponse>(r)),
   balanceSheet: (params?: Record<string, string>) =>
-    api.get('/accounting/reports/balance-sheet', { params }).then((r) => unwrapApi<import('@/types/api').BalanceSheetResponse>(r)),
+    api
+      .get('/accounting/reports/balance-sheet', { params })
+      .then((r) => unwrapApi<import('@/types/api').BalanceSheetResponse>(r)),
   gstSummary: (params?: Record<string, string>) =>
-    api.get('/accounting/reports/gst-summary', { params }).then((r) => unwrapApi<import('@/types/api').GstSummaryResponse>(r)),
+    api
+      .get('/accounting/reports/gst-summary', { params })
+      .then((r) => unwrapApi<import('@/types/api').GstSummaryResponse>(r)),
   integrityCheck: () =>
-    api.get('/accounting/reports/integrity-check').then((r) =>
-      unwrapApi<{ healthy: boolean; issues: Array<{ code: string; message: string; journalEntryId?: string }> }>(r),
-    ),
+    api
+      .get('/accounting/reports/integrity-check')
+      .then((r) =>
+        unwrapApi<{ healthy: boolean; issues: Array<{ code: string; message: string; journalEntryId?: string }> }>(r),
+      ),
 }

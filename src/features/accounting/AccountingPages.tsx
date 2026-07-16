@@ -112,7 +112,9 @@ function ChartTooltip({
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[var(--shadow-soft)]">
-      {label ? <p className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">{label}</p> : null}
+      {label ? (
+        <p className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      ) : null}
       {payload.map((p, i) => (
         <p key={`${p.name}-${i}`} className="text-sm font-medium text-slate-800">
           <span className="mr-2 inline-block size-2 rounded-full" style={{ background: p.color ?? CHART.teal }} />
@@ -131,10 +133,7 @@ function SnapshotBars({
   rows: Array<{ name: string; values: Array<{ key: string; amount: number; color: string }> }>
   emptyLabel?: string
 }) {
-  const max = Math.max(
-    1,
-    ...rows.flatMap((r) => r.values.map((v) => Math.abs(Number(v.amount) || 0))),
-  )
+  const max = Math.max(1, ...rows.flatMap((r) => r.values.map((v) => Math.abs(Number(v.amount) || 0))))
   const any = rows.some((r) => r.values.some((v) => Number(v.amount) !== 0))
   if (!any) {
     return (
@@ -381,7 +380,11 @@ export function AccountingDashboardPage() {
 }
 
 export function JournalsPage() {
-  const { data = [], refetch, isLoading } = useQuery({
+  const {
+    data = [],
+    refetch,
+    isLoading,
+  } = useQuery({
     queryKey: ['accounting', 'journals'],
     queryFn: () => accountingApi.listJournals({ size: 50 }) as Promise<JournalResponse[]>,
   })
@@ -658,7 +661,14 @@ export function PartyLedgerPage({ party }: { party: 'customers' | 'suppliers' | 
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const params = { ...(from ? { from } : {}), ...(to ? { to } : {}) }
-  const { data = [], refetch, isFetching, isLoading, isError, error } = useQuery({
+  const {
+    data = [],
+    refetch,
+    isFetching,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['accounting', 'ledger', party, id, from, to],
     queryFn: async () => {
       if (party === 'customers') return accountingApi.customerLedger(id, params) as Promise<LedgerLineResponse[]>
@@ -667,8 +677,7 @@ export function PartyLedgerPage({ party }: { party: 'customers' | 'suppliers' | 
     },
     enabled: !!id,
   })
-  const title =
-    party === 'customers' ? 'Customer ledger' : party === 'suppliers' ? 'Supplier ledger' : 'Account ledger'
+  const title = party === 'customers' ? 'Customer ledger' : party === 'suppliers' ? 'Supplier ledger' : 'Account ledger'
 
   return (
     <div className="space-y-6">
@@ -718,7 +727,10 @@ export function PartyLedgerPage({ party }: { party: 'customers' | 'suppliers' | 
                   <tr key={`${row.journalEntryId}-${i}`} className="border-t border-slate-100 text-[0.875rem]">
                     <td className="px-5 py-3 text-slate-600">{row.entryDate}</td>
                     <td className="px-5 py-3">
-                      <Link className="font-semibold text-teal-700 hover:underline" to={`/accounting/journals/${row.journalEntryId}`}>
+                      <Link
+                        className="font-semibold text-teal-700 hover:underline"
+                        to={`/accounting/journals/${row.journalEntryId}`}
+                      >
                         {row.entryNumber}
                       </Link>
                     </td>
@@ -769,20 +781,13 @@ export function AccountingReportsPage() {
   const yearlyPl = useQueries({
     queries: fySlices.map((slice) => ({
       queryKey: ['accounting', 'pl-fy', slice.from, slice.to],
-      queryFn: () =>
-        accountingApi.profitAndLoss({ from: slice.from, to: slice.to }) as Promise<ProfitAndLossResponse>,
+      queryFn: () => accountingApi.profitAndLoss({ from: slice.from, to: slice.to }) as Promise<ProfitAndLossResponse>,
     })),
   })
 
   const runAll = async () => {
     try {
-      await Promise.all([
-        tb.refetch(),
-        pl.refetch(),
-        bs.refetch(),
-        gst.refetch(),
-        ...yearlyPl.map((q) => q.refetch()),
-      ])
+      await Promise.all([tb.refetch(), pl.refetch(), bs.refetch(), gst.refetch(), ...yearlyPl.map((q) => q.refetch())])
       toast.success('Reports refreshed')
     } catch (e) {
       toast.error(getApiErrorMessage(e))
@@ -818,8 +823,7 @@ export function AccountingReportsPage() {
   const gstNet = [
     {
       name: 'Output tax',
-      amount:
-        Number(gst.data?.outputCgst ?? 0) + Number(gst.data?.outputSgst ?? 0) + Number(gst.data?.outputIgst ?? 0),
+      amount: Number(gst.data?.outputCgst ?? 0) + Number(gst.data?.outputSgst ?? 0) + Number(gst.data?.outputIgst ?? 0),
       fill: CHART.amber,
     },
     {
@@ -904,7 +908,10 @@ export function AccountingReportsPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0">
           <CardHeader>
-            <SectionTitle title="Income by financial year" detail="Taxable revenue / sales totals per Indian FY (Apr–Mar)" />
+            <SectionTitle
+              title="Income by financial year"
+              detail="Taxable revenue / sales totals per Indian FY (Apr–Mar)"
+            />
           </CardHeader>
           <CardContent>
             <div className="h-72 min-w-0">
@@ -963,7 +970,10 @@ export function AccountingReportsPage() {
 
       <Card className="min-w-0">
         <CardHeader>
-          <SectionTitle title="Income vs expenses by year" detail="Side-by-side comparison across financial years in range" />
+          <SectionTitle
+            title="Income vs expenses by year"
+            detail="Side-by-side comparison across financial years in range"
+          />
         </CardHeader>
         <CardContent>
           <div className="h-72 min-w-0">
@@ -1124,7 +1134,10 @@ export function AccountingReportsPage() {
       {tb.data ? (
         <Card>
           <CardHeader>
-            <SectionTitle title="Trial balance detail" detail={`Totals · Dr ${money(tb.data.totalDebit)} · Cr ${money(tb.data.totalCredit)}`} />
+            <SectionTitle
+              title="Trial balance detail"
+              detail={`Totals · Dr ${money(tb.data.totalDebit)} · Cr ${money(tb.data.totalCredit)}`}
+            />
           </CardHeader>
           <CardContent className="p-0">
             <Table>

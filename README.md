@@ -4,18 +4,18 @@ React + TypeScript ERP frontend for [FlowLedger API](../FlowLedgerAPI). Multi-te
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| Build | Vite 8, TypeScript 6 |
-| UI | React 19, Tailwind CSS v4 |
-| Routing | React Router 7 |
-| Server state | TanStack React Query 5 |
-| HTTP | Axios (JWT + refresh interceptor) |
-| Forms | React Hook Form + Zod |
-| Components | Radix UI primitives (shadcn-style) |
-| Charts | Recharts |
-| Toasts | Sonner |
-| Email editor | react-email-editor (Unlayer) |
+| Layer        | Technology                         |
+| ------------ | ---------------------------------- |
+| Build        | Vite 8, TypeScript 6               |
+| UI           | React 19, Tailwind CSS v4          |
+| Routing      | React Router 7                     |
+| Server state | TanStack React Query 5             |
+| HTTP         | Axios (JWT + refresh interceptor)  |
+| Forms        | React Hook Form + Zod              |
+| Components   | Radix UI primitives (shadcn-style) |
+| Charts       | Recharts                           |
+| Toasts       | Sonner                             |
+| Email editor | react-email-editor (Unlayer)       |
 
 ---
 
@@ -72,14 +72,14 @@ flowchart LR
   Header --> Main
 ```
 
-| Component | Path | Role |
-|-----------|------|------|
-| `App.tsx` | `src/App.tsx` | `RouterProvider` |
-| `providers.tsx` | `src/app/providers.tsx` | Query client, auth, toasts |
-| `router.tsx` | `src/app/router.tsx` | All routes |
-| `AppLayout` | `src/components/layout/AppLayout.tsx` | Sidebar + header shell |
-| `AppSidebar` | `src/components/layout/AppSidebar.tsx` | Navigation (RBAC-filtered) |
-| `PageChrome` | `src/components/layout/PageChrome.tsx` | `PageHeader`, `MetricCard`, `EmptyState` |
+| Component       | Path                                   | Role                                     |
+| --------------- | -------------------------------------- | ---------------------------------------- |
+| `App.tsx`       | `src/App.tsx`                          | `RouterProvider`                         |
+| `providers.tsx` | `src/app/providers.tsx`                | Query client, auth, toasts               |
+| `router.tsx`    | `src/app/router.tsx`                   | All routes                               |
+| `AppLayout`     | `src/components/layout/AppLayout.tsx`  | Sidebar + header shell                   |
+| `AppSidebar`    | `src/components/layout/AppSidebar.tsx` | Navigation (RBAC-filtered)               |
+| `PageChrome`    | `src/components/layout/PageChrome.tsx` | `PageHeader`, `MetricCard`, `EmptyState` |
 
 ### Directory layout
 
@@ -149,13 +149,13 @@ flowchart LR
   Client --> Axios["Axios interceptors"]
 ```
 
-| File | Purpose |
-|------|---------|
-| `lib/api-client.ts` | Axios instance, JWT attach, 401 refresh, session R/W |
-| `services/api.ts` | Domain APIs: `authApi`, `salesApi`, `accountingApi`, etc. |
-| `lib/api-response.ts` | `unwrapApi`, `unwrapPage`, `unwrapList` |
-| `lib/api-error.ts` | Error messages, form field mapping |
-| `types/api.ts` | Request/response TypeScript types |
+| File                  | Purpose                                                   |
+| --------------------- | --------------------------------------------------------- |
+| `lib/api-client.ts`   | Axios instance, JWT attach, 401 refresh, session R/W      |
+| `services/api.ts`     | Domain APIs: `authApi`, `salesApi`, `accountingApi`, etc. |
+| `lib/api-response.ts` | `unwrapApi`, `unwrapPage`, `unwrapList`                   |
+| `lib/api-error.ts`    | Error messages, form field mapping                        |
+| `types/api.ts`        | Request/response TypeScript types                         |
 
 **Base URL resolution (`api-client.ts`):**
 
@@ -171,27 +171,27 @@ All authenticated routes live under `AppLayout` with `ProtectedRoute` + `Onboard
 
 ### Dashboard
 
-| Route | Page |
-|-------|------|
-| `/` | Dashboard KPIs + sales trend chart |
+| Route | Page                               |
+| ----- | ---------------------------------- |
+| `/`   | Dashboard KPIs + sales trend chart |
 
 ### Masters (shared entity pattern)
 
-| Route pattern | Entity |
-|---------------|--------|
+| Route pattern                                               | Entity                                                           |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- |
 | `/{kind}`, `/{kind}/new`, `/{kind}/:id`, `/{kind}/:id/edit` | `customers`, `suppliers`, `products`, `categories`, `warehouses` |
 
 Implemented in `src/features/shared/EntityPages.tsx` — config-driven list, create, edit, detail.
 
 ### Inventory
 
-| Route | Purpose |
-|-------|---------|
-| `/inventory` | Stock overview |
-| `/inventory/ledger` | Stock ledger by product |
-| `/inventory/adjustments` | Quantity adjustments |
-| `/inventory/transfers` | Inter-warehouse transfers |
-| `/inventory/opening-stock` | Opening stock entry |
+| Route                      | Purpose                   |
+| -------------------------- | ------------------------- |
+| `/inventory`               | Stock overview            |
+| `/inventory/ledger`        | Stock ledger by product   |
+| `/inventory/adjustments`   | Quantity adjustments      |
+| `/inventory/transfers`     | Inter-warehouse transfers |
+| `/inventory/opening-stock` | Opening stock entry       |
 
 ### Sales and purchase document flow
 
@@ -207,57 +207,57 @@ flowchart LR
   PI --> SP["Supplier Payment"]
 ```
 
-| Module | List | Create | Detail |
-|--------|------|--------|--------|
-| Quotations | `/sales/quotations` | `/new` | — |
-| Sales orders | `/sales/orders` | `/new` | — |
-| Delivery challans | `/sales/challans` | `/new` | — |
-| Sales invoices | `/sales/invoices` | `/new` | `/sales/invoices/:id` |
-| Purchase orders | `/purchases/orders` | `/new` | — |
-| GRN | `/purchases/grn` | `/new` | — |
-| Purchase invoices | `/purchases/invoices` | `/new` | `/purchases/invoices/:id` |
-| Payments | `/payments/received`, `/payments/suppliers` | `/new` | — |
+| Module            | List                                        | Create | Detail                    |
+| ----------------- | ------------------------------------------- | ------ | ------------------------- |
+| Quotations        | `/sales/quotations`                         | `/new` | —                         |
+| Sales orders      | `/sales/orders`                             | `/new` | —                         |
+| Delivery challans | `/sales/challans`                           | `/new` | —                         |
+| Sales invoices    | `/sales/invoices`                           | `/new` | `/sales/invoices/:id`     |
+| Purchase orders   | `/purchases/orders`                         | `/new` | —                         |
+| GRN               | `/purchases/grn`                            | `/new` | —                         |
+| Purchase invoices | `/purchases/invoices`                       | `/new` | `/purchases/invoices/:id` |
+| Payments          | `/payments/received`, `/payments/suppliers` | `/new` | —                         |
 
 **Files:** `src/features/sales/SalesPages.tsx`, `src/features/sales/InvoiceDetailPages.tsx`
 
 ### Accounting
 
-| Route | Purpose |
-|-------|---------|
-| `/accounting` | Dashboard (P&L, balance sheet, GST) |
-| `/accounting/chart-of-accounts` | COA tree/list with expand/collapse |
-| `/accounting/journals` | Journal list |
-| `/accounting/journals/new` | Manual journal entry |
-| `/accounting/journals/:id` | Journal detail |
-| `/accounting/reports` | Financial reports hub |
-| `/accounting/ledgers/accounts/:id` | Account ledger |
-| `/accounting/ledgers/customers/:id` | Customer ledger |
-| `/accounting/ledgers/suppliers/:id` | Supplier ledger |
+| Route                               | Purpose                             |
+| ----------------------------------- | ----------------------------------- |
+| `/accounting`                       | Dashboard (P&L, balance sheet, GST) |
+| `/accounting/chart-of-accounts`     | COA tree/list with expand/collapse  |
+| `/accounting/journals`              | Journal list                        |
+| `/accounting/journals/new`          | Manual journal entry                |
+| `/accounting/journals/:id`          | Journal detail                      |
+| `/accounting/reports`               | Financial reports hub               |
+| `/accounting/ledgers/accounts/:id`  | Account ledger                      |
+| `/accounting/ledgers/customers/:id` | Customer ledger                     |
+| `/accounting/ledgers/suppliers/:id` | Supplier ledger                     |
 
 **Files:** `src/features/accounting/AccountingPages.tsx`, `src/features/accounting/ChartOfAccountsPage.tsx`
 
 ### CRM and marketing
 
-| Route | Purpose |
-|-------|---------|
-| `/leads` | Lead pipeline |
-| `/marketing/sequences` | Drip sequences |
-| `/marketing/campaigns` | Email blast campaigns |
+| Route                        | Purpose               |
+| ---------------------------- | --------------------- |
+| `/leads`                     | Lead pipeline         |
+| `/marketing/sequences`       | Drip sequences        |
+| `/marketing/campaigns`       | Email blast campaigns |
 | `/marketing/email-templates` | Unlayer email designs |
 
 ### Settings and admin
 
-| Route | Access | Purpose |
-|-------|--------|---------|
-| `/settings/organization` | Admin | Org profile |
-| `/settings/users` | Admin | Team and invites |
-| `/settings/billing` | Admin | Plan and usage |
-| `/settings/tax-rates` | Admin | GST rates |
-| `/settings/units` | Admin | Units of measure |
-| `/settings/reminder-rules` | Admin | Payment reminders |
-| `/settings/password` | All | Change password |
-| `/templates` | All | Invoice PDF templates |
-| `/audit` | All | Audit log |
+| Route                      | Access | Purpose               |
+| -------------------------- | ------ | --------------------- |
+| `/settings/organization`   | Admin  | Org profile           |
+| `/settings/users`          | Admin  | Team and invites      |
+| `/settings/billing`        | Admin  | Plan and usage        |
+| `/settings/tax-rates`      | Admin  | GST rates             |
+| `/settings/units`          | Admin  | Units of measure      |
+| `/settings/reminder-rules` | Admin  | Payment reminders     |
+| `/settings/password`       | All    | Change password       |
+| `/templates`               | All    | Invoice PDF templates |
+| `/audit`                   | All    | Audit log             |
 
 ---
 
@@ -276,13 +276,13 @@ flowchart LR
 
 ### Page chrome (`src/components/layout/PageChrome.tsx`)
 
-| Export | Use |
-|--------|-----|
-| `PageHeader` | Title, subtitle, breadcrumbs, action buttons |
-| `PageShell` | Consistent `space-y-6` wrapper |
-| `MetricCard` | Dashboard stat tiles |
-| `EmptyState` | Loading / empty list states |
-| `SectionTitle` | In-page section headings |
+| Export         | Use                                          |
+| -------------- | -------------------------------------------- |
+| `PageHeader`   | Title, subtitle, breadcrumbs, action buttons |
+| `PageShell`    | Consistent `space-y-6` wrapper               |
+| `MetricCard`   | Dashboard stat tiles                         |
+| `EmptyState`   | Loading / empty list states                  |
+| `SectionTitle` | In-page section headings                     |
 
 ---
 
@@ -315,9 +315,9 @@ npm install
 npm run dev
 ```
 
-| Service | URL |
-|---------|-----|
-| UI | http://localhost:5173 |
+| Service       | URL                          |
+| ------------- | ---------------------------- |
+| UI            | http://localhost:5173        |
 | API (default) | http://localhost:7070/api/v1 |
 
 Ensure [FlowLedger API](../FlowLedgerAPI) is running with PostgreSQL and Flyway migrations applied.
@@ -330,10 +330,10 @@ If YRV seed is present: `kashyap221@gmail.com` / `passwor123d`
 
 ## Environment variables
 
-| Variable | Example | Purpose |
-|----------|---------|---------|
-| `VITE_API_BASE_URL` | `http://localhost:7070/api/v1` | Backend API base URL |
-| `VITE_UNLAYER_PROJECT_ID` | (optional) | Unlayer email editor project |
+| Variable                  | Example                        | Purpose                      |
+| ------------------------- | ------------------------------ | ---------------------------- |
+| `VITE_API_BASE_URL`       | `http://localhost:7070/api/v1` | Backend API base URL         |
+| `VITE_UNLAYER_PROJECT_ID` | (optional)                     | Unlayer email editor project |
 
 Files: `.env.example` (local), `.env.production` (deployed)
 
@@ -341,13 +341,13 @@ Files: `.env.example` (local), `.env.production` (deployed)
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Vite dev server (port 5173) |
-| `npm run build` | Typecheck + production build |
-| `npm run preview` | Preview production build |
-| `npm run lint` | oxlint |
-| `npm run verify` | Format check + lint + build |
+| Command           | Description                  |
+| ----------------- | ---------------------------- |
+| `npm run dev`     | Vite dev server (port 5173)  |
+| `npm run build`   | Typecheck + production build |
+| `npm run preview` | Preview production build     |
+| `npm run lint`    | oxlint                       |
+| `npm run verify`  | Format check + lint + build  |
 
 ---
 

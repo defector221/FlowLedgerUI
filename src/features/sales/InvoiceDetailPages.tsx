@@ -123,8 +123,7 @@ export function SalesInvoiceDetailPage() {
   const canCollect = !isDraft && !isCancelled && outstanding > 0
   const items = data.items ?? []
   const hasStockedLines = items.some((item) => (item.itemType ?? 'PRODUCT') !== 'SERVICE')
-  const taxTotal =
-    Number(data.cgstTotal ?? 0) + Number(data.sgstTotal ?? 0) + Number(data.igstTotal ?? 0)
+  const taxTotal = Number(data.cgstTotal ?? 0) + Number(data.sgstTotal ?? 0) + Number(data.igstTotal ?? 0)
 
   return (
     <div className="space-y-4">
@@ -194,11 +193,7 @@ export function SalesInvoiceDetailPage() {
           </p>
           <p>
             Warehouse:{' '}
-            {data.warehouseName
-              ? data.warehouseName
-              : hasStockedLines
-                ? '—'
-                : 'Not applicable (services only)'}
+            {data.warehouseName ? data.warehouseName : hasStockedLines ? '—' : 'Not applicable (services only)'}
           </p>
           <p>Due date: {data.dueDate || '—'}</p>
           <p className="font-semibold text-slate-900">Outstanding: {formatMoney(outstanding)}</p>
@@ -323,9 +318,7 @@ export function SalesInvoiceDetailPage() {
                 checked={reminderChannels.includes('WHATSAPP')}
                 onCheckedChange={(checked) => {
                   setReminderChannels((prev) =>
-                    checked
-                      ? Array.from(new Set([...prev, 'WHATSAPP']))
-                      : prev.filter((c) => c !== 'WHATSAPP'),
+                    checked ? Array.from(new Set([...prev, 'WHATSAPP'])) : prev.filter((c) => c !== 'WHATSAPP'),
                   )
                 }}
               />

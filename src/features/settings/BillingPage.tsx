@@ -23,10 +23,7 @@ export function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Billing & plan"
-        subtitle="Current subscription limits and usage for your account."
-      />
+      <PageHeader title="Billing & plan" subtitle="Current subscription limits and usage for your account." />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

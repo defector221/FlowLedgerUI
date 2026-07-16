@@ -7,7 +7,14 @@ import * as SwitchPrimitive from '@radix-ui/react-switch'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import * as LabelPrimitive from '@radix-ui/react-label'
 import { Check, ChevronDown, Loader2, X } from 'lucide-react'
-import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import {
+  forwardRef,
+  useEffect,
+  useState,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react'
 import { cn } from '@/lib/utils'
 
 export const Button = forwardRef<
@@ -25,8 +32,7 @@ export const Button = forwardRef<
       'bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_8px_18px_rgb(13_148_136/0.28)] hover:from-teal-500 hover:to-teal-700',
     variant === 'outline' &&
       'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-teal-200 hover:bg-teal-50/60 hover:text-teal-900',
-    variant === 'secondary' &&
-      'border border-slate-200 bg-slate-50 text-slate-800 shadow-sm hover:bg-slate-100',
+    variant === 'secondary' && 'border border-slate-200 bg-slate-50 text-slate-800 shadow-sm hover:bg-slate-100',
     variant === 'ghost' && 'font-medium text-slate-600 hover:bg-slate-100/90 hover:text-slate-900',
     variant === 'destructive' &&
       'bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-[0_8px_18px_rgb(225_29_72/0.25)] hover:from-rose-400 hover:to-rose-600',
@@ -172,7 +178,10 @@ export const Card = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   />
 )
 export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex flex-wrap items-center justify-between gap-3 p-4 pb-3 sm:p-5 sm:pb-3', className)} {...props} />
+  <div
+    className={cn('flex flex-wrap items-center justify-between gap-3 p-4 pb-3 sm:p-5 sm:pb-3', className)}
+    {...props}
+  />
 )
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('p-4 pt-2 sm:p-5 sm:pt-2', className)} {...props} />
@@ -206,12 +215,7 @@ export const Table = ({
 }: React.TableHTMLAttributes<HTMLTableElement> & { zebra?: boolean; stickyHeader?: boolean }) => (
   <div className="data-table-wrap">
     <table
-      className={cn(
-        'data-table',
-        zebra && 'data-table--zebra',
-        stickyHeader && 'data-table-sticky',
-        className,
-      )}
+      className={cn('data-table', zebra && 'data-table--zebra', stickyHeader && 'data-table-sticky', className)}
       {...props}
     />
   </div>

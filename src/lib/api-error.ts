@@ -13,10 +13,7 @@ interface ProblemDetail {
 export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (isAxiosError(error)) {
     const data = error.response?.data as
-      | ProblemDetail
-      | { message?: string; error?: string; errors?: string[] }
-      | string
-      | undefined
+      ProblemDetail | { message?: string; error?: string; errors?: string[] } | string | undefined
 
     if (typeof data === 'string' && data.trim()) return data.trim()
 
@@ -34,9 +31,7 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
     if (error.response?.status === 404) return 'The requested resource was not found.'
     if (error.response?.status === 409) {
       // Prefer server detail (e.g. insufficient stock) over a generic conflict label
-      return fallback === 'Something went wrong'
-        ? 'This action conflicts with existing data.'
-        : fallback
+      return fallback === 'Something went wrong' ? 'This action conflicts with existing data.' : fallback
     }
     if (error.response?.status && error.response.status >= 500) {
       return fallback === 'Something went wrong' ? 'An unexpected server error occurred.' : fallback

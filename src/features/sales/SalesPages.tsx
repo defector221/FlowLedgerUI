@@ -150,9 +150,7 @@ export function DocumentListPage({
   })
   const rows = data ?? []
   const showActions =
-    endpoint === 'invoices' ||
-    endpoint === 'purchase-invoices' ||
-    (canWrite && actionEndpoints.has(endpoint))
+    endpoint === 'invoices' || endpoint === 'purchase-invoices' || (canWrite && actionEndpoints.has(endpoint))
   const defaultWarehouseId = resolveDefaultWarehouseId(warehouses, orgSettings?.defaultWarehouseId)
   const challanByOrderId = useMemo(() => {
     const map: Record<string, Record<string, unknown>> = {}
@@ -507,7 +505,11 @@ export function DocumentListPage({
                           <td className="p-3">
                             <div className="flex flex-wrap gap-2">
                               {status === 'DRAFT' && (
-                                <Button variant="outline" size="sm" onClick={() => confirmPurchaseOrder(String(row.id))}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => confirmPurchaseOrder(String(row.id))}
+                                >
                                   Confirm
                                 </Button>
                               )}
@@ -794,119 +796,115 @@ function LineItemsEditor({
               const selected = products.find((p) => p.id === line.productId)
               const isService = selected?.itemType === 'SERVICE'
               return (
-              <tr key={line.id} className="border-b">
-                <td className="min-w-[10rem] p-2 sm:min-w-[14rem]">
-                  <Select value={line.productId} onValueChange={(value) => onSelectProduct(line.id, value)}>
-                    <SelectTrigger className="h-auto min-h-10 min-w-0 py-2">
-                      {selected ? (
-                        <span className="flex min-w-0 flex-col items-start text-left">
-                          <span className="truncate font-medium">{selected.name}</span>
-                          <span className="text-[11px] font-normal text-slate-500">
-                            {isService ? 'Service' : 'Product'}
-                            {selected.unitName ? ` · ${selected.unitName}` : ''}
-                          </span>
-                        </span>
-                      ) : (
-                        'Select item'
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id} textValue={product.name}>
-                          <span className="flex flex-col items-start">
-                            <span>{product.name}</span>
-                            <span className="text-[11px] text-slate-500">
-                              {product.itemType === 'SERVICE' ? 'Service' : 'Product'}
-                              {product.unitName ? ` · ${product.unitName}` : ''}
+                <tr key={line.id} className="border-b">
+                  <td className="min-w-[10rem] p-2 sm:min-w-[14rem]">
+                    <Select value={line.productId} onValueChange={(value) => onSelectProduct(line.id, value)}>
+                      <SelectTrigger className="h-auto min-h-10 min-w-0 py-2">
+                        {selected ? (
+                          <span className="flex min-w-0 flex-col items-start text-left">
+                            <span className="truncate font-medium">{selected.name}</span>
+                            <span className="text-[11px] font-normal text-slate-500">
+                              {isService ? 'Service' : 'Product'}
+                              {selected.unitName ? ` · ${selected.unitName}` : ''}
                             </span>
                           </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="p-2">
-                  <NumberInput
-                    className="w-20"
-                    allowDecimal
-                    value={line.quantity}
-                    onValueChange={(value) => onUpdate(line.id, 'quantity', Math.max(0.001, value))}
-                  />
-                </td>
-                <td className="p-2">
-                  <NumberInput
-                    className="w-24"
-                    value={line.rate}
-                    onValueChange={(value) => onUpdate(line.id, 'rate', value)}
-                  />
-                </td>
-                <td className="p-2">
-                  <NumberInput
-                    className="w-16"
-                    value={line.discountPercent}
-                    onValueChange={(value) =>
-                      onUpdate(line.id, 'discountPercent', Math.min(100, Math.max(0, value)))
-                    }
-                  />
-                </td>
-                <td className="p-2">
-                  <NumberInput
-                    className="w-16"
-                    value={line.taxRate}
-                    onValueChange={(value) => onUpdate(line.id, 'taxRate', value)}
-                  />
-                </td>
-                <td className="p-2">
-                  <Select
-                    value={line.taxType}
-                    onValueChange={(value) => {
-                      const taxType = value as TaxType
-                      if (taxType === 'IGST') {
-                        onPatch(line.id, {
-                          taxType,
-                          splitStrategy: 'NO_SPLIT_IGST',
-                          cgstSharePercent: 0,
-                          sgstSharePercent: 0,
-                        })
-                      } else if (taxType === 'OTHER') {
-                        onPatch(line.id, {
-                          taxType,
-                          splitStrategy: 'NO_SPLIT_OTHER',
-                          cgstSharePercent: 0,
-                          sgstSharePercent: 0,
-                        })
-                      } else {
-                        onPatch(line.id, {
-                          taxType,
-                          splitStrategy: 'PLACE_OF_SUPPLY',
-                          cgstSharePercent: 50,
-                          sgstSharePercent: 50,
-                        })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-[5.5rem]">{line.taxType}</SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="GST">GST</SelectItem>
-                      <SelectItem value="IGST">IGST</SelectItem>
-                      <SelectItem value="OTHER">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="p-2 text-right text-sm font-medium">
-                  <div>{currency(lineAmount(line))}</div>
-                  {line.discountPercent > 0 && (
-                    <div className="text-xs font-normal text-slate-500">
-                      −{currency(lineDiscount(line))} disc
-                    </div>
-                  )}
-                </td>
-                <td className="p-2">
-                  <Button variant="ghost" size="icon" onClick={() => onRemove(line.id)}>
-                    <Trash2 className="size-4 text-rose-500" />
-                  </Button>
-                </td>
-              </tr>
+                        ) : (
+                          'Select item'
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id} textValue={product.name}>
+                            <span className="flex flex-col items-start">
+                              <span>{product.name}</span>
+                              <span className="text-[11px] text-slate-500">
+                                {product.itemType === 'SERVICE' ? 'Service' : 'Product'}
+                                {product.unitName ? ` · ${product.unitName}` : ''}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-2">
+                    <NumberInput
+                      className="w-20"
+                      allowDecimal
+                      value={line.quantity}
+                      onValueChange={(value) => onUpdate(line.id, 'quantity', Math.max(0.001, value))}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <NumberInput
+                      className="w-24"
+                      value={line.rate}
+                      onValueChange={(value) => onUpdate(line.id, 'rate', value)}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <NumberInput
+                      className="w-16"
+                      value={line.discountPercent}
+                      onValueChange={(value) => onUpdate(line.id, 'discountPercent', Math.min(100, Math.max(0, value)))}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <NumberInput
+                      className="w-16"
+                      value={line.taxRate}
+                      onValueChange={(value) => onUpdate(line.id, 'taxRate', value)}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Select
+                      value={line.taxType}
+                      onValueChange={(value) => {
+                        const taxType = value as TaxType
+                        if (taxType === 'IGST') {
+                          onPatch(line.id, {
+                            taxType,
+                            splitStrategy: 'NO_SPLIT_IGST',
+                            cgstSharePercent: 0,
+                            sgstSharePercent: 0,
+                          })
+                        } else if (taxType === 'OTHER') {
+                          onPatch(line.id, {
+                            taxType,
+                            splitStrategy: 'NO_SPLIT_OTHER',
+                            cgstSharePercent: 0,
+                            sgstSharePercent: 0,
+                          })
+                        } else {
+                          onPatch(line.id, {
+                            taxType,
+                            splitStrategy: 'PLACE_OF_SUPPLY',
+                            cgstSharePercent: 50,
+                            sgstSharePercent: 50,
+                          })
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[5.5rem]">{line.taxType}</SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GST">GST</SelectItem>
+                        <SelectItem value="IGST">IGST</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-2 text-right text-sm font-medium">
+                    <div>{currency(lineAmount(line))}</div>
+                    {line.discountPercent > 0 && (
+                      <div className="text-xs font-normal text-slate-500">−{currency(lineDiscount(line))} disc</div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    <Button variant="ghost" size="icon" onClick={() => onRemove(line.id)}>
+                      <Trash2 className="size-4 text-rose-500" />
+                    </Button>
+                  </td>
+                </tr>
               )
             })}
           </tbody>
@@ -950,8 +948,20 @@ export function CreateInvoicePage() {
   const [invoiceStatus, setInvoiceStatus] = useState('DRAFT')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [dueDateTouched, setDueDateTouched] = useState(false)
-  const { lines, products, update, patch, addLine, removeLine, selectProduct, replaceLines, validLines, subtotal, discountTotal, tax } =
-    useLineItems()
+  const {
+    lines,
+    products,
+    update,
+    patch,
+    addLine,
+    removeLine,
+    selectProduct,
+    replaceLines,
+    validLines,
+    subtotal,
+    discountTotal,
+    tax,
+  } = useLineItems()
   const form = useForm({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
@@ -1002,7 +1012,11 @@ export function CreateInvoicePage() {
       items.map((item) => {
         const taxType = (item.taxType ?? 'GST') as TaxType
         const splitStrategy = (item.splitStrategy ??
-          (taxType === 'IGST' ? 'NO_SPLIT_IGST' : taxType === 'OTHER' ? 'NO_SPLIT_OTHER' : 'PLACE_OF_SUPPLY')) as SplitStrategy
+          (taxType === 'IGST'
+            ? 'NO_SPLIT_IGST'
+            : taxType === 'OTHER'
+              ? 'NO_SPLIT_OTHER'
+              : 'PLACE_OF_SUPPLY')) as SplitStrategy
         return {
           productId: item.productId,
           quantity: Number(item.quantity ?? 1),
@@ -1011,12 +1025,8 @@ export function CreateInvoicePage() {
           taxRate: Number(item.taxRate ?? 18),
           taxType,
           splitStrategy,
-          cgstSharePercent: Number(
-            item.cgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50),
-          ),
-          sgstSharePercent: Number(
-            item.sgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50),
-          ),
+          cgstSharePercent: Number(item.cgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50)),
+          sgstSharePercent: Number(item.sgstSharePercent ?? (splitStrategy.startsWith('NO_SPLIT') ? 0 : 50)),
         }
       }),
     )
@@ -1172,9 +1182,7 @@ export function CreateInvoicePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="page-title">
-            {isEdit ? `Edit sales invoice` : 'Create sales invoice'}
-          </h1>
+          <h1 className="page-title">{isEdit ? `Edit sales invoice` : 'Create sales invoice'}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {invoiceNumber
               ? `${invoiceNumber} · ${invoiceStatus}`
@@ -1255,9 +1263,7 @@ export function CreateInvoicePage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-500">
-                  PDF uses this fixed layout. Manage designs under Templates.
-                </p>
+                <p className="text-xs text-slate-500">PDF uses this fixed layout. Manage designs under Templates.</p>
               </div>
               <p className="text-xs font-normal text-slate-500 sm:col-span-2">
                 Due date defaults to customer payment terms (or 30 days). Stocked products deduct from the organization
@@ -1291,11 +1297,7 @@ export function CreateInvoicePage() {
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span>Shipping charges</span>
-                <NumberInput
-                  className="w-28 text-right"
-                  value={shippingCharges}
-                  onValueChange={setShippingCharges}
-                />
+                <NumberInput className="w-28 text-right" value={shippingCharges} onValueChange={setShippingCharges} />
               </div>
               <div className="flex justify-between">
                 <span>Tax</span>
@@ -1337,7 +1339,19 @@ const quotationSchema = z.object({
 export function CreateQuotationPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { lines, products, update, patch, addLine, removeLine, selectProduct, validLines, subtotal, discountTotal, tax } = useLineItems()
+  const {
+    lines,
+    products,
+    update,
+    patch,
+    addLine,
+    removeLine,
+    selectProduct,
+    validLines,
+    subtotal,
+    discountTotal,
+    tax,
+  } = useLineItems()
   const form = useForm({
     resolver: zodResolver(quotationSchema),
     defaultValues: { customerId: '', quotationDate: new Date().toISOString().slice(0, 10), notes: '' },
@@ -1475,8 +1489,19 @@ const salesOrderSchema = z.object({
 export function CreateSalesOrderPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { lines, products, update, patch, addLine, removeLine, selectProduct, validLines, subtotal, discountTotal, tax } =
-    useLineItems()
+  const {
+    lines,
+    products,
+    update,
+    patch,
+    addLine,
+    removeLine,
+    selectProduct,
+    validLines,
+    subtotal,
+    discountTotal,
+    tax,
+  } = useLineItems()
   const form = useForm({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: { customerId: '', orderDate: new Date().toISOString().slice(0, 10), notes: '' },
@@ -1719,7 +1744,9 @@ export function CreateChallanPage() {
                   return (
                     <SelectItem key={String(order.id)} value={String(order.id)}>
                       {String(order.orderNumber ?? order.id)} ·{' '}
-                      {order.customerId ? (customerNameById[String(order.customerId)] ?? String(order.customerId)) : '—'}
+                      {order.customerId
+                        ? (customerNameById[String(order.customerId)] ?? String(order.customerId))
+                        : '—'}
                       {existing ? ` · challan ${String(existing.challanNumber ?? '')}` : ''}
                     </SelectItem>
                   )
@@ -1994,8 +2021,19 @@ const purchaseOrderSchema = z.object({
 export function CreatePurchaseOrderPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { lines, products, update, patch, addLine, removeLine, selectProduct, validLines, subtotal, discountTotal, tax } =
-    useLineItems('purchasePrice')
+  const {
+    lines,
+    products,
+    update,
+    patch,
+    addLine,
+    removeLine,
+    selectProduct,
+    validLines,
+    subtotal,
+    discountTotal,
+    tax,
+  } = useLineItems('purchasePrice')
   const form = useForm({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: { supplierId: '', orderDate: new Date().toISOString().slice(0, 10), notes: '' },

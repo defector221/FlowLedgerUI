@@ -430,10 +430,7 @@ function ivonneInvoiceDesign(): UnlayerDesign {
       row('u_row_iv3', [column('u_column_iv3', [htmlBlock('u_content_html_iv3', boxes)])]),
       row('u_row_iv4', [
         column('u_column_iv4', [
-          htmlBlock(
-            'u_content_html_iv4',
-            `<div style="margin-top:8px;">{{lineItemsHtmlIvonne}}</div>`,
-          ),
+          htmlBlock('u_content_html_iv4', `<div style="margin-top:8px;">{{lineItemsHtmlIvonne}}</div>`),
         ]),
       ]),
       row('u_row_iv5', [column('u_column_iv5', [htmlBlock('u_content_html_iv5', note)])]),

@@ -646,7 +646,8 @@ export interface GlobalSearchResponse {
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE'
 export type JournalStatus = 'DRAFT' | 'POSTED' | 'REVERSED' | 'CANCELLED'
-export type VoucherType = 'JOURNAL' | 'SALES' | 'PURCHASE' | 'RECEIPT' | 'PAYMENT' | 'CONTRA' | 'CREDIT_NOTE' | 'DEBIT_NOTE'
+export type VoucherType =
+  'JOURNAL' | 'SALES' | 'PURCHASE' | 'RECEIPT' | 'PAYMENT' | 'CONTRA' | 'CREDIT_NOTE' | 'DEBIT_NOTE'
 
 export interface AccountRequest {
   accountCode: string

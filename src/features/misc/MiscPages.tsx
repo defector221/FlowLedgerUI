@@ -19,6 +19,7 @@ import {
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { currency, date, quantity } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth'
+import { PageHeader } from '@/components/layout/PageChrome'
 import { EmailDesignEditor, type EmailDesignEditorHandle } from '@/components/email/EmailDesignEditor'
 import {
   Button,
@@ -126,10 +127,10 @@ export function OrganizationSettingsPage() {
   })
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Organization settings</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage business details, tax and preferences.</p>
-      </div>
+      <PageHeader
+        title="Organization settings"
+        subtitle="Manage business details, tax and preferences."
+      />
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           <form className="contents" onSubmit={submit}>
@@ -813,36 +814,34 @@ export function TemplateDesignerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Invoice templates</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Choose a fixed design, edit default terms/notes, then pick that template on each invoice.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setEditingId(null)
-              setTemplateName(FIXED_DESIGNS[0].name)
-              setDocumentType('SALES_INVOICE')
-              setEditorMode('SECTION')
-              setConfig(configForFixedDesign('classic-sage'))
-            }}
-          >
-            New
-          </Button>
-          <Button variant="outline" onClick={preview}>
-            <Eye className="size-4" />
-            Preview PDF
-          </Button>
-          <Button onClick={save}>
-            <Save className="size-4" />
-            {editingId ? 'Update template' : 'Save template'}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Invoice templates"
+        subtitle="Choose a fixed design, edit default terms/notes, then pick that template on each invoice."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingId(null)
+                setTemplateName(FIXED_DESIGNS[0].name)
+                setDocumentType('SALES_INVOICE')
+                setEditorMode('SECTION')
+                setConfig(configForFixedDesign('classic-sage'))
+              }}
+            >
+              New
+            </Button>
+            <Button variant="outline" onClick={preview}>
+              <Eye className="size-4" />
+              Preview PDF
+            </Button>
+            <Button onClick={save}>
+              <Save className="size-4" />
+              {editingId ? 'Update template' : 'Save template'}
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
@@ -1234,10 +1233,7 @@ export function TaxRatesPage() {
   const sgstPreview = showSplit ? ((rate * sgstShare) / 100).toFixed(2) : '0'
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Tax rates</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage GST and other tax rates used on documents.</p>
-      </div>
+      <PageHeader title="Tax rates" subtitle="Manage GST and other tax rates used on documents." />
       <Card>
         <CardContent className="space-y-3 p-5">
           <div className="grid gap-3 sm:grid-cols-4">
@@ -1348,10 +1344,7 @@ export function UnitsPage() {
   }
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Units</h1>
-        <p className="mt-1 text-sm text-slate-500">Define measurement units for products.</p>
-      </div>
+      <PageHeader title="Units" subtitle="Define measurement units for products." />
       <Card>
         <CardContent className="grid gap-3 p-5 sm:grid-cols-3">
           <Input placeholder="Code" value={code} onChange={(event) => setCode(event.target.value)} />
@@ -1398,10 +1391,7 @@ export function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Audit log</h1>
-        <p className="mt-1 text-sm text-slate-500">Track important activity across your organization.</p>
-      </div>
+      <PageHeader title="Audit log" subtitle="Track important activity across your organization." />
       <Card>
         <CardContent className="p-4">
           {isLoading ? (

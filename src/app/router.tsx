@@ -43,12 +43,12 @@ import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 import {
   AccountingDashboardPage,
   AccountingReportsPage,
-  ChartOfAccountsPage,
   JournalCreatePage,
   JournalDetailPage,
   JournalsPage,
   PartyLedgerPage,
 } from '@/features/accounting/AccountingPages'
+import { ChartOfAccountsPage } from '@/features/accounting/ChartOfAccountsPage'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>

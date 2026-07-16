@@ -581,8 +581,15 @@ export const accountingApi = {
   dashboard: () =>
     api.get('/accounting/dashboard').then((r) => unwrapApi<import('@/types/api').AccountingDashboardResponse>(r)),
   listAccounts: () => api.get('/accounting/accounts').then((r) => unwrapList<import('@/types/api').AccountResponse>(r)),
-  createAccount: (payload: Record<string, unknown>) =>
+  accountTree: () =>
+    api.get('/accounting/accounts/tree').then((r) => unwrapList<import('@/types/api').AccountTreeNode>(r)),
+  getAccount: (id: string) =>
+    api.get(`/accounting/accounts/${id}`).then((r) => unwrapApi<import('@/types/api').AccountResponse>(r)),
+  createAccount: (payload: import('@/types/api').AccountRequest) =>
     api.post('/accounting/accounts', payload).then((r) => unwrapApi<import('@/types/api').AccountResponse>(r)),
+  updateAccount: (id: string, payload: import('@/types/api').AccountRequest) =>
+    api.put(`/accounting/accounts/${id}`, payload).then((r) => unwrapApi<import('@/types/api').AccountResponse>(r)),
+  deleteAccount: (id: string) => api.delete(`/accounting/accounts/${id}`),
   listJournals: (params?: Record<string, string | number | undefined>) =>
     api.get('/accounting/journals', { params }).then((r) => unwrapPage<import('@/types/api').JournalResponse>(r)),
   getJournal: (id: string) =>

@@ -648,19 +648,46 @@ export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENS
 export type JournalStatus = 'DRAFT' | 'POSTED' | 'REVERSED' | 'CANCELLED'
 export type VoucherType = 'JOURNAL' | 'SALES' | 'PURCHASE' | 'RECEIPT' | 'PAYMENT' | 'CONTRA' | 'CREDIT_NOTE' | 'DEBIT_NOTE'
 
-export interface AccountResponse {
-  id: string
+export interface AccountRequest {
   accountCode: string
   accountName: string
+  description?: string
+  accountType: AccountType
+  accountSubType?: string | null
+  parentAccountId?: string
+  status?: AccountStatus
+  active?: boolean
+  allowManualPosting?: boolean
+  openingDebit?: number
+  openingCredit?: number
+}
+
+export type AccountStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface AccountResponse {
+  id: string
+  organizationId?: string
+  accountCode: string
+  accountName: string
+  description?: string | null
   accountType: AccountType
   accountSubType?: string | null
   parentAccountId?: string | null
   systemAccountKey?: string | null
   systemAccount: boolean
+  editable?: boolean
+  deletable?: boolean
+  status?: AccountStatus
   active: boolean
   allowManualPosting: boolean
   openingDebit: number
   openingCredit: number
+}
+
+export interface AccountTreeNode extends Omit<AccountResponse, 'openingDebit' | 'openingCredit'> {
+  children: AccountTreeNode[]
+  openingDebit?: number
+  openingCredit?: number
 }
 
 export interface JournalLineRequest {

@@ -22,6 +22,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { resolveDefaultWarehouseId } from '@/lib/warehouse'
 import { currency, customerLabel, supplierLabel } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
+import { PageHeader, EmptyState } from '@/components/layout/PageChrome'
 import { useAuth } from '@/features/auth/auth'
 import {
   Badge,
@@ -376,29 +377,29 @@ export function DocumentListPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">Create and track {title.toLowerCase()}.</p>
-        </div>
-        {showCreate && createPath && (
-          <Link
-            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 sm:w-auto"
-            to={createPath}
-          >
-            <Plus className="size-4" />
-            {createLabel}
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title={title}
+        subtitle={`Create and track ${title.toLowerCase()}.`}
+        actions={
+          showCreate && createPath ? (
+            <Button asChild>
+              <Link to={createPath}>
+                <Plus className="size-4" />
+                {createLabel}
+              </Link>
+            </Button>
+          ) : null
+        }
+      />
       <Card>
         <CardContent className="p-4">
           {unavailable ? (
-            <p className="py-16 text-center text-sm text-slate-500">
-              This list endpoint is not yet exposed by the backend API.
-            </p>
+            <EmptyState
+              title="Not available yet"
+              description="This list endpoint is not yet exposed by the backend API."
+            />
           ) : isLoading ? (
-            <p className="py-16 text-center text-sm text-slate-500">Loading…</p>
+            <EmptyState title="Loading…" />
           ) : (
             <Table>
               <thead>
@@ -1171,7 +1172,7 @@ export function CreateInvoicePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="page-title">
             {isEdit ? `Edit sales invoice` : 'Create sales invoice'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -1390,7 +1391,7 @@ export function CreateQuotationPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create quotation</h1>
+          <h1 className="page-title">Create quotation</h1>
           <p className="mt-1 text-sm text-slate-500">Prepare a quote for a customer with line items.</p>
         </div>
         <Button onClick={save}>Save quotation</Button>
@@ -1529,7 +1530,7 @@ export function CreateSalesOrderPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create sales order</h1>
+          <h1 className="page-title">Create sales order</h1>
           <p className="mt-1 text-sm text-slate-500">Create an order directly, or convert from a quotation.</p>
         </div>
         <Button onClick={save}>Save sales order</Button>
@@ -1690,7 +1691,7 @@ export function CreateChallanPage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Create delivery challan</h1>
+        <h1 className="page-title">Create delivery challan</h1>
         <p className="mt-1 text-sm text-slate-500">Convert a sales order into a delivery challan.</p>
       </div>
       <Card>
@@ -1810,7 +1811,7 @@ export function CreateGrnPage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Create goods receipt</h1>
+        <h1 className="page-title">Create goods receipt</h1>
         <p className="mt-1 text-sm text-slate-500">Receive stock against a purchase order.</p>
       </div>
       <Card>
@@ -1926,7 +1927,7 @@ export function CreatePurchaseInvoicePage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Create purchase invoice</h1>
+        <h1 className="page-title">Create purchase invoice</h1>
         <p className="mt-1 text-sm text-slate-500">Bill from a purchase order or goods receipt.</p>
       </div>
       <Card>
@@ -2048,7 +2049,7 @@ export function CreatePurchaseOrderPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create purchase order</h1>
+          <h1 className="page-title">Create purchase order</h1>
           <p className="mt-1 text-sm text-slate-500">Order stock from a supplier with line items.</p>
         </div>
         <Button onClick={save}>Save purchase order</Button>
@@ -2222,7 +2223,7 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="page-title">
             {paymentType === 'RECEIPT' ? 'Record payment received' : 'Record supplier payment'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">Capture payment details and optional invoice allocation.</p>

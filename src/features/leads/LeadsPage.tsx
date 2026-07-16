@@ -8,6 +8,7 @@ import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { leadApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { PageHeader, EmptyState } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -39,23 +40,22 @@ export function LeadsListPage() {
   const { data = [], isLoading } = useQuery({ queryKey: ['leads'], queryFn: () => leadApi.list({ size: 100 }) })
   return (
     <div className="space-y-6">
-      <div className="flex justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Leads</h1>
-          <p className="mt-1 text-sm text-slate-500">Track prospects and convert them to customers.</p>
-        </div>
-        <Link
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800"
-          to="/leads/new"
-        >
-          <Plus className="size-4" />
-          New lead
-        </Link>
-      </div>
+      <PageHeader
+        title="Leads"
+        subtitle="Track prospects and convert them to customers."
+        actions={
+          <Button asChild>
+            <Link to="/leads/new">
+              <Plus className="size-4" />
+              New lead
+            </Link>
+          </Button>
+        }
+      />
       <Card>
         <CardContent className="p-4">
           {isLoading ? (
-            <p className="py-16 text-center text-sm text-slate-500">Loading…</p>
+            <EmptyState title="Loading…" />
           ) : (
             <Table>
               <thead>
@@ -141,13 +141,11 @@ export function LeadCreatePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">New lead</h1>
-          <p className="mt-1 text-sm text-slate-500">Capture prospect details to follow up later.</p>
-        </div>
-        <Button onClick={save}>Save lead</Button>
-      </div>
+      <PageHeader
+        title="New lead"
+        subtitle="Capture prospect details to follow up later."
+        actions={<Button onClick={save}>Save lead</Button>}
+      />
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -265,19 +263,16 @@ export function LeadDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{String(lead.leadName)}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {String(lead.companyName ?? 'No company')} · {String(lead.email ?? 'No email')} ·{' '}
-            {String(lead.phone ?? 'No phone')}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Badge>{String(lead.status)}</Badge>
-          {!lead.convertedCustomerId && <Button onClick={convert}>Convert to customer</Button>}
-        </div>
-      </div>
+      <PageHeader
+        title={String(lead.leadName)}
+        subtitle={`${String(lead.companyName ?? 'No company')} · ${String(lead.email ?? 'No email')} · ${String(lead.phone ?? 'No phone')}`}
+        actions={
+          <>
+            <Badge>{String(lead.status)}</Badge>
+            {!lead.convertedCustomerId ? <Button onClick={convert}>Convert to customer</Button> : null}
+          </>
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>

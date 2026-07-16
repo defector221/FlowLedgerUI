@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { accountingApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { currency } from '@/lib/utils'
+import { PageHeader, SectionTitle } from '@/components/layout/PageChrome'
 import {
   Button,
   Card,
@@ -97,35 +98,6 @@ function indianFySlices(fromStr: string, toStr: string) {
     y += 1
   }
   return slices
-}
-
-function PageHeader({
-  title,
-  subtitle,
-  actions,
-}: {
-  title: string
-  subtitle: string
-  actions?: ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="page-title">{title}</h1>
-        <p className="page-subtitle">{subtitle}</p>
-      </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
-    </div>
-  )
-}
-
-function SectionTitle({ title, detail }: { title: string; detail?: string }) {
-  return (
-    <div>
-      <h2 className="font-display text-[0.95rem] font-semibold tracking-tight text-slate-900">{title}</h2>
-      {detail ? <p className="mt-0.5 text-[0.8rem] leading-snug text-slate-500">{detail}</p> : null}
-    </div>
-  )
 }
 
 function ChartTooltip({
@@ -404,76 +376,6 @@ export function AccountingDashboardPage() {
           {data.unbalancedJournals} unbalanced posted journal(s) detected — run integrity check from reports.
         </p>
       ) : null}
-    </div>
-  )
-}
-
-export function ChartOfAccountsPage() {
-  const { data = [], refetch, isLoading } = useQuery({
-    queryKey: ['accounting', 'accounts'],
-    queryFn: () => accountingApi.listAccounts() as Promise<AccountResponse[]>,
-  })
-  const grouped = useMemo(() => {
-    const map = new Map<string, AccountResponse[]>()
-    for (const a of data) {
-      const list = map.get(a.accountType) ?? []
-      list.push(a)
-      map.set(a.accountType, list)
-    }
-    return map
-  }, [data])
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Chart of accounts"
-        subtitle="System and custom ledger accounts for this organisation."
-        actions={
-          <Button variant="outline" onClick={() => refetch()}>
-            Refresh
-          </Button>
-        }
-      />
-      {isLoading ? <p className="text-sm text-slate-500">Loading accounts…</p> : null}
-      {[...grouped.entries()].map(([type, rows]) => (
-        <Card key={type}>
-          <CardContent className="p-0">
-            <div className="border-b border-slate-100 px-5 py-3.5">
-              <h2 className="font-display text-[0.8rem] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                {type}
-              </h2>
-            </div>
-            <Table>
-              <thead>
-                <tr className="text-left text-[0.7rem] uppercase tracking-wide text-slate-500">
-                  <th className="px-5 py-3 font-semibold">Code</th>
-                  <th className="px-5 py-3 font-semibold">Name</th>
-                  <th className="px-5 py-3 font-semibold">System</th>
-                  <th className="px-5 py-3 font-semibold">Active</th>
-                  <th className="px-5 py-3 font-semibold" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-slate-100 text-[0.875rem] text-slate-800">
-                    <td className="px-5 py-3 font-mono text-[0.8rem] text-slate-600">{row.accountCode}</td>
-                    <td className="px-5 py-3 font-medium">{row.accountName}</td>
-                    <td className="px-5 py-3 text-slate-500">
-                      {row.systemAccount ? row.systemAccountKey ?? 'Yes' : '—'}
-                    </td>
-                    <td className="px-5 py-3">{row.active ? 'Yes' : 'No'}</td>
-                    <td className="px-5 py-3 text-right">
-                      <Link className="text-[0.8rem] font-semibold text-teal-700 hover:underline" to={`/accounting/ledgers/accounts/${row.id}`}>
-                        Ledger
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </CardContent>
-        </Card>
-      ))}
     </div>
   )
 }

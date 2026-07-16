@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { inventoryApi, organizationApi, productApi, warehouseApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { resolveDefaultWarehouseId } from '@/lib/warehouse'
+import { PageHeader, MetricCard } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -34,66 +35,31 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-slate-900">Inventory overview</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            On-hand stock from warehouse movements. Draft invoices reserve quantity but do not reduce available stock
-            until confirmed.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            className="inline-flex h-9 items-center rounded-lg border px-3 text-sm hover:bg-slate-50"
-            to="/inventory/adjustments"
-          >
-            Adjustments
-          </Link>
-          <Link
-            className="inline-flex h-9 items-center rounded-lg border px-3 text-sm hover:bg-slate-50"
-            to="/inventory/transfers"
-          >
-            Transfers
-          </Link>
-          <Link
-            className="inline-flex h-9 items-center rounded-lg border px-3 text-sm hover:bg-slate-50"
-            to="/inventory/opening-stock"
-          >
-            Opening stock
-          </Link>
-          <Link
-            className="inline-flex h-9 items-center rounded-lg bg-teal-700 px-3 text-sm text-white hover:bg-teal-800"
-            to="/inventory/ledger"
-          >
-            Stock ledger
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Inventory overview"
+        subtitle="On-hand stock from warehouse movements. Draft invoices reserve quantity but do not reduce available stock until confirmed."
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/inventory/adjustments">Adjustments</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/inventory/transfers">Transfers</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/inventory/opening-stock">Opening stock</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/inventory/ledger">Stock ledger</Link>
+            </Button>
+          </>
+        }
+      />
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">Low stock alerts</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{lowStock.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">Reorder alerts</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{reorder.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">Tracked products</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{stockRows.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">Reserved on drafts</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{draftReservedTotal}</p>
-          </CardContent>
-        </Card>
+        <MetricCard label="Low stock alerts" value={lowStock.length} />
+        <MetricCard label="Reorder alerts" value={reorder.length} />
+        <MetricCard label="Tracked products" value={stockRows.length} />
+        <MetricCard label="Reserved on drafts" value={draftReservedTotal} />
       </section>
       <Card>
         <CardContent className="overflow-x-auto p-0">
@@ -242,10 +208,7 @@ export function SimpleInventoryPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-        <p className="mt-1 text-sm text-slate-500">{description}</p>
-      </div>
+      <PageHeader title={title} subtitle={description} />
       {mode !== 'ledger' ? (
         <Card>
           <CardContent className="space-y-4 p-5">

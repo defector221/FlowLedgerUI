@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/auth'
+import { PageHeader } from '@/components/layout/PageChrome'
 import { categoryApi, customerApi, organizationApi, productApi, supplierApi, taxRateApi, unitApi, warehouseApi } from '@/services/api'
 import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { stripEmpty } from '@/lib/api-payload'
@@ -514,21 +515,20 @@ export function EntityListPage({ kind }: { kind: EntityKind }) {
   }, [data, deferredSearch, listFields, serverSearchable])
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{config.title}</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage your {config.title.toLowerCase()}.</p>
-        </div>
-        {canWrite ? (
-          <Link
-            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 sm:w-auto"
-            to={`/${kind}/new`}
-          >
-            <Plus className="size-4" />
-            Add {config.singular}
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        title={config.title}
+        subtitle={`Manage your ${config.title.toLowerCase()}.`}
+        actions={
+          canWrite ? (
+            <Button asChild>
+              <Link to={`/${kind}/new`}>
+                <Plus className="size-4" />
+                Add {config.singular}
+              </Link>
+            </Button>
+          ) : null
+        }
+      />
       <Card>
         <CardContent className="p-4">
           {config.searchable !== false && (
@@ -769,14 +769,12 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {isEdit ? `Edit ${config.singular}` : `New ${config.singular}`}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {isEdit ? `Update this ${config.singular.toLowerCase()}.` : 'Add details aligned with backend validation.'}
-        </p>
-      </div>
+      <PageHeader
+        title={isEdit ? `Edit ${config.singular}` : `New ${config.singular}`}
+        subtitle={
+          isEdit ? `Update this ${config.singular.toLowerCase()}.` : 'Add details aligned with backend validation.'
+        }
+      />
       <Card>
         <CardContent className="p-6">
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
@@ -905,32 +903,24 @@ export function EntityDetailPage({ kind }: { kind: EntityKind }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-            {String(item?.[config.titleField] ?? config.singular)}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">{config.singular} record</p>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          {canWrite && config.update ? (
-            <Link
-              className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
-              to={`/${kind}/${id}/edit`}
-            >
-              Edit
-            </Link>
-          ) : null}
-          {kind === 'customers' || kind === 'suppliers' ? (
-            <Link
-              className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-teal-200 px-4 text-sm font-medium text-teal-800 hover:bg-teal-50 sm:w-auto"
-              to={`/accounting/ledgers/${kind}/${id}`}
-            >
-              View ledger
-            </Link>
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        title={String(item?.[config.titleField] ?? config.singular)}
+        subtitle={`${config.singular} record`}
+        actions={
+          <>
+            {canWrite && config.update ? (
+              <Button variant="outline" asChild>
+                <Link to={`/${kind}/${id}/edit`}>Edit</Link>
+              </Button>
+            ) : null}
+            {kind === 'customers' || kind === 'suppliers' ? (
+              <Button variant="outline" asChild>
+                <Link to={`/accounting/ledgers/${kind}/${id}`}>View ledger</Link>
+              </Button>
+            ) : null}
+          </>
+        }
+      />
       <Card>
         <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
           {detailFields.map((field) => (

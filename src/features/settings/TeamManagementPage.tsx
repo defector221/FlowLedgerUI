@@ -9,6 +9,8 @@ import { useSearchParams } from 'react-router-dom'
 import { roleApi, userApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
+import { PageHeader, MetricCard } from '@/components/layout/PageChrome'
+import { PageHeader } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -118,18 +120,16 @@ export function TeamManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Team & Access</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage employees and permissions for {session?.user.firstName}'s organization.
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="size-4" />
-          Invite Employee
-        </Button>
-      </div>
+      <PageHeader
+        title="Team & Access"
+        subtitle={`Manage employees and permissions for ${session?.user.firstName}'s organization.`}
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="size-4" />
+            Invite Employee
+          </Button>
+        }
+      />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -138,12 +138,7 @@ export function TeamManagementPage() {
           ['Pending Invitations', pendingInvitations],
           ['Administrators', administrators],
         ].map(([label, value]) => (
-          <Card key={label}>
-            <CardContent className="p-5">
-              <p className="text-sm text-slate-500">{label}</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
-            </CardContent>
-          </Card>
+          <MetricCard key={label} label={label} value={value} />
         ))}
       </section>
 

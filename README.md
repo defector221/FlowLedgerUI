@@ -42,6 +42,8 @@ flowchart TB
   subgraph shared ["Shared Layer"]
     API["services/api.ts"]
     Client["api-client.ts"]
+    UiKit["components/ui"]
+    Chrome["components/layout"]
   end
 
   subgraph backend ["FlowLedger API"]
@@ -52,14 +54,22 @@ flowchart TB
   Pages --> API
   API --> Client
   Client --> REST
+  Pages --> UiKit
+  Pages --> Chrome
 ```
 
 ### Application shell
 
 ```mermaid
 flowchart LR
-  Sidebar["AppSidebar"] --> Main["Page Outlet"]
-  Header["Header"] --> Main
+  subgraph layout ["AppLayout"]
+    Sidebar["AppSidebar"]
+    Header["Header Search Notifications"]
+    Main["Page Outlet"]
+  end
+
+  Sidebar --> Main
+  Header --> Main
 ```
 
 | Component | Path | Role |
@@ -69,7 +79,7 @@ flowchart LR
 | `router.tsx` | `src/app/router.tsx` | All routes |
 | `AppLayout` | `src/components/layout/AppLayout.tsx` | Sidebar + header shell |
 | `AppSidebar` | `src/components/layout/AppSidebar.tsx` | Navigation (RBAC-filtered) |
-| `PageChrome` | `src/components/layout/PageChrome.tsx` | PageHeader, MetricCard, EmptyState |
+| `PageChrome` | `src/components/layout/PageChrome.tsx` | `PageHeader`, `MetricCard`, `EmptyState` |
 
 ### Directory layout
 
@@ -81,7 +91,7 @@ src/
 │   ├── accounting/
 │   ├── sales/
 │   ├── inventory/
-│   ├── shared/       # Generic entity CRUD
+│   ├── shared/       # Generic entity CRUD (customers, products, …)
 │   └── …
 ├── components/
 │   ├── layout/       # Shell, sidebar, page chrome
@@ -105,10 +115,10 @@ sequenceDiagram
   U->>P: Login or Register
   P->>API: POST auth login
   API-->>P: tokens user org
-  P->>LS: Save session
+  P->>LS: flowledger.auth session
   U->>P: Navigate app
-  P->>P: ProtectedRoute
-  P->>P: OnboardingGuard
+  P->>P: ProtectedRoute checks session
+  P->>P: OnboardingGuard checks onboardingCompleted
   Note over P,API: On 401 refresh once then logout
 ```
 
@@ -134,7 +144,9 @@ sequenceDiagram
 flowchart LR
   Pages["Feature pages"] --> ApiMod["services/api.ts"]
   ApiMod --> Client["api-client.ts"]
-  Client --> Axios["Axios"]
+  Client --> Unwrap["api-response.ts"]
+  Client --> Errors["api-error.ts"]
+  Client --> Axios["Axios interceptors"]
 ```
 
 | File | Purpose |
@@ -145,7 +157,7 @@ flowchart LR
 | `lib/api-error.ts` | Error messages, form field mapping |
 | `types/api.ts` | Request/response TypeScript types |
 
-**Base URL resolution:**
+**Base URL resolution (`api-client.ts`):**
 
 1. `VITE_API_BASE_URL` if set
 2. Default: `http://localhost:7070/api/v1`
@@ -167,9 +179,9 @@ All authenticated routes live under `AppLayout` with `ProtectedRoute` + `Onboard
 
 | Route pattern | Entity |
 |---------------|--------|
-| `/{kind}`, `/{kind}/new`, `/{kind}/:id`, `/{kind}/:id/edit` | customers, suppliers, products, categories, warehouses |
+| `/{kind}`, `/{kind}/new`, `/{kind}/:id`, `/{kind}/:id/edit` | `customers`, `suppliers`, `products`, `categories`, `warehouses` |
 
-Implemented in `src/features/shared/EntityPages.tsx`.
+Implemented in `src/features/shared/EntityPages.tsx` — config-driven list, create, edit, detail.
 
 ### Inventory
 
@@ -188,7 +200,7 @@ flowchart LR
   Q["Quotation"] --> SO["Sales Order"]
   SO --> DC["Delivery Challan"]
   SO --> INV["Sales Invoice"]
-  INV --> PAY["Payment"]
+  INV --> PAY["Payment Received"]
 
   PO["Purchase Order"] --> GRN["Goods Receipt"]
   GRN --> PI["Purchase Invoice"]
@@ -253,18 +265,21 @@ flowchart LR
 
 ### Tokens and globals
 
-`src/index.css` — Tailwind v4 theme, brand colors, typography, table/form/empty-state utilities, COA tree styles.
+`src/index.css` — Tailwind v4 `@theme`, brand colors (teal), typography (Manrope + Sora), utility classes for tables, forms, empty states, COA tree.
 
 ### UI primitives (`src/components/ui/index.tsx`)
 
 `Button`, `Input`, `Card`, `Badge`, `Table`, `Field`, `Dialog`, `Select`, `Tabs`, `Skeleton`, etc.
 
+- `Button` supports `variant`, `loading`, `asChild` (for router `Link`s)
+- `Table` includes enterprise `.data-table` styling with optional `zebra` / `stickyHeader`
+
 ### Page chrome (`src/components/layout/PageChrome.tsx`)
 
 | Export | Use |
 |--------|-----|
-| `PageHeader` | Title, subtitle, breadcrumbs, actions |
-| `PageShell` | Consistent page spacing |
+| `PageHeader` | Title, subtitle, breadcrumbs, action buttons |
+| `PageShell` | Consistent `space-y-6` wrapper |
 | `MetricCard` | Dashboard stat tiles |
 | `EmptyState` | Loading / empty list states |
 | `SectionTitle` | In-page section headings |
@@ -318,7 +333,7 @@ If YRV seed is present: `kashyap221@gmail.com` / `passwor123d`
 | Variable | Example | Purpose |
 |----------|---------|---------|
 | `VITE_API_BASE_URL` | `http://localhost:7070/api/v1` | Backend API base URL |
-| `VITE_UNLAYER_PROJECT_ID` | optional | Unlayer email editor project |
+| `VITE_UNLAYER_PROJECT_ID` | (optional) | Unlayer email editor project |
 
 Files: `.env.example` (local), `.env.production` (deployed)
 
@@ -341,12 +356,13 @@ Files: `.env.example` (local), `.env.production` (deployed)
 ```mermaid
 flowchart LR
   UI["FlowLedger UI port 5173"] -->|"JWT Bearer"| API["FlowLedger API port 7070"]
-  API --> PG["PostgreSQL"]
+  API --> PG[("PostgreSQL")]
+  UI -.->|"VITE_API_BASE_URL"| API
 ```
 
 1. UI stores JWT in `localStorage` after login.
 2. Every API call sends `Authorization: Bearer <accessToken>`.
-3. API resolves tenant from JWT, never from request body.
+3. API resolves tenant from JWT (`TenantContext`), never from request body.
 4. On 401, UI refreshes token once; failure redirects to login.
 5. Org switch clears TanStack Query cache and fetches new org context.
 

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmailDesignEditor, type EmailDesignEditorHandle } from '@/components/email/EmailDesignEditor'
+import { PageHeader } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -49,19 +50,16 @@ export function EmailTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Email templates</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Drag-and-drop designs for nurture sequences and blast campaigns. Start from a professional sales, quotation,
-            or reminder layout.
-          </p>
-        </div>
-        <Button type="button" onClick={() => navigate('/marketing/email-templates/new')}>
-          <Plus className="size-4" />
-          New template
-        </Button>
-      </div>
+      <PageHeader
+        title="Email templates"
+        subtitle="Drag-and-drop designs for nurture sequences and blast campaigns. Start from a professional sales, quotation, or reminder layout."
+        actions={
+          <Button type="button" onClick={() => navigate('/marketing/email-templates/new')}>
+            <Plus className="size-4" />
+            New template
+          </Button>
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-3">
         {emailPresets.map((preset) => (
@@ -318,16 +316,16 @@ export function MarketingCampaignsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Email campaigns</h1>
-          <p className="mt-1 text-sm text-slate-500">One-shot blasts to leads and customers using Unlayer templates.</p>
-        </div>
-        <Button type="button" onClick={() => setShowCreate((open) => !open)}>
-          <Plus className="size-4" />
-          {showCreate ? 'Hide form' : 'New campaign'}
-        </Button>
-      </div>
+      <PageHeader
+        title="Email campaigns"
+        subtitle="One-shot blasts to leads and customers using Unlayer templates."
+        actions={
+          <Button type="button" onClick={() => setShowCreate((open) => !open)}>
+            <Plus className="size-4" />
+            {showCreate ? 'Hide form' : 'New campaign'}
+          </Button>
+        }
+      />
 
       {showCreate && (
         <Card>
@@ -484,26 +482,28 @@ export function MarketingCampaignDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{campaign.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+      <PageHeader
+        title={campaign.name}
+        subtitle={
+          <>
             {campaign.audienceType} · <Badge className="ml-1">{campaign.status}</Badge>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {(campaign.status === 'DRAFT' || campaign.status === 'CANCELLED') && (
-            <Button type="button" onClick={schedule}>
-              Schedule now
-            </Button>
-          )}
-          {campaign.status !== 'SENT' && campaign.status !== 'CANCELLED' && (
-            <Button type="button" variant="outline" onClick={cancel}>
-              Cancel
-            </Button>
-          )}
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            {(campaign.status === 'DRAFT' || campaign.status === 'CANCELLED') && (
+              <Button type="button" onClick={schedule}>
+                Schedule now
+              </Button>
+            )}
+            {campaign.status !== 'SENT' && campaign.status !== 'CANCELLED' && (
+              <Button type="button" variant="outline" onClick={cancel}>
+                Cancel
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <Card>
         <CardContent className="grid gap-3 p-4 sm:grid-cols-4">

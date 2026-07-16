@@ -1,38 +1,55 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import * as SelectPrimitive from '@radix-ui/react-select'
+import { Slot } from '@radix-ui/react-slot'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
 import * as SwitchPrimitive from '@radix-ui/react-switch'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import * as LabelPrimitive from '@radix-ui/react-label'
-import { Check, ChevronDown, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, X } from 'lucide-react'
 import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 export const Button = forwardRef<
   HTMLButtonElement,
   ButtonHTMLAttributes<HTMLButtonElement> & {
-    variant?: 'default' | 'outline' | 'ghost' | 'destructive'
+    variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'secondary'
     size?: 'sm' | 'lg' | 'icon'
+    loading?: boolean
+    asChild?: boolean
   }
->(({ className, variant = 'default', size, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold tracking-tight transition-all duration-150 disabled:pointer-events-none disabled:opacity-50',
-      variant === 'default' &&
-        'bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_8px_18px_rgb(13_148_136/0.28)] hover:from-teal-500 hover:to-teal-700',
-      variant === 'outline' &&
-        'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-teal-200 hover:bg-teal-50/60 hover:text-teal-900',
-      variant === 'ghost' && 'font-medium text-slate-600 hover:bg-slate-100/90 hover:text-slate-900',
-      variant === 'destructive' &&
-        'bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-[0_8px_18px_rgb(225_29_72/0.25)] hover:from-rose-400 hover:to-rose-600',
-      size === 'sm' ? 'h-8 px-3 text-xs' : size === 'lg' ? 'h-11 px-5' : size === 'icon' ? 'size-9' : 'h-10 px-4',
-      className,
-    )}
-    {...props}
-  />
-))
+>(({ className, variant = 'default', size, loading, disabled, asChild = false, children, ...props }, ref) => {
+  const classNames = cn(
+    'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold tracking-tight transition-all duration-150 disabled:pointer-events-none disabled:opacity-50',
+    variant === 'default' &&
+      'bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_8px_18px_rgb(13_148_136/0.28)] hover:from-teal-500 hover:to-teal-700',
+    variant === 'outline' &&
+      'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-teal-200 hover:bg-teal-50/60 hover:text-teal-900',
+    variant === 'secondary' &&
+      'border border-slate-200 bg-slate-50 text-slate-800 shadow-sm hover:bg-slate-100',
+    variant === 'ghost' && 'font-medium text-slate-600 hover:bg-slate-100/90 hover:text-slate-900',
+    variant === 'destructive' &&
+      'bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-[0_8px_18px_rgb(225_29_72/0.25)] hover:from-rose-400 hover:to-rose-600',
+    size === 'sm' ? 'h-8 px-3 text-xs' : size === 'lg' ? 'h-11 px-5' : size === 'icon' ? 'size-9' : 'h-10 px-4',
+    className,
+  )
+
+  // Slot requires exactly one React element child — never pass null/siblings alongside it.
+  if (asChild) {
+    return (
+      <Slot ref={ref} className={classNames} {...props}>
+        {children}
+      </Slot>
+    )
+  }
+
+  return (
+    <button ref={ref} disabled={disabled || loading} className={classNames} {...props}>
+      {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+      {children}
+    </button>
+  )
+})
 Button.displayName = 'Button'
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
@@ -160,20 +177,73 @@ export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDiv
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('p-4 pt-2 sm:p-5 sm:pt-2', className)} {...props} />
 )
-export const Badge = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
+export const Badge = ({
+  className,
+  variant = 'default',
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement> & {
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'neutral' | 'outline'
+}) => (
   <span
     className={cn(
-      'inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 text-xs font-semibold tracking-wide text-teal-800',
+      'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide',
+      variant === 'default' && 'bg-teal-50 text-teal-800',
+      variant === 'success' && 'bg-emerald-50 text-emerald-800',
+      variant === 'warning' && 'bg-amber-50 text-amber-900',
+      variant === 'danger' && 'bg-rose-50 text-rose-800',
+      variant === 'neutral' && 'bg-slate-100 text-slate-700',
+      variant === 'outline' && 'border border-slate-200 bg-white text-slate-600',
       className,
     )}
     {...props}
   />
 )
-export const Table = ({ className, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => (
-  <div className="overflow-x-auto">
-    <table className={cn('w-full text-left text-sm', className)} {...props} />
+export const Table = ({
+  className,
+  zebra,
+  stickyHeader,
+  ...props
+}: React.TableHTMLAttributes<HTMLTableElement> & { zebra?: boolean; stickyHeader?: boolean }) => (
+  <div className="data-table-wrap">
+    <table
+      className={cn(
+        'data-table',
+        zebra && 'data-table--zebra',
+        stickyHeader && 'data-table-sticky',
+        className,
+      )}
+      {...props}
+    />
   </div>
 )
+
+export function Field({
+  label,
+  error,
+  hint,
+  required,
+  children,
+  className,
+}: {
+  label: string
+  error?: string
+  hint?: string
+  required?: boolean
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('form-field', className)}>
+      <Label>
+        {label}
+        {required ? <span className="ml-0.5 text-rose-600">*</span> : null}
+      </Label>
+      {children}
+      {error ? <p className="form-error">{error}</p> : null}
+      {!error && hint ? <p className="form-hint">{hint}</p> : null}
+    </div>
+  )
+}
 export const Skeleton = ({ className }: { className?: string }) => (
   <div className={cn('animate-pulse rounded bg-slate-200', className)} />
 )
@@ -218,16 +288,19 @@ export const DialogContent = ({
   ...props
 }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/30" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px]" />
     <DialogPrimitive.Content
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 max-h-[min(92dvh,48rem)] w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:w-[calc(100%-2rem)] sm:p-6',
+        'fixed left-1/2 top-1/2 z-50 max-h-[min(92dvh,48rem)] w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[var(--shadow-lift)] sm:w-[calc(100%-2rem)] sm:p-6',
         className,
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 text-slate-400">
+      <DialogPrimitive.Close
+        className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        aria-label="Close"
+      >
         <X className="size-4" />
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

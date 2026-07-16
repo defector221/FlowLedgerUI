@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router-dom'
 import { roleApi, userApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
+import { PageHeader, MetricCard } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -81,7 +82,7 @@ export function TeamManagementPage() {
       await queryClient.invalidateQueries({ queryKey: ['users'] })
       form.reset({ firstName: '', lastName: '', email: '', role: values.role })
       setOpen(false)
-      toast.success('Employee invited')
+      toast.success('Employee invited. They will receive an email to accept the invitation.')
     } catch (error) {
       toast.error(getApiErrorMessage(error))
     }
@@ -118,18 +119,16 @@ export function TeamManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Team & Access</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage employees and permissions for {session?.user.firstName}'s organization.
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="size-4" />
-          Invite Employee
-        </Button>
-      </div>
+      <PageHeader
+        title="Team & Access"
+        subtitle={`Manage employees and permissions for ${session?.user.firstName}'s organization.`}
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="size-4" />
+            Invite Employee
+          </Button>
+        }
+      />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -138,12 +137,7 @@ export function TeamManagementPage() {
           ['Pending Invitations', pendingInvitations],
           ['Administrators', administrators],
         ].map(([label, value]) => (
-          <Card key={label}>
-            <CardContent className="p-5">
-              <p className="text-sm text-slate-500">{label}</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
-            </CardContent>
-          </Card>
+          <MetricCard key={label} label={label} value={value} />
         ))}
       </section>
 
@@ -183,18 +177,22 @@ export function TeamManagementPage() {
                       </td>
                       <td className="p-3">{user.email}</td>
                       <td className="p-3">
-                        <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
-                          <SelectTrigger className="h-8 w-44">
-                            {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.code} value={role.code}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {user.id === session?.user.id ? (
+                          <Badge>{roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}</Badge>
+                        ) : (
+                          <Select value={user.roles[0]} onValueChange={(role) => changeRole(user.id, role)}>
+                            <SelectTrigger className="h-8 w-44">
+                              {roles.find((r) => r.code === user.roles[0])?.name ?? user.roles[0]}
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role.code} value={role.code}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="p-3">
                         <Badge>{user.status}</Badge>

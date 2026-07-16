@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { authApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { PageHeader } from '@/components/layout/PageChrome'
 import { Button, Card, CardContent, Input, Label } from '@/components/ui'
 
 const schema = z
@@ -35,10 +36,10 @@ export function ChangePasswordPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Change password</h1>
-        <p className="mt-1 text-sm text-slate-500">Update the password you use to sign in to FlowLedger.</p>
-      </div>
+      <PageHeader
+        title="Change password"
+        subtitle="Update the password you use to sign in to FlowLedger."
+      />
       <Card>
         <CardContent className="p-6">
           <form className="space-y-4" onSubmit={submit}>

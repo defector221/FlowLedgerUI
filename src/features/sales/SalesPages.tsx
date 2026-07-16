@@ -6,10 +6,24 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Download, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { customerApi, productApi, purchaseApi, paymentApi, salesApi, supplierApi, taxRateApi, templateApi } from '@/services/api'
+import {
+  customerApi,
+  organizationApi,
+  productApi,
+  purchaseApi,
+  paymentApi,
+  salesApi,
+  supplierApi,
+  taxRateApi,
+  templateApi,
+  warehouseApi,
+} from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { resolveDefaultWarehouseId } from '@/lib/warehouse'
 import { currency, customerLabel, supplierLabel } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
+import { PageHeader, EmptyState } from '@/components/layout/PageChrome'
+import { useAuth } from '@/features/auth/auth'
 import {
   Badge,
   Button,
@@ -67,6 +81,28 @@ function documentDate(row: Record<string, unknown>) {
   )
 }
 
+const writePermissionByEndpoint: Record<string, string> = {
+  quotations: 'sales:write',
+  invoices: 'sales:write',
+  orders: 'sales:write',
+  challans: 'sales:write',
+  'purchase-orders': 'purchases:write',
+  grn: 'purchases:write',
+  'purchase-invoices': 'purchases:write',
+  received: 'payments:write',
+  'suppliers-payments': 'payments:write',
+}
+
+const actionEndpoints = new Set([
+  'quotations',
+  'invoices',
+  'orders',
+  'challans',
+  'purchase-orders',
+  'grn',
+  'purchase-invoices',
+])
+
 export function DocumentListPage({
   title,
   endpoint,
@@ -80,7 +116,13 @@ export function DocumentListPage({
   createLabel?: string
   unavailable?: boolean
 }) {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
   const queryClient = useQueryClient()
+  const { can } = useAuth()
+  const canWrite = can(writePermissionByEndpoint[endpoint] ?? 'never')
+  const showCreate = Boolean(createPath && canWrite)
   const { data, isLoading } = useQuery({ queryKey: [endpoint], queryFn: loaders[endpoint], enabled: !unavailable })
   const { data: customers = [] } = useQuery({
     queryKey: ['customers', 'party-labels'],
@@ -90,7 +132,43 @@ export function DocumentListPage({
     queryKey: ['suppliers', 'party-labels'],
     queryFn: () => supplierApi.list({ size: 200 }),
   })
+  const { data: challansForOrders = [] } = useQuery({
+    queryKey: ['challans'],
+    queryFn: salesApi.listChallans,
+    enabled: endpoint === 'orders' && canWrite,
+  })
+  const needsWarehouse = canWrite && ['orders', 'challans', 'purchase-orders', 'grn'].includes(endpoint)
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: warehouseApi.list,
+    enabled: needsWarehouse,
+  })
+  const { data: orgSettings } = useQuery({
+    queryKey: ['organization', 'settings'],
+    queryFn: organizationApi.settings,
+    enabled: needsWarehouse,
+  })
   const rows = data ?? []
+  const showActions =
+    endpoint === 'invoices' ||
+    endpoint === 'purchase-invoices' ||
+    (canWrite && actionEndpoints.has(endpoint))
+  const defaultWarehouseId = resolveDefaultWarehouseId(warehouses, orgSettings?.defaultWarehouseId)
+  const challanByOrderId = useMemo(() => {
+    const map: Record<string, Record<string, unknown>> = {}
+    for (const challan of challansForOrders) {
+      const orderId = challan.salesOrderId ? String(challan.salesOrderId) : ''
+      if (!orderId || map[orderId]) continue
+      map[orderId] = challan
+    }
+    return map
+  }, [challansForOrders])
+
+  useEffect(() => {
+    if (endpoint !== 'challans' || !focusId) return
+    const row = document.getElementById(`doc-row-${focusId}`)
+    row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [endpoint, focusId, rows])
   const customerNameById = useMemo(
     () => Object.fromEntries(customers.map((c) => [c.id, customerLabel(c)])),
     [customers],
@@ -107,6 +185,14 @@ export function DocumentListPage({
     return '—'
   }
 
+  const requireWarehouse = () => {
+    if (!defaultWarehouseId) {
+      toast.error('Add a warehouse before converting stock documents')
+      return null
+    }
+    return defaultWarehouseId
+  }
+
   const convertQuotation = async (id: string) => {
     try {
       await salesApi.convertQuotationToOrder(id)
@@ -115,6 +201,132 @@ export function DocumentListPage({
       toast.success('Quotation converted to sales order')
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Unable to convert quotation'))
+    }
+  }
+
+  const convertOrderToChallan = async (id: string) => {
+    const existing = challanByOrderId[id]
+    if (existing?.id) {
+      toast.message('Delivery challan already exists for this order')
+      navigate(`/sales/challans?focus=${String(existing.id)}`)
+      return
+    }
+    const warehouseId = requireWarehouse()
+    if (!warehouseId) return
+    try {
+      const challan = await salesApi.convertOrderToChallan(id, { warehouseId })
+      await queryClient.invalidateQueries({ queryKey: ['orders'] })
+      await queryClient.invalidateQueries({ queryKey: ['challans'] })
+      toast.success('Sales order converted to delivery challan')
+      if (challan?.id) navigate(`/sales/challans?focus=${String(challan.id)}`)
+      else navigate('/sales/challans')
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Unable to convert order to challan')
+      if (/already exists/i.test(message)) {
+        try {
+          const challans = await salesApi.listChallans()
+          const found = challans.find((row) => String(row.salesOrderId) === id)
+          if (found?.id) {
+            toast.message('Delivery challan already exists for this order')
+            navigate(`/sales/challans?focus=${String(found.id)}`)
+            return
+          }
+        } catch {
+          // fall through
+        }
+      }
+      toast.error(message)
+    }
+  }
+
+  const convertOrderToInvoice = async (id: string) => {
+    const warehouseId = requireWarehouse()
+    if (!warehouseId) return
+    try {
+      const invoice = await salesApi.convertOrderToInvoice(id, { warehouseId })
+      await queryClient.invalidateQueries({ queryKey: ['orders'] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast.success('Sales order converted to invoice')
+      if (invoice?.id) navigate(`/sales/invoices/${String(invoice.id)}`)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to convert order to invoice'))
+    }
+  }
+
+  const convertChallanToInvoice = async (id: string) => {
+    try {
+      const invoice = await salesApi.convertChallanToInvoice(id)
+      await queryClient.invalidateQueries({ queryKey: ['challans'] })
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast.success('Challan converted to invoice')
+      if (invoice?.id) navigate(`/sales/invoices/${String(invoice.id)}`)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to convert challan to invoice'))
+    }
+  }
+
+  const confirmPurchaseOrder = async (id: string) => {
+    try {
+      await purchaseApi.confirmOrder(id)
+      await queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
+      toast.success('Purchase order confirmed')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to confirm purchase order'))
+    }
+  }
+
+  const createGrnFromOrder = async (id: string) => {
+    const warehouseId = requireWarehouse()
+    if (!warehouseId) return
+    try {
+      await purchaseApi.createGrnFromOrder(id, {
+        warehouseId,
+        receiptDate: new Date().toISOString().slice(0, 10),
+      })
+      await queryClient.invalidateQueries({ queryKey: ['grn'] })
+      await queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
+      toast.success('Goods receipt created from purchase order')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to create goods receipt'))
+    }
+  }
+
+  const createPurchaseInvoiceFromOrder = async (id: string) => {
+    try {
+      const invoice = await purchaseApi.createInvoiceFromOrder(id, {
+        invoiceDate: new Date().toISOString().slice(0, 10),
+      })
+      await queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] })
+      await queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
+      toast.success('Purchase invoice created from order')
+      if (invoice?.id) navigate(`/purchases/invoices/${String(invoice.id)}`)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to create purchase invoice'))
+    }
+  }
+
+  const confirmGrn = async (id: string) => {
+    try {
+      await purchaseApi.confirmGrn(id)
+      await queryClient.invalidateQueries({ queryKey: ['grn'] })
+      await queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      toast.success('Goods receipt confirmed')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to confirm goods receipt'))
+    }
+  }
+
+  const createPurchaseInvoiceFromGrn = async (id: string) => {
+    try {
+      const invoice = await purchaseApi.createInvoiceFromGrn(id, {
+        invoiceDate: new Date().toISOString().slice(0, 10),
+      })
+      await queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] })
+      await queryClient.invalidateQueries({ queryKey: ['grn'] })
+      toast.success('Purchase invoice created from GRN')
+      if (invoice?.id) navigate(`/purchases/invoices/${String(invoice.id)}`)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to create purchase invoice from GRN'))
     }
   }
 
@@ -139,6 +351,16 @@ export function DocumentListPage({
     }
   }
 
+  const confirmPurchaseInvoice = async (id: string) => {
+    try {
+      await purchaseApi.confirmInvoice(id)
+      await queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] })
+      toast.success('Purchase invoice confirmed')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to confirm purchase invoice'))
+    }
+  }
+
   const downloadPdf = async (id: string) => {
     try {
       const blob = await salesApi.downloadInvoicePdf(id)
@@ -155,29 +377,29 @@ export function DocumentListPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">Create and track {title.toLowerCase()}.</p>
-        </div>
-        {createPath && (
-          <Link
-            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 sm:w-auto"
-            to={createPath}
-          >
-            <Plus className="size-4" />
-            {createLabel}
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title={title}
+        subtitle={`Create and track ${title.toLowerCase()}.`}
+        actions={
+          showCreate && createPath ? (
+            <Button asChild>
+              <Link to={createPath}>
+                <Plus className="size-4" />
+                {createLabel}
+              </Link>
+            </Button>
+          ) : null
+        }
+      />
       <Card>
         <CardContent className="p-4">
           {unavailable ? (
-            <p className="py-16 text-center text-sm text-slate-500">
-              This list endpoint is not yet exposed by the backend API.
-            </p>
+            <EmptyState
+              title="Not available yet"
+              description="This list endpoint is not yet exposed by the backend API."
+            />
           ) : isLoading ? (
-            <p className="py-16 text-center text-sm text-slate-500">Loading…</p>
+            <EmptyState title="Loading…" />
           ) : (
             <Table>
               <thead>
@@ -187,82 +409,216 @@ export function DocumentListPage({
                   <th className="p-3 text-xs text-slate-500">DATE</th>
                   <th className="p-3 text-xs text-slate-500">TOTAL</th>
                   <th className="p-3 text-xs text-slate-500">STATUS</th>
-                  {(endpoint === 'quotations' || endpoint === 'invoices') && (
-                    <th className="p-3 text-xs text-slate-500">ACTIONS</th>
-                  )}
+                  {showActions && <th className="p-3 text-xs text-slate-500">ACTIONS</th>}
                 </tr>
               </thead>
               <tbody>
                 {rows.length ? (
-                  rows.map((row) => (
-                    <tr key={String(row.id)} className="border-b">
-                      <td className="p-3">
-                        {endpoint === 'invoices' ? (
-                          <Link className="font-medium text-teal-700 hover:underline" to={`/sales/invoices/${row.id}`}>
-                            {documentNumber(row)}
-                          </Link>
-                        ) : (
-                          documentNumber(row)
-                        )}
-                      </td>
-                      <td className="p-3">{partyLabel(row)}</td>
-                      <td className="p-3">{documentDate(row)}</td>
-                      <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
-                      <td className="p-3">
-                        <Badge>{String(row.status ?? row.paymentType ?? 'DRAFT')}</Badge>
-                      </td>
-                      {endpoint === 'quotations' && (
+                  rows.map((row) => {
+                    const status = String(row.status ?? row.paymentType ?? 'DRAFT')
+                    const cancelled = status === 'CANCELLED'
+                    return (
+                      <tr
+                        key={String(row.id)}
+                        id={`doc-row-${String(row.id)}`}
+                        className={`border-b ${focusId === String(row.id) ? 'bg-teal-50' : ''}`}
+                      >
                         <td className="p-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={String(row.status) === 'CONVERTED' || String(row.status) === 'CANCELLED'}
-                            onClick={() => convertQuotation(String(row.id))}
-                          >
-                            Convert to order
-                          </Button>
+                          {endpoint === 'invoices' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/sales/invoices/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
+                          ) : endpoint === 'purchase-invoices' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/purchases/invoices/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
+                          ) : (
+                            documentNumber(row)
+                          )}
                         </td>
-                      )}
-                      {endpoint === 'invoices' && (
+                        <td className="p-3">{partyLabel(row)}</td>
+                        <td className="p-3">{documentDate(row)}</td>
+                        <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
                         <td className="p-3">
-                          <div className="flex flex-wrap gap-2">
-                            {String(row.status) === 'DRAFT' && (
-                              <>
-                                <Link
-                                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                  to={`/sales/invoices/${row.id}/edit`}
-                                >
-                                  Edit
-                                </Link>
-                                <Button variant="outline" size="sm" onClick={() => confirmInvoice(String(row.id))}>
-                                  Confirm
-                                </Button>
-                              </>
-                            )}
-                            <Button variant="outline" size="sm" onClick={() => downloadPdf(String(row.id))}>
-                              <Download className="size-3.5" />
-                              PDF
-                            </Button>
+                          <Badge>{status}</Badge>
+                        </td>
+                        {endpoint === 'quotations' && canWrite && (
+                          <td className="p-3">
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={String(row.status) === 'CANCELLED'}
-                              onClick={() => cancelInvoice(String(row.id))}
+                              disabled={status === 'CONVERTED' || cancelled}
+                              onClick={() => convertQuotation(String(row.id))}
                             >
-                              Cancel
+                              Convert to order
                             </Button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
+                          </td>
+                        )}
+                        {endpoint === 'orders' && canWrite && (
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-2">
+                              {challanByOrderId[String(row.id)]?.id ? (
+                                <Link
+                                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                  to={`/sales/challans?focus=${String(challanByOrderId[String(row.id)].id)}`}
+                                >
+                                  View challan
+                                </Link>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={cancelled}
+                                  onClick={() => convertOrderToChallan(String(row.id))}
+                                >
+                                  To challan
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={cancelled}
+                                onClick={() => convertOrderToInvoice(String(row.id))}
+                              >
+                                To invoice
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                        {endpoint === 'challans' && canWrite && (
+                          <td className="p-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={cancelled}
+                              onClick={() => convertChallanToInvoice(String(row.id))}
+                            >
+                              To invoice
+                            </Button>
+                          </td>
+                        )}
+                        {endpoint === 'purchase-orders' && canWrite && (
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-2">
+                              {status === 'DRAFT' && (
+                                <Button variant="outline" size="sm" onClick={() => confirmPurchaseOrder(String(row.id))}>
+                                  Confirm
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={cancelled}
+                                onClick={() => createGrnFromOrder(String(row.id))}
+                              >
+                                Create GRN
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={cancelled}
+                                onClick={() => createPurchaseInvoiceFromOrder(String(row.id))}
+                              >
+                                Create invoice
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                        {endpoint === 'grn' && canWrite && (
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-2">
+                              {status !== 'CONFIRMED' && !cancelled && (
+                                <Button variant="outline" size="sm" onClick={() => confirmGrn(String(row.id))}>
+                                  Confirm
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={cancelled}
+                                onClick={() => createPurchaseInvoiceFromGrn(String(row.id))}
+                              >
+                                Create invoice
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                        {endpoint === 'purchase-invoices' && (
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-2">
+                              <Link
+                                className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                to={`/purchases/invoices/${row.id}`}
+                              >
+                                View
+                              </Link>
+                              {canWrite && status === 'DRAFT' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => confirmPurchaseInvoice(String(row.id))}
+                                >
+                                  Confirm
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {endpoint === 'invoices' && (
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-2">
+                              {canWrite && status === 'DRAFT' && (
+                                <>
+                                  <Link
+                                    className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                    to={`/sales/invoices/${row.id}/edit`}
+                                  >
+                                    Edit
+                                  </Link>
+                                  <Button variant="outline" size="sm" onClick={() => confirmInvoice(String(row.id))}>
+                                    Confirm
+                                  </Button>
+                                </>
+                              )}
+                              <Button variant="outline" size="sm" onClick={() => downloadPdf(String(row.id))}>
+                                <Download className="size-3.5" />
+                                PDF
+                              </Button>
+                              {canWrite && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={cancelled}
+                                  onClick={() => cancelInvoice(String(row.id))}
+                                >
+                                  Cancel
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })
                 ) : (
                   <tr>
-                    <td
-                      colSpan={endpoint === 'quotations' || endpoint === 'invoices' ? 6 : 5}
-                      className="py-16 text-center text-sm text-slate-500"
-                    >
-                      No {title.toLowerCase()} found.
+                    <td colSpan={showActions ? 6 : 5} className="py-16 text-center text-sm text-slate-500">
+                      {showCreate && createPath ? (
+                        <span>
+                          No {title.toLowerCase()} found.{' '}
+                          <Link className="font-medium text-teal-700 hover:underline" to={createPath}>
+                            Create one
+                          </Link>
+                        </span>
+                      ) : (
+                        `No ${title.toLowerCase()} found.`
+                      )}
                     </td>
                   </tr>
                 )}
@@ -816,7 +1172,7 @@ export function CreateInvoicePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="page-title">
             {isEdit ? `Edit sales invoice` : 'Create sales invoice'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -1035,7 +1391,7 @@ export function CreateQuotationPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create quotation</h1>
+          <h1 className="page-title">Create quotation</h1>
           <p className="mt-1 text-sm text-slate-500">Prepare a quote for a customer with line items.</p>
         </div>
         <Button onClick={save}>Save quotation</Button>
@@ -1110,6 +1466,525 @@ export function CreateQuotationPage() {
   )
 }
 
+const salesOrderSchema = z.object({
+  customerId: z.string().uuid('Select a customer'),
+  orderDate: z.string().min(1),
+  notes: z.string().optional(),
+})
+
+export function CreateSalesOrderPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { lines, products, update, patch, addLine, removeLine, selectProduct, validLines, subtotal, discountTotal, tax } =
+    useLineItems()
+  const form = useForm({
+    resolver: zodResolver(salesOrderSchema),
+    defaultValues: { customerId: '', orderDate: new Date().toISOString().slice(0, 10), notes: '' },
+  })
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers', 'sales-order'],
+    queryFn: () => customerApi.list({ size: 100 }),
+  })
+
+  const save = form.handleSubmit(async (values) => {
+    try {
+      const items = validLines()
+      if (!items.length) throw new Error('Add at least one line item')
+      await salesApi.createOrder({
+        customerId: values.customerId,
+        orderDate: values.orderDate,
+        notes: values.notes,
+        items: items.map(
+          ({
+            productId,
+            quantity,
+            rate,
+            discountPercent,
+            taxRate,
+            taxType,
+            splitStrategy,
+            cgstSharePercent,
+            sgstSharePercent,
+          }) => ({
+            productId,
+            quantity,
+            rate,
+            discountPercent,
+            taxRate,
+            taxType,
+            splitStrategy,
+            cgstSharePercent,
+            sgstSharePercent,
+          }),
+        ),
+      })
+      await queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Sales order created')
+      navigate('/sales/orders')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to create sales order'))
+    }
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap justify-between gap-3">
+        <div>
+          <h1 className="page-title">Create sales order</h1>
+          <p className="mt-1 text-sm text-slate-500">Create an order directly, or convert from a quotation.</p>
+        </div>
+        <Button onClick={save}>Save sales order</Button>
+      </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="space-y-6 xl:col-span-2">
+          <Card>
+            <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Customer</Label>
+                <Select value={form.watch('customerId')} onValueChange={(value) => form.setValue('customerId', value)}>
+                  <SelectTrigger className="h-auto min-h-10 py-2">
+                    {(() => {
+                      const selected = customers.find((c) => c.id === form.watch('customerId'))
+                      return selected ? <PartySelectLabel party={selected} /> : 'Select customer'
+                    })()}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id} textValue={customerLabel(customer)}>
+                        <PartySelectLabel party={customer} />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Order date</Label>
+                <Input type="date" {...form.register('orderDate')} />
+              </div>
+            </CardContent>
+          </Card>
+          <LineItemsEditor
+            lines={lines}
+            products={products}
+            onSelectProduct={selectProduct}
+            onUpdate={update}
+            onPatch={patch}
+            onRemove={removeLine}
+            onAdd={addLine}
+          />
+        </div>
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold text-slate-900">Totals</h2>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <b>{currency(subtotal)}</b>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Discount</span>
+              <b>−{currency(discountTotal)}</b>
+            </div>
+            <div className="flex justify-between">
+              <span>Tax</span>
+              <b>{currency(tax)}</b>
+            </div>
+            <div className="flex justify-between border-t pt-3 text-base font-semibold">
+              <span>Grand total</span>
+              <span>{currency(Math.round(subtotal - discountTotal + tax))}</span>
+            </div>
+            <div className="pt-2">
+              <Label>Notes</Label>
+              <Textarea className="mt-2" {...form.register('notes')} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+const convertChallanSchema = z.object({
+  salesOrderId: z.string().uuid('Select a sales order'),
+  warehouseId: z.string().uuid('Select a warehouse'),
+})
+
+export function CreateChallanPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const form = useForm({
+    resolver: zodResolver(convertChallanSchema),
+    defaultValues: { salesOrderId: '', warehouseId: '' },
+  })
+  const { data: orders = [] } = useQuery({ queryKey: ['orders'], queryFn: salesApi.listOrders })
+  const { data: challans = [] } = useQuery({ queryKey: ['challans'], queryFn: salesApi.listChallans })
+  const { data: warehouses = [] } = useQuery({ queryKey: ['warehouses'], queryFn: warehouseApi.list })
+  const { data: orgSettings } = useQuery({
+    queryKey: ['organization', 'settings'],
+    queryFn: organizationApi.settings,
+  })
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers', 'party-labels'],
+    queryFn: () => customerApi.list({ size: 200 }),
+  })
+
+  useEffect(() => {
+    const defaultId = resolveDefaultWarehouseId(warehouses, orgSettings?.defaultWarehouseId)
+    if (defaultId && !form.getValues('warehouseId')) form.setValue('warehouseId', defaultId)
+  }, [form, orgSettings?.defaultWarehouseId, warehouses])
+
+  const challanByOrderId = useMemo(() => {
+    const map: Record<string, Record<string, unknown>> = {}
+    for (const challan of challans) {
+      const orderId = challan.salesOrderId ? String(challan.salesOrderId) : ''
+      if (!orderId || map[orderId]) continue
+      map[orderId] = challan
+    }
+    return map
+  }, [challans])
+
+  const openOrders = orders.filter((row) => String(row.status) !== 'CANCELLED')
+  const customerNameById = useMemo(
+    () => Object.fromEntries(customers.map((c) => [c.id, customerLabel(c)])),
+    [customers],
+  )
+
+  const goToExistingChallan = (orderId: string) => {
+    const existing = challanByOrderId[orderId]
+    if (!existing?.id) return false
+    toast.message('Delivery challan already exists for this order')
+    navigate(`/sales/challans?focus=${String(existing.id)}`)
+    return true
+  }
+
+  const save = form.handleSubmit(async (values) => {
+    if (goToExistingChallan(values.salesOrderId)) return
+    try {
+      const challan = await salesApi.convertOrderToChallan(values.salesOrderId, {
+        warehouseId: values.warehouseId,
+      })
+      await queryClient.invalidateQueries({ queryKey: ['challans'] })
+      await queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Delivery challan created')
+      navigate(challan?.id ? `/sales/challans?focus=${String(challan.id)}` : '/sales/challans')
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Unable to create delivery challan')
+      if (/already exists/i.test(message) && goToExistingChallan(values.salesOrderId)) return
+      if (/already exists/i.test(message)) {
+        try {
+          const latest = await salesApi.listChallans()
+          const found = latest.find((row) => String(row.salesOrderId) === values.salesOrderId)
+          if (found?.id) {
+            toast.message('Delivery challan already exists for this order')
+            navigate(`/sales/challans?focus=${String(found.id)}`)
+            return
+          }
+        } catch {
+          // fall through
+        }
+      }
+      toast.error(message)
+    }
+  })
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6">
+      <div>
+        <h1 className="page-title">Create delivery challan</h1>
+        <p className="mt-1 text-sm text-slate-500">Convert a sales order into a delivery challan.</p>
+      </div>
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="space-y-1.5">
+            <Label>Sales order</Label>
+            <Select
+              value={form.watch('salesOrderId')}
+              onValueChange={(value) => {
+                if (goToExistingChallan(value)) return
+                form.setValue('salesOrderId', value)
+              }}
+            >
+              <SelectTrigger>
+                {(() => {
+                  const selected = openOrders.find((o) => String(o.id) === form.watch('salesOrderId'))
+                  if (!selected) return 'Select sales order'
+                  const party = selected.customerId ? customerNameById[String(selected.customerId)] : '—'
+                  return `${String(selected.orderNumber ?? selected.id)} · ${party}`
+                })()}
+              </SelectTrigger>
+              <SelectContent>
+                {openOrders.map((order) => {
+                  const existing = challanByOrderId[String(order.id)]
+                  return (
+                    <SelectItem key={String(order.id)} value={String(order.id)}>
+                      {String(order.orderNumber ?? order.id)} ·{' '}
+                      {order.customerId ? (customerNameById[String(order.customerId)] ?? String(order.customerId)) : '—'}
+                      {existing ? ` · challan ${String(existing.challanNumber ?? '')}` : ''}
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Warehouse</Label>
+            <Select value={form.watch('warehouseId')} onValueChange={(value) => form.setValue('warehouseId', value)}>
+              <SelectTrigger>
+                {warehouses.find((w) => w.id === form.watch('warehouseId'))?.warehouseName ?? 'Select warehouse'}
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((warehouse) => (
+                  <SelectItem key={warehouse.id} value={warehouse.id}>
+                    {warehouse.warehouseName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={save}>Create challan</Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+const createGrnSchema = z.object({
+  purchaseOrderId: z.string().uuid('Select a purchase order'),
+  warehouseId: z.string().uuid('Select a warehouse'),
+  receiptDate: z.string().min(1),
+  confirmAfterCreate: z.boolean().optional(),
+})
+
+export function CreateGrnPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const form = useForm({
+    resolver: zodResolver(createGrnSchema),
+    defaultValues: {
+      purchaseOrderId: '',
+      warehouseId: '',
+      receiptDate: new Date().toISOString().slice(0, 10),
+      confirmAfterCreate: true,
+    },
+  })
+  const { data: orders = [] } = useQuery({ queryKey: ['purchase-orders'], queryFn: purchaseApi.listOrders })
+  const { data: warehouses = [] } = useQuery({ queryKey: ['warehouses'], queryFn: warehouseApi.list })
+  const { data: orgSettings } = useQuery({
+    queryKey: ['organization', 'settings'],
+    queryFn: organizationApi.settings,
+  })
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers', 'party-labels'],
+    queryFn: () => supplierApi.list({ size: 200 }),
+  })
+
+  useEffect(() => {
+    const defaultId = resolveDefaultWarehouseId(warehouses, orgSettings?.defaultWarehouseId)
+    if (defaultId && !form.getValues('warehouseId')) form.setValue('warehouseId', defaultId)
+  }, [form, orgSettings?.defaultWarehouseId, warehouses])
+
+  const openOrders = orders.filter((row) => String(row.status) !== 'CANCELLED')
+  const supplierNameById = useMemo(
+    () => Object.fromEntries(suppliers.map((s) => [s.id, supplierLabel(s)])),
+    [suppliers],
+  )
+
+  const save = form.handleSubmit(async (values) => {
+    try {
+      const grn = await purchaseApi.createGrnFromOrder(values.purchaseOrderId, {
+        warehouseId: values.warehouseId,
+        receiptDate: values.receiptDate,
+      })
+      if (values.confirmAfterCreate && grn?.id) {
+        await purchaseApi.confirmGrn(String(grn.id))
+      }
+      await queryClient.invalidateQueries({ queryKey: ['grn'] })
+      await queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      toast.success(values.confirmAfterCreate ? 'GRN created and confirmed' : 'GRN created')
+      navigate('/purchases/grn')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to create goods receipt'))
+    }
+  })
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6">
+      <div>
+        <h1 className="page-title">Create goods receipt</h1>
+        <p className="mt-1 text-sm text-slate-500">Receive stock against a purchase order.</p>
+      </div>
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="space-y-1.5">
+            <Label>Purchase order</Label>
+            <Select
+              value={form.watch('purchaseOrderId')}
+              onValueChange={(value) => form.setValue('purchaseOrderId', value)}
+            >
+              <SelectTrigger>
+                {(() => {
+                  const selected = openOrders.find((o) => String(o.id) === form.watch('purchaseOrderId'))
+                  if (!selected) return 'Select purchase order'
+                  const party = selected.supplierId ? supplierNameById[String(selected.supplierId)] : '—'
+                  return `${String(selected.poNumber ?? selected.id)} · ${party}`
+                })()}
+              </SelectTrigger>
+              <SelectContent>
+                {openOrders.map((order) => (
+                  <SelectItem key={String(order.id)} value={String(order.id)}>
+                    {String(order.poNumber ?? order.id)} ·{' '}
+                    {order.supplierId ? (supplierNameById[String(order.supplierId)] ?? String(order.supplierId)) : '—'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Warehouse</Label>
+            <Select value={form.watch('warehouseId')} onValueChange={(value) => form.setValue('warehouseId', value)}>
+              <SelectTrigger>
+                {warehouses.find((w) => w.id === form.watch('warehouseId'))?.warehouseName ?? 'Select warehouse'}
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((warehouse) => (
+                  <SelectItem key={warehouse.id} value={warehouse.id}>
+                    {warehouse.warehouseName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Receipt date</Label>
+            <Input type="date" {...form.register('receiptDate')} />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={!!form.watch('confirmAfterCreate')}
+              onChange={(e) => form.setValue('confirmAfterCreate', e.target.checked)}
+            />
+            Confirm GRN immediately (posts inventory)
+          </label>
+          <Button onClick={save}>Create GRN</Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+const createPurchaseInvoiceSchema = z.object({
+  sourceType: z.enum(['po', 'grn']),
+  sourceId: z.string().uuid('Select a source document'),
+  invoiceDate: z.string().min(1),
+  supplierInvoiceNumber: z.string().optional(),
+})
+
+export function CreatePurchaseInvoicePage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const form = useForm({
+    resolver: zodResolver(createPurchaseInvoiceSchema),
+    defaultValues: {
+      sourceType: 'po' as const,
+      sourceId: '',
+      invoiceDate: new Date().toISOString().slice(0, 10),
+      supplierInvoiceNumber: '',
+    },
+  })
+  const sourceType = form.watch('sourceType')
+  const { data: orders = [] } = useQuery({ queryKey: ['purchase-orders'], queryFn: purchaseApi.listOrders })
+  const { data: grns = [] } = useQuery({ queryKey: ['grn'], queryFn: purchaseApi.listGrn })
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers', 'party-labels'],
+    queryFn: () => supplierApi.list({ size: 200 }),
+  })
+  const supplierNameById = useMemo(
+    () => Object.fromEntries(suppliers.map((s) => [s.id, supplierLabel(s)])),
+    [suppliers],
+  )
+  const sources = (sourceType === 'po' ? orders : grns).filter((row) => String(row.status) !== 'CANCELLED')
+
+  const save = form.handleSubmit(async (values) => {
+    try {
+      const body = {
+        invoiceDate: values.invoiceDate,
+        supplierInvoiceNumber: values.supplierInvoiceNumber || undefined,
+      }
+      const invoice =
+        values.sourceType === 'po'
+          ? await purchaseApi.createInvoiceFromOrder(values.sourceId, body)
+          : await purchaseApi.createInvoiceFromGrn(values.sourceId, body)
+      await queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] })
+      toast.success('Purchase invoice created')
+      navigate(invoice?.id ? `/purchases/invoices/${String(invoice.id)}` : '/purchases/invoices')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Unable to create purchase invoice'))
+    }
+  })
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6">
+      <div>
+        <h1 className="page-title">Create purchase invoice</h1>
+        <p className="mt-1 text-sm text-slate-500">Bill from a purchase order or goods receipt.</p>
+      </div>
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="space-y-1.5">
+            <Label>Source</Label>
+            <Select
+              value={form.watch('sourceType')}
+              onValueChange={(value) => {
+                form.setValue('sourceType', value as 'po' | 'grn')
+                form.setValue('sourceId', '')
+              }}
+            >
+              <SelectTrigger>{sourceType === 'po' ? 'Purchase order' : 'Goods receipt'}</SelectTrigger>
+              <SelectContent>
+                <SelectItem value="po">Purchase order</SelectItem>
+                <SelectItem value="grn">Goods receipt</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{sourceType === 'po' ? 'Purchase order' : 'Goods receipt'}</Label>
+            <Select value={form.watch('sourceId')} onValueChange={(value) => form.setValue('sourceId', value)}>
+              <SelectTrigger>
+                {(() => {
+                  const selected = sources.find((s) => String(s.id) === form.watch('sourceId'))
+                  if (!selected) return 'Select document'
+                  const number = String(selected.poNumber ?? selected.grnNumber ?? selected.id)
+                  const party = selected.supplierId ? supplierNameById[String(selected.supplierId)] : '—'
+                  return `${number} · ${party}`
+                })()}
+              </SelectTrigger>
+              <SelectContent>
+                {sources.map((row) => (
+                  <SelectItem key={String(row.id)} value={String(row.id)}>
+                    {String(row.poNumber ?? row.grnNumber ?? row.id)} ·{' '}
+                    {row.supplierId ? (supplierNameById[String(row.supplierId)] ?? String(row.supplierId)) : '—'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Invoice date</Label>
+            <Input type="date" {...form.register('invoiceDate')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Supplier invoice number</Label>
+            <Input placeholder="Optional" {...form.register('supplierInvoiceNumber')} />
+          </div>
+          <Button onClick={save}>Create purchase invoice</Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 const purchaseOrderSchema = z.object({
   supplierId: z.string().uuid('Select a supplier'),
   orderDate: z.string().min(1),
@@ -1174,7 +2049,7 @@ export function CreatePurchaseOrderPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create purchase order</h1>
+          <h1 className="page-title">Create purchase order</h1>
           <p className="mt-1 text-sm text-slate-500">Order stock from a supplier with line items.</p>
         </div>
         <Button onClick={save}>Save purchase order</Button>
@@ -1348,7 +2223,7 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="page-title">
             {paymentType === 'RECEIPT' ? 'Record payment received' : 'Record supplier payment'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">Capture payment details and optional invoice allocation.</p>

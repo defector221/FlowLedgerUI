@@ -643,3 +643,177 @@ export interface GlobalSearchResponse {
   size: number
   hasMore: boolean
 }
+
+export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE'
+export type JournalStatus = 'DRAFT' | 'POSTED' | 'REVERSED' | 'CANCELLED'
+export type VoucherType = 'JOURNAL' | 'SALES' | 'PURCHASE' | 'RECEIPT' | 'PAYMENT' | 'CONTRA' | 'CREDIT_NOTE' | 'DEBIT_NOTE'
+
+export interface AccountRequest {
+  accountCode: string
+  accountName: string
+  description?: string
+  accountType: AccountType
+  accountSubType?: string | null
+  parentAccountId?: string
+  status?: AccountStatus
+  active?: boolean
+  allowManualPosting?: boolean
+  openingDebit?: number
+  openingCredit?: number
+}
+
+export type AccountStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface AccountResponse {
+  id: string
+  organizationId?: string
+  accountCode: string
+  accountName: string
+  description?: string | null
+  accountType: AccountType
+  accountSubType?: string | null
+  parentAccountId?: string | null
+  systemAccountKey?: string | null
+  systemAccount: boolean
+  editable?: boolean
+  deletable?: boolean
+  status?: AccountStatus
+  active: boolean
+  allowManualPosting: boolean
+  openingDebit: number
+  openingCredit: number
+}
+
+export interface AccountTreeNode extends Omit<AccountResponse, 'openingDebit' | 'openingCredit'> {
+  children: AccountTreeNode[]
+  openingDebit?: number
+  openingCredit?: number
+}
+
+export interface JournalLineRequest {
+  accountId: string
+  description?: string
+  debitAmount?: number
+  creditAmount?: number
+  customerId?: string
+  supplierId?: string
+  reference?: string
+}
+
+export interface JournalLineResponse extends JournalLineRequest {
+  id: string
+  accountCode?: string | null
+  accountName?: string | null
+  lineNumber: number
+}
+
+export interface JournalResponse {
+  id: string
+  entryNumber: string
+  entryDate: string
+  postingDate?: string | null
+  voucherType: VoucherType
+  voucherNumber?: string | null
+  description?: string | null
+  status: JournalStatus
+  source: string
+  referenceType?: string | null
+  referenceId?: string | null
+  reversalOfId?: string | null
+  reversedById?: string | null
+  totalDebit: number
+  totalCredit: number
+  postedAt?: string | null
+  lines: JournalLineResponse[]
+}
+
+export interface JournalRequest {
+  entryDate: string
+  voucherType?: VoucherType
+  description?: string
+  voucherNumber?: string
+  lines: JournalLineRequest[]
+}
+
+export interface LedgerLineResponse {
+  journalEntryId: string
+  entryNumber: string
+  entryDate: string
+  description?: string | null
+  debitAmount: number
+  creditAmount: number
+  runningBalance: number
+  accountId: string
+  accountCode?: string | null
+  accountName?: string | null
+  customerId?: string | null
+  supplierId?: string | null
+}
+
+export interface TrialBalanceResponse {
+  fromDate?: string | null
+  toDate?: string | null
+  rows: Array<{
+    accountId: string
+    accountCode: string
+    accountName: string
+    accountType: AccountType
+    openingDebit: number
+    openingCredit: number
+    periodDebit: number
+    periodCredit: number
+    closingDebit: number
+    closingCredit: number
+  }>
+  totalDebit: number
+  totalCredit: number
+  balanced: boolean
+}
+
+export interface ProfitAndLossResponse {
+  fromDate?: string | null
+  toDate?: string | null
+  income: Array<{ name: string; amount: number }>
+  expenses: Array<{ name: string; amount: number }>
+  totalIncome: number
+  totalExpenses: number
+  netProfit: number
+}
+
+export interface BalanceSheetResponse {
+  asOfDate: string
+  assets: Array<{ name: string; amount: number }>
+  liabilities: Array<{ name: string; amount: number }>
+  equity: Array<{ name: string; amount: number }>
+  totalAssets: number
+  totalLiabilities: number
+  totalEquity: number
+  balanced: boolean
+}
+
+export interface GstSummaryResponse {
+  fromDate?: string | null
+  toDate?: string | null
+  outputCgst: number
+  outputSgst: number
+  outputIgst: number
+  inputCgst: number
+  inputSgst: number
+  inputIgst: number
+  netPayable: number
+}
+
+export interface AccountingDashboardResponse {
+  totalReceivables: number
+  totalPayables: number
+  cashAndBank: number
+  netProfitMtd: number
+  journalCountMtd: number
+  unbalancedJournals: number
+}
+
+export interface InitializeAccountingResponse {
+  initialized: boolean
+  accountCount: number
+  fiscalYear?: { id: string; name: string; startDate: string; endDate: string; status: string; current: boolean } | null
+}

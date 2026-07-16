@@ -57,7 +57,9 @@ export function AcceptInvitePage() {
           </Link>
           <h1 className="text-xl font-semibold text-slate-900">Accept invitation</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {preview ? (
+            {!token ? (
+              'This invitation link is missing a token. Open the link from your invite email.'
+            ) : preview ? (
               <>
                 Join <b>{preview.organizationName}</b> as <b>{preview.email}</b>
               </>

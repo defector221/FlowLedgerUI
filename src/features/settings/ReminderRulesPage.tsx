@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { paymentApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { PageHeader, EmptyState } from '@/components/layout/PageChrome'
 import type { PaymentReminderRuleRequest, PaymentReminderRuleResponse } from '@/types/api'
 import {
   Button,
@@ -88,24 +89,22 @@ export function ReminderRulesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Payment reminder rules</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Automate overdue reminders by due-date offset over email or WhatsApp.
-          </p>
-        </div>
-        <Button onClick={openCreate}>Add rule</Button>
-      </div>
+      <PageHeader
+        title="Payment reminder rules"
+        subtitle="Automate overdue reminders by due-date offset over email or WhatsApp."
+        actions={<Button onClick={openCreate}>Add rule</Button>}
+      />
 
       <Card>
         <CardContent className="p-4">
           {isLoading ? (
-            <p className="py-16 text-center text-sm text-slate-500">Loading rules…</p>
+            <EmptyState title="Loading rules…" />
           ) : rules.length === 0 ? (
-            <p className="py-16 text-center text-sm text-slate-500">
-              No reminder rules yet. Create one to send automated reminders each morning.
-            </p>
+            <EmptyState
+              title="No reminder rules yet"
+              description="Create one to send automated reminders each morning."
+              action={<Button onClick={openCreate}>Add rule</Button>}
+            />
           ) : (
             <Table>
               <thead>

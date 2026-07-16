@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { billingApi } from '@/services/api'
+import { PageHeader } from '@/components/layout/PageChrome'
 import { Badge, Card, CardContent, CardHeader } from '@/components/ui'
 
 export function BillingPage() {
@@ -22,10 +23,10 @@ export function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Billing & plan</h1>
-        <p className="mt-1 text-sm text-slate-500">Current subscription limits and usage for your account.</p>
-      </div>
+      <PageHeader
+        title="Billing & plan"
+        subtitle="Current subscription limits and usage for your account."
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

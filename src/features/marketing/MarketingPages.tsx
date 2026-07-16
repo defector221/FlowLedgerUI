@@ -8,6 +8,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { emailTemplateApi, marketingApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { PageHeader } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -102,21 +103,23 @@ export function MarketingSequencesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Marketing sequences</h1>
-          <p className="mt-1 text-sm text-slate-500">
+      <PageHeader
+        title="Marketing sequences"
+        subtitle={
+          <>
             Automate follow-ups when leads are created or enrolled manually.{' '}
             <Link className="text-teal-700 hover:underline" to="/marketing/email-templates">
               Manage email templates
             </Link>
-          </p>
-        </div>
-        <Button type="button" onClick={() => setShowCreate((open) => !open)}>
-          <Plus className="size-4" />
-          {showCreate ? 'Hide form' : 'New sequence'}
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button type="button" onClick={() => setShowCreate((open) => !open)}>
+            <Plus className="size-4" />
+            {showCreate ? 'Hide form' : 'New sequence'}
+          </Button>
+        }
+      />
 
       {showCreate && (
         <Card>

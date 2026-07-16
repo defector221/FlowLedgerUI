@@ -18,6 +18,7 @@ import {
 } from '@/components/ui'
 import { customerApi, paymentApi, purchaseApi, salesApi, supplierApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { PageHeader } from '@/components/layout/PageChrome'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
 
@@ -127,56 +128,51 @@ export function SalesInvoiceDetailPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sales invoice</p>
-          <h1 className="font-display text-2xl font-semibold text-slate-900">
-            {data.invoiceNumber || 'Draft invoice'}
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge>{data.status}</Badge>
-          {isDraft && (
-            <>
-              <Button variant="outline" onClick={() => navigate(`/sales/invoices/${id}/edit`)}>
-                Edit
-              </Button>
-              <Button onClick={confirmInvoice}>Confirm invoice</Button>
-            </>
-          )}
-          {canCollect && (
-            <>
-              <Button
-                onClick={() =>
-                  navigate(
-                    `/payments/received/new?customerId=${data.customerId}&invoiceId=${id}&amount=${outstanding}`,
-                  )
-                }
-              >
-                Record payment
-              </Button>
-              <Button variant="outline" onClick={() => setReminderOpen(true)}>
-                Send reminder
-              </Button>
-            </>
-          )}
-          <Button variant="outline" onClick={downloadPdf}>
-            <Download className="size-4" />
-            PDF
-          </Button>
-          {!isCancelled && (
-            <Button variant="outline" onClick={cancelInvoice}>
-              Cancel
+      <PageHeader
+        breadcrumbs="Sales invoice"
+        title={data.invoiceNumber || 'Draft invoice'}
+        actions={
+          <>
+            <Badge>{data.status}</Badge>
+            {isDraft && (
+              <>
+                <Button variant="outline" onClick={() => navigate(`/sales/invoices/${id}/edit`)}>
+                  Edit
+                </Button>
+                <Button onClick={confirmInvoice}>Confirm invoice</Button>
+              </>
+            )}
+            {canCollect && (
+              <>
+                <Button
+                  onClick={() =>
+                    navigate(
+                      `/payments/received/new?customerId=${data.customerId}&invoiceId=${id}&amount=${outstanding}`,
+                    )
+                  }
+                >
+                  Record payment
+                </Button>
+                <Button variant="outline" onClick={() => setReminderOpen(true)}>
+                  Send reminder
+                </Button>
+              </>
+            )}
+            <Button variant="outline" onClick={downloadPdf}>
+              <Download className="size-4" />
+              PDF
             </Button>
-          )}
-          <Link
-            to="/sales/invoices"
-            className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-teal-50/60"
-          >
-            Back to list
-          </Link>
-        </div>
-      </div>
+            {!isCancelled && (
+              <Button variant="outline" onClick={cancelInvoice}>
+                Cancel
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <Link to="/sales/invoices">Back to list</Link>
+            </Button>
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -378,23 +374,18 @@ export function PurchaseInvoiceDetailPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Purchase invoice</p>
-          <h1 className="font-display text-2xl font-semibold text-slate-900">
-            {String(data.invoiceNumber ?? 'Purchase invoice')}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge>{String(data.status ?? 'DRAFT')}</Badge>
-          <Link
-            to="/purchases/invoices"
-            className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-teal-50/60"
-          >
-            Back to list
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs="Purchase invoice"
+        title={String(data.invoiceNumber ?? 'Purchase invoice')}
+        actions={
+          <>
+            <Badge>{String(data.status ?? 'DRAFT')}</Badge>
+            <Button variant="outline" asChild>
+              <Link to="/purchases/invoices">Back to list</Link>
+            </Button>
+          </>
+        }
+      />
       <Card>
         <CardHeader>
           <p className="text-sm font-semibold text-slate-800">Summary</p>

@@ -186,13 +186,19 @@ export const salesApi = {
     api.post('/sales/orders', payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
   cancelOrder: (id: string) =>
     api.post(`/sales/orders/${id}/cancel`).then((r) => unwrapApi<Record<string, unknown>>(r)),
-  convertOrderToChallan: (id: string) =>
-    api.post(`/sales/orders/${id}/convert-to-challan`).then((r) => unwrapApi<Record<string, unknown>>(r)),
-  convertOrderToInvoice: (id: string) =>
-    api.post(`/sales/orders/${id}/convert-to-invoice`).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  convertOrderToChallan: (id: string, body: { warehouseId: string }) =>
+    api
+      .post(`/sales/orders/${id}/convert-to-challan`, body)
+      .then((r) => unwrapApi<Record<string, unknown>>(r)),
+  convertOrderToInvoice: (id: string, body: { warehouseId?: string }) =>
+    api
+      .post(`/sales/orders/${id}/convert-to-invoice`, body)
+      .then((r) => unwrapApi<Record<string, unknown>>(r)),
 
   listChallans: () => api.get('/sales/challans').then((r) => unwrapList<Record<string, unknown>>(r)),
   getChallan: (id: string) => api.get(`/sales/challans/${id}`).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  createChallan: (payload: Record<string, unknown>) =>
+    api.post('/sales/challans', payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
   convertChallanToInvoice: (id: string) =>
     api.post(`/sales/challans/${id}/convert-to-invoice`).then((r) => unwrapApi<Record<string, unknown>>(r)),
 
@@ -569,4 +575,47 @@ export const searchApi = {
       .get('/search', { params: { q, types: params?.types, limit: params?.limit, page: params?.page } })
       .then((r) => unwrapApi<GlobalSearchResponse>(r)),
   reindex: () => api.post('/search/reindex').then((r) => unwrapApi<{ indexed: number; failed: number }>(r)),
+}
+
+export const accountingApi = {
+  dashboard: () =>
+    api.get('/accounting/dashboard').then((r) => unwrapApi<import('@/types/api').AccountingDashboardResponse>(r)),
+  listAccounts: () => api.get('/accounting/accounts').then((r) => unwrapList<import('@/types/api').AccountResponse>(r)),
+  accountTree: () =>
+    api.get('/accounting/accounts/tree').then((r) => unwrapList<import('@/types/api').AccountTreeNode>(r)),
+  getAccount: (id: string) =>
+    api.get(`/accounting/accounts/${id}`).then((r) => unwrapApi<import('@/types/api').AccountResponse>(r)),
+  createAccount: (payload: import('@/types/api').AccountRequest) =>
+    api.post('/accounting/accounts', payload).then((r) => unwrapApi<import('@/types/api').AccountResponse>(r)),
+  updateAccount: (id: string, payload: import('@/types/api').AccountRequest) =>
+    api.put(`/accounting/accounts/${id}`, payload).then((r) => unwrapApi<import('@/types/api').AccountResponse>(r)),
+  deleteAccount: (id: string) => api.delete(`/accounting/accounts/${id}`),
+  listJournals: (params?: Record<string, string | number | undefined>) =>
+    api.get('/accounting/journals', { params }).then((r) => unwrapPage<import('@/types/api').JournalResponse>(r)),
+  getJournal: (id: string) =>
+    api.get(`/accounting/journals/${id}`).then((r) => unwrapApi<import('@/types/api').JournalResponse>(r)),
+  createJournal: (payload: import('@/types/api').JournalRequest) =>
+    api.post('/accounting/journals', payload).then((r) => unwrapApi<import('@/types/api').JournalResponse>(r)),
+  postJournal: (id: string) =>
+    api.post(`/accounting/journals/${id}/post`).then((r) => unwrapApi<import('@/types/api').JournalResponse>(r)),
+  reverseJournal: (id: string) =>
+    api.post(`/accounting/journals/${id}/reverse`).then((r) => unwrapApi<import('@/types/api').JournalResponse>(r)),
+  accountLedger: (id: string, params?: Record<string, string>) =>
+    api.get(`/accounting/ledgers/accounts/${id}`, { params }).then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
+  customerLedger: (id: string, params?: Record<string, string>) =>
+    api.get(`/accounting/ledgers/customers/${id}`, { params }).then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
+  supplierLedger: (id: string, params?: Record<string, string>) =>
+    api.get(`/accounting/ledgers/suppliers/${id}`, { params }).then((r) => unwrapList<import('@/types/api').LedgerLineResponse>(r)),
+  trialBalance: (params?: Record<string, string>) =>
+    api.get('/accounting/reports/trial-balance', { params }).then((r) => unwrapApi<import('@/types/api').TrialBalanceResponse>(r)),
+  profitAndLoss: (params?: Record<string, string>) =>
+    api.get('/accounting/reports/profit-loss', { params }).then((r) => unwrapApi<import('@/types/api').ProfitAndLossResponse>(r)),
+  balanceSheet: (params?: Record<string, string>) =>
+    api.get('/accounting/reports/balance-sheet', { params }).then((r) => unwrapApi<import('@/types/api').BalanceSheetResponse>(r)),
+  gstSummary: (params?: Record<string, string>) =>
+    api.get('/accounting/reports/gst-summary', { params }).then((r) => unwrapApi<import('@/types/api').GstSummaryResponse>(r)),
+  integrityCheck: () =>
+    api.get('/accounting/reports/integrity-check').then((r) =>
+      unwrapApi<{ healthy: boolean; issues: Array<{ code: string; message: string; journalEntryId?: string }> }>(r),
+    ),
 }

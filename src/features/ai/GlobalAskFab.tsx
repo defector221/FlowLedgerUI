@@ -7,14 +7,7 @@ import { aiApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
 import { cn } from '@/lib/utils'
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  Textarea,
-} from '@/components/ui'
+import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Textarea } from '@/components/ui'
 
 /** Header-mounted Ask control (no floating FAB — avoids sidebar/composer overlap). */
 export function GlobalAskButton() {

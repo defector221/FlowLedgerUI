@@ -1,12 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  AlertTriangle,
-  Check,
-  Lightbulb,
-  ShieldAlert,
-  X,
-} from 'lucide-react'
+import { AlertTriangle, Check, Lightbulb, ShieldAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { aiApi, type AiRecommendation } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -139,9 +133,7 @@ export function AiRecommendationsPage() {
                 onClick={() => setStatus(f.value)}
                 className={cn(
                   'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                  status === f.value
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800',
+                  status === f.value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800',
                 )}
               >
                 {f.label}
@@ -243,9 +235,7 @@ function RecommendationRow({
             ) : null}
             {item.suggestedAction ? (
               <div className="rounded-xl border border-teal-100 bg-teal-50/50 px-3.5 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700/70">
-                  Suggested action
-                </p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700/70">Suggested action</p>
                 <p className="mt-1 text-xs leading-relaxed text-teal-900">{item.suggestedAction}</p>
               </div>
             ) : null}
@@ -269,22 +259,11 @@ function RecommendationRow({
 
         {actionable ? (
           <div className="flex shrink-0 gap-2 sm:flex-col">
-            <Button
-              size="sm"
-              className="cursor-pointer gap-1.5"
-              onClick={onAck}
-              disabled={busy}
-            >
+            <Button size="sm" className="cursor-pointer gap-1.5" onClick={onAck} disabled={busy}>
               <Check className="size-3.5" />
               Acknowledge
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="cursor-pointer gap-1.5"
-              onClick={onDismiss}
-              disabled={busy}
-            >
+            <Button size="sm" variant="outline" className="cursor-pointer gap-1.5" onClick={onDismiss} disabled={busy}>
               <X className="size-3.5" />
               Dismiss
             </Button>

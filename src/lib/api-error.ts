@@ -25,10 +25,7 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
     }
 
     const data = error.response?.data as
-      | ProblemDetail
-      | { message?: string; error?: string; errors?: string[] }
-      | string
-      | undefined
+      ProblemDetail | { message?: string; error?: string; errors?: string[] } | string | undefined
 
     if (typeof data === 'string' && data.trim()) return data.trim()
 

@@ -43,16 +43,9 @@ export function AppLayout() {
         onToggleCollapsed={toggleCollapsed}
       />
       <div
-        className={cn(
-          'min-w-0 transition-[padding] duration-200 ease-out',
-          collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64',
-        )}
+        className={cn('min-w-0 transition-[padding] duration-200 ease-out', collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64')}
       >
-        <Header
-          onMenu={() => setMobileOpen(true)}
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-        />
+        <Header onMenu={() => setMobileOpen(true)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
         <main className="app-shell-main mx-auto max-w-[1600px] px-3 py-4 sm:px-6 sm:py-6 lg:p-8">
           <Outlet />
         </main>

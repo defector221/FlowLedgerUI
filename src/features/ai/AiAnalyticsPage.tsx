@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  Boxes,
-  LineChart,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react'
+import { Boxes, LineChart, TrendingUp, Wallet } from 'lucide-react'
 import { aiApi } from '@/services/api'
 import { cn } from '@/lib/utils'
 import { EmptyState, MetricCard, PageHeader } from '@/components/layout/PageChrome'
@@ -60,8 +55,7 @@ export function AiAnalyticsPage() {
     if (!points.length) return null
     const latest = points[points.length - 1]
     const max = Math.max(...points.map((p) => Math.max(Number(p.actual) || 0, Number(p.forecast) || 0)), 1)
-    const avgForecast =
-      points.reduce((s, p) => s + (Number(p.forecast) || 0), 0) / Math.max(points.length, 1)
+    const avgForecast = points.reduce((s, p) => s + (Number(p.forecast) || 0), 0) / Math.max(points.length, 1)
     return { latest, max, avgForecast }
   }, [points])
 
@@ -119,9 +113,7 @@ export function AiAnalyticsPage() {
             </div>
           ) : null}
 
-          {data && !data.enabled ? (
-            <EmptyState title="Analytics disabled" description={data.message} />
-          ) : null}
+          {data && !data.enabled ? <EmptyState title="Analytics disabled" description={data.message} /> : null}
 
           {data?.enabled ? (
             <div className="space-y-5">
@@ -134,11 +126,7 @@ export function AiAnalyticsPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <MetricCard
                   label="Latest period"
-                  value={
-                    stats
-                      ? formatNumber(Number(stats.latest.forecast || stats.latest.actual) || 0)
-                      : '—'
-                  }
+                  value={stats ? formatNumber(Number(stats.latest.forecast || stats.latest.actual) || 0) : '—'}
                   hint={stats?.latest.period ?? 'No periods'}
                   icon={activeMeta.icon}
                 />
@@ -159,9 +147,7 @@ export function AiAnalyticsPage() {
               {summaryEntries.length ? (
                 <div className="rounded-2xl border border-slate-100 bg-white">
                   <div className="border-b border-slate-100 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      Summary signals
-                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Summary signals</p>
                   </div>
                   <dl className="grid gap-px bg-slate-100 sm:grid-cols-2 lg:grid-cols-3">
                     {summaryEntries.map(([k, v]) => (
@@ -209,9 +195,7 @@ export function AiAnalyticsPage() {
                           key={p.period}
                           className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-teal-200/80"
                         >
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                            {p.period}
-                          </p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{p.period}</p>
                           <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-slate-900">
                             {formatNumber(fc || actual)}
                           </p>
@@ -233,17 +217,7 @@ export function AiAnalyticsPage() {
   )
 }
 
-function BarRow({
-  label,
-  value,
-  max,
-  tone,
-}: {
-  label: string
-  value: number
-  max: number
-  tone: 'slate' | 'teal'
-}) {
+function BarRow({ label, value, max, tone }: { label: string; value: number; max: number; tone: 'slate' | 'teal' }) {
   const pct = Math.max(2, Math.round((value / max) * 100))
   return (
     <div>
@@ -253,10 +227,7 @@ function BarRow({
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
         <div
-          className={cn(
-            'h-full rounded-full transition-all',
-            tone === 'teal' ? 'bg-teal-500' : 'bg-slate-400',
-          )}
+          className={cn('h-full rounded-full transition-all', tone === 'teal' ? 'bg-teal-500' : 'bg-slate-400')}
           style={{ width: `${pct}%` }}
         />
       </div>

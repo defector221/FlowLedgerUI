@@ -201,7 +201,8 @@ export function AppSidebar({
         <div className={cn('mb-6 flex items-center', compact ? 'flex-col gap-2' : 'justify-between px-2')}>
           {!compact ? (
             <Link to="/" className="font-display text-xl font-semibold tracking-tight text-white">
-              Flow<span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">Ledger</span>
+              Flow
+              <span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">Ledger</span>
             </Link>
           ) : (
             <Link

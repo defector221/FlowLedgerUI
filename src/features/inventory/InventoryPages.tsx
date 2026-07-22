@@ -17,7 +17,14 @@ import { inventoryApi, organizationApi, productApi, warehouseApi } from '@/servi
 import { getApiErrorMessage } from '@/lib/api-error'
 import { resolveDefaultWarehouseId } from '@/lib/warehouse'
 import { cn } from '@/lib/utils'
-import { EmptyState, MetricCard, PageHeader, SectionTitle } from '@/components/layout/PageChrome'
+import {
+  EmptyState,
+  ListPageShell,
+  ListTablePanel,
+  MetricCard,
+  PageHeader,
+  SectionTitle,
+} from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -106,37 +113,44 @@ export function InventoryPage() {
   }, [search, statusFilter, stockRows])
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Inventory"
-        subtitle="Live warehouse positions. Open a product for master data, or jump to its stock ledger for every movement."
-        actions={
-          <>
-            <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-              <Link to="/inventory/adjustments">Adjustments</Link>
-            </Button>
-            <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-              <Link to="/inventory/transfers">Transfers</Link>
-            </Button>
-            <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-              <Link to="/inventory/opening-stock">Opening stock</Link>
-            </Button>
-            <Button size="sm" className="cursor-pointer" asChild>
-              <Link to="/inventory/ledger">Stock ledger</Link>
-            </Button>
-          </>
-        }
-      />
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <ListPageShell
+      header={
+        <PageHeader
+          title="Inventory"
+          subtitle="Live warehouse positions. Open a product for master data, or jump to its stock ledger for every movement."
+          actions={
+            <>
+              <Button variant="outline" size="sm" className="cursor-pointer" asChild>
+                <Link to="/inventory/adjustments">Adjustments</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="cursor-pointer" asChild>
+                <Link to="/inventory/transfers">Transfers</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="cursor-pointer" asChild>
+                <Link to="/inventory/opening-stock">Opening stock</Link>
+              </Button>
+              <Button size="sm" className="cursor-pointer" asChild>
+                <Link to="/inventory/ledger">Stock ledger</Link>
+              </Button>
+            </>
+          }
+        />
+      }
+    >
+      <section className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Tracked products" value={stockRows.length} icon={Boxes} />
         <MetricCard label="Low stock" value={lowCount} icon={AlertTriangle} hint="At or below minimum" />
         <MetricCard label="Reorder signals" value={reorder.length} icon={Package} />
-        <MetricCard label="Draft reserved" value={formatQty(draftReservedTotal)} icon={BookOpen} hint="On draft invoices" />
+        <MetricCard
+          label="Draft reserved"
+          value={formatQty(draftReservedTotal)}
+          icon={BookOpen}
+          hint="On draft invoices"
+        />
       </section>
 
       {(lowStock.length > 0 || reorder.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid shrink-0 gap-4 lg:grid-cols-2">
           {lowStock.length > 0 ? (
             <Card className="border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-white shadow-[var(--shadow-soft)]">
               <CardHeader className="border-b border-amber-100/80 p-4 pb-3">
@@ -194,156 +208,140 @@ export function InventoryPage() {
         </div>
       )}
 
-      <Card className="overflow-hidden border-slate-200/90 shadow-[var(--shadow-soft)]">
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <SectionTitle title="Stock positions" detail={`${filtered.length} of ${stockRows.length} products`} />
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="h-9 pl-8"
-                placeholder="Search name or SKU"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-              {(['ALL', 'LOW', 'OK'] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={cn(
-                    'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-semibold transition',
-                    statusFilter === value
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800',
-                  )}
-                  onClick={() => setStatusFilter(value)}
-                >
-                  {value === 'ALL' ? 'All' : value === 'LOW' ? 'Low' : 'OK'}
-                </button>
-              ))}
+      <ListTablePanel
+        toolbar={
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <SectionTitle title="Stock positions" detail={`${filtered.length} of ${stockRows.length} products`} />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="h-9 pl-8"
+                  placeholder="Search name or SKU"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                {(['ALL', 'LOW', 'OK'] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={cn(
+                      'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-semibold transition',
+                      statusFilter === value
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800',
+                    )}
+                    onClick={() => setStatusFilter(value)}
+                  >
+                    {value === 'ALL' ? 'All' : value === 'LOW' ? 'Low' : 'OK'}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <Table className="min-w-[48rem]">
-            <thead>
-              <tr className="border-b bg-slate-50/90">
-                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Product
-                </th>
-                <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Available
-                </th>
-                <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Draft reserved
-                </th>
-                <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Min / reorder
-                </th>
-                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Status
-                </th>
-                <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Actions
-                </th>
+        }
+      >
+        <Table fill stickyHeader className="min-w-[48rem]">
+          <thead>
+            <tr className="border-b bg-slate-50/90">
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Product
+              </th>
+              <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Available
+              </th>
+              <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Draft reserved
+              </th>
+              <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Min / reorder
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</th>
+              <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingStock ? (
+              <tr>
+                <td className="space-y-2 p-4" colSpan={6}>
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loadingStock ? (
-                <tr>
-                  <td className="space-y-2 p-4" colSpan={6}>
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8">
-                    <EmptyState
-                      title={stockRows.length === 0 ? 'No stock tracked yet' : 'No matching products'}
-                      description={
-                        stockRows.length === 0
-                          ? 'Add opening stock or receive a GRN to begin tracking inventory.'
-                          : 'Try another search or status filter.'
-                      }
-                      action={
-                        stockRows.length === 0 ? (
-                          <Button size="sm" className="cursor-pointer" asChild>
-                            <Link to="/inventory/opening-stock">Add opening stock</Link>
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((row) => {
-                  const available = qty(row.available)
-                  const reserved = qty(row.draftReserved)
-                  const min = qty(row.minimumStockLevel)
-                  const reorderLevel = qty(row.reorderLevel)
-                  const low = min > 0 && available <= min
-                  return (
-                    <tr key={row.productId} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                      <td className="p-3 align-middle">
-                        <Link
-                          to={`/products/${row.productId}`}
-                          className="group inline-flex min-w-0 max-w-full flex-col"
-                        >
-                          <span className="truncate font-semibold text-slate-900 group-hover:text-teal-800 group-hover:underline">
-                            {row.productName}
-                          </span>
-                          <span className="truncate text-xs text-slate-500">{row.sku || row.productId.slice(0, 8)}</span>
-                        </Link>
-                      </td>
-                      <td className="p-3 text-right align-middle font-semibold tabular-nums text-slate-900">
-                        {formatQty(available)}
-                      </td>
-                      <td className="p-3 text-right align-middle tabular-nums text-slate-600">
-                        {formatQty(reserved)}
-                      </td>
-                      <td className="p-3 text-right align-middle tabular-nums text-slate-600">
-                        {formatQty(min)} / {formatQty(reorderLevel)}
-                      </td>
-                      <td className="p-3 align-middle">
-                        {low ? (
-                          <Badge variant="warning">Low stock</Badge>
-                        ) : (
-                          <Badge variant="success">In stock</Badge>
-                        )}
-                      </td>
-                      <td className="p-3 text-right align-middle">
-                        <div className="inline-flex gap-1.5">
-                          <Button size="sm" variant="outline" className="cursor-pointer" asChild>
-                            <Link to={`/inventory/ledger?productId=${row.productId}`}>
-                              <BookOpen className="size-3.5" />
-                              Ledger
-                            </Link>
-                          </Button>
-                          <Button size="sm" variant="ghost" className="cursor-pointer" asChild>
-                            <Link to={`/products/${row.productId}`} title="Open product">
-                              <ExternalLink className="size-3.5" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </Table>
-        </div>
-      </Card>
-
-      {draftReservedTotal > 0 ? (
-        <p className="text-sm text-slate-500">
-          Draft reserved is quantity on draft sales invoices. Confirm those invoices to deduct available stock.
-        </p>
-      ) : null}
-    </div>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-8">
+                  <EmptyState
+                    title={stockRows.length === 0 ? 'No stock tracked yet' : 'No matching products'}
+                    description={
+                      stockRows.length === 0
+                        ? 'Add opening stock or receive a GRN to begin tracking inventory.'
+                        : 'Try another search or status filter.'
+                    }
+                    action={
+                      stockRows.length === 0 ? (
+                        <Button size="sm" className="cursor-pointer" asChild>
+                          <Link to="/inventory/opening-stock">Add opening stock</Link>
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                </td>
+              </tr>
+            ) : (
+              filtered.map((row) => {
+                const available = qty(row.available)
+                const reserved = qty(row.draftReserved)
+                const min = qty(row.minimumStockLevel)
+                const reorderLevel = qty(row.reorderLevel)
+                const low = min > 0 && available <= min
+                return (
+                  <tr key={row.productId} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                    <td className="p-3 align-middle">
+                      <Link to={`/products/${row.productId}`} className="group inline-flex min-w-0 max-w-full flex-col">
+                        <span className="truncate font-semibold text-slate-900 group-hover:text-teal-800 group-hover:underline">
+                          {row.productName}
+                        </span>
+                        <span className="truncate text-xs text-slate-500">{row.sku || row.productId.slice(0, 8)}</span>
+                      </Link>
+                    </td>
+                    <td className="p-3 text-right align-middle font-semibold tabular-nums text-slate-900">
+                      {formatQty(available)}
+                    </td>
+                    <td className="p-3 text-right align-middle tabular-nums text-slate-600">{formatQty(reserved)}</td>
+                    <td className="p-3 text-right align-middle tabular-nums text-slate-600">
+                      {formatQty(min)} / {formatQty(reorderLevel)}
+                    </td>
+                    <td className="p-3 align-middle">
+                      {low ? <Badge variant="warning">Low stock</Badge> : <Badge variant="success">In stock</Badge>}
+                    </td>
+                    <td className="p-3 text-right align-middle">
+                      <div className="inline-flex gap-1.5">
+                        <Button size="sm" variant="outline" className="cursor-pointer" asChild>
+                          <Link to={`/inventory/ledger?productId=${row.productId}`}>
+                            <BookOpen className="size-3.5" />
+                            Ledger
+                          </Link>
+                        </Button>
+                        <Button size="sm" variant="ghost" className="cursor-pointer" asChild>
+                          <Link to={`/products/${row.productId}`} title="Open product">
+                            <ExternalLink className="size-3.5" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </Table>
+      </ListTablePanel>
+    </ListPageShell>
   )
 }
 
@@ -382,10 +380,7 @@ export function SimpleInventoryPage({
     const q = productQuery.trim().toLowerCase()
     if (!q) return ledgerProducts
     return ledgerProducts.filter(
-      (p) =>
-        p.name?.toLowerCase().includes(q) ||
-        p.sku?.toLowerCase().includes(q) ||
-        p.id.toLowerCase().includes(q),
+      (p) => p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q) || p.id.toLowerCase().includes(q),
     )
   }, [ledgerProducts, productQuery])
 
@@ -475,31 +470,33 @@ export function SimpleInventoryPage({
 
   if (mode === 'ledger') {
     return (
-      <div className="space-y-6">
-        <PageHeader
-          title={title}
-          subtitle={description}
-          actions={
-            selectedProduct ? (
-              <Button variant="outline" size="sm" className="cursor-pointer gap-1.5" asChild>
-                <Link to={`/products/${selectedProduct.id}`}>
-                  <ExternalLink className="size-3.5" />
-                  Open product
-                </Link>
-              </Button>
-            ) : null
-          }
-        />
+      <div className="flex h-[calc(100dvh-8.75rem)] min-h-[32rem] flex-col gap-4 overflow-hidden sm:h-[calc(100dvh-9.75rem)] lg:h-[calc(100dvh-11rem)]">
+        <div className="shrink-0">
+          <PageHeader
+            title={title}
+            subtitle={description}
+            actions={
+              selectedProduct ? (
+                <Button variant="outline" size="sm" className="cursor-pointer gap-1.5" asChild>
+                  <Link to={`/products/${selectedProduct.id}`}>
+                    <ExternalLink className="size-3.5" />
+                    Open product
+                  </Link>
+                </Button>
+              ) : null
+            }
+          />
+        </div>
 
-        <div className="grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
-          <Card className="border-slate-200/90 shadow-[var(--shadow-soft)] xl:sticky xl:top-4 xl:self-start">
-            <CardHeader className="border-b border-slate-100 p-4">
+        <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[18.5rem_minmax(0,1fr)]">
+          <Card className="flex min-h-0 flex-col overflow-hidden border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
+            <CardHeader className="shrink-0 space-y-1 border-b border-slate-100 bg-white p-4 pb-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Products</p>
               <h2 className="font-[family-name:var(--font-display)] text-base font-semibold text-slate-900">
                 Choose stock item
               </h2>
             </CardHeader>
-            <CardContent className="space-y-3 p-4">
+            <div className="shrink-0 border-b border-slate-100 bg-white px-4 py-3">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -509,49 +506,49 @@ export function SimpleInventoryPage({
                   onChange={(e) => setProductQuery(e.target.value)}
                 />
               </div>
-              <div className="max-h-[28rem] space-y-1 overflow-y-auto pr-1">
-                {selectableProducts.length === 0 ? (
-                  <p className="px-2 py-6 text-center text-sm text-slate-500">No stocked products match.</p>
-                ) : (
-                  selectableProducts.map((product) => {
-                    const active = product.id === productId
-                    return (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onClick={() => selectProduct(product.id)}
-                        className={cn(
-                          'flex w-full cursor-pointer flex-col rounded-xl px-3 py-2.5 text-left transition',
-                          active
-                            ? 'bg-teal-50 ring-1 ring-teal-200'
-                            : 'hover:bg-slate-50',
-                        )}
+            </div>
+            <div className="scrollbar-panel min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain bg-slate-50/40 px-2 pb-3 pt-2">
+              {selectableProducts.length === 0 ? (
+                <p className="px-2 py-6 text-center text-sm text-slate-500">No stocked products match.</p>
+              ) : (
+                selectableProducts.map((product) => {
+                  const active = product.id === productId
+                  return (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => selectProduct(product.id)}
+                      className={cn(
+                        'flex w-full cursor-pointer flex-col rounded-xl px-3 py-2.5 text-left transition',
+                        active ? 'bg-teal-50 ring-1 ring-teal-200' : 'bg-white/80 hover:bg-white',
+                      )}
+                    >
+                      <span
+                        className={cn('truncate text-sm font-semibold', active ? 'text-teal-950' : 'text-slate-900')}
                       >
-                        <span className={cn('truncate text-sm font-semibold', active ? 'text-teal-950' : 'text-slate-900')}>
-                          {product.name}
-                        </span>
-                        <span className="truncate text-xs text-slate-500">{product.sku || 'No SKU'}</span>
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </CardContent>
+                        {product.name}
+                      </span>
+                      <span className="truncate text-xs text-slate-500">{product.sku || 'No SKU'}</span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
           </Card>
 
-          <div className="space-y-4">
-            <Card className="border-slate-200/90 shadow-[var(--shadow-soft)]">
-              <CardContent className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
+            <Card className="shrink-0 border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
+              <CardContent className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-end sm:p-5">
                 <div className="min-w-0 space-y-1">
                   {selectedProduct ? (
                     <>
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Ledger for</p>
                       <Link
                         to={`/products/${selectedProduct.id}`}
-                        className="inline-flex items-center gap-2 font-[family-name:var(--font-display)] text-lg font-semibold text-slate-900 hover:text-teal-800 hover:underline"
+                        className="inline-flex max-w-full items-center gap-2 truncate font-[family-name:var(--font-display)] text-lg font-semibold text-slate-900 hover:text-teal-800 hover:underline"
                       >
-                        {selectedProduct.name}
-                        <ExternalLink className="size-4 text-slate-400" />
+                        <span className="truncate">{selectedProduct.name}</span>
+                        <ExternalLink className="size-4 shrink-0 text-slate-400" />
                       </Link>
                       <p className="text-sm text-slate-500">
                         SKU {selectedProduct.sku || '—'} · Available{' '}
@@ -580,7 +577,7 @@ export function SimpleInventoryPage({
                   >
                     <SelectTrigger>
                       {warehouseId
-                        ? warehouses.find((w) => w.id === warehouseId)?.warehouseName ?? 'Warehouse'
+                        ? (warehouses.find((w) => w.id === warehouseId)?.warehouseName ?? 'Warehouse')
                         : 'All warehouses'}
                     </SelectTrigger>
                     <SelectContent>
@@ -596,27 +593,27 @@ export function SimpleInventoryPage({
               </CardContent>
             </Card>
 
-            <Card className="overflow-hidden border-slate-200/90 shadow-[var(--shadow-soft)]">
-              <div className="overflow-x-auto">
-                <Table className="min-w-[40rem]">
-                  <thead>
-                    <tr className="border-b bg-slate-50/90">
-                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
+              <div className="scrollbar-panel min-h-0 flex-1 overflow-auto overscroll-contain">
+                <table className="w-full min-w-[40rem] border-collapse text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50 shadow-[0_1px_0_rgb(15_23_42/0.06)]">
+                      <th className="bg-slate-50 p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Date
                       </th>
-                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="bg-slate-50 p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Type
                       </th>
-                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="bg-slate-50 p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Reference
                       </th>
-                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="bg-slate-50 p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         In
                       </th>
-                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="bg-slate-50 p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Out
                       </th>
-                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="bg-slate-50 p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Balance
                       </th>
                     </tr>
@@ -702,7 +699,7 @@ export function SimpleInventoryPage({
                       </tr>
                     )}
                   </tbody>
-                </Table>
+                </table>
               </div>
             </Card>
           </div>

@@ -34,13 +34,7 @@ type EditorState = {
   steps: WorkflowStep[]
 }
 
-const DOC_TYPE_OPTIONS = [
-  'QUOTATION',
-  'SALES_ORDER',
-  'SALES_INVOICE',
-  'PURCHASE_ORDER',
-  'PURCHASE_INVOICE',
-] as const
+const DOC_TYPE_OPTIONS = ['QUOTATION', 'SALES_ORDER', 'SALES_INVOICE', 'PURCHASE_ORDER', 'PURCHASE_INVOICE'] as const
 const ROLE_OPTIONS = ['REQUESTER', 'ORGANIZATION_ADMIN', 'ACCOUNTANT', 'MANAGER', 'CFO'] as const
 const ACTION_OPTIONS = ['SUBMIT', 'APPROVE', 'REVIEW', 'NOTIFY'] as const
 
@@ -177,9 +171,7 @@ function WorkflowCard({
   const minAmount = formatInr(conditions.minAmount)
   const docTypes = conditions.documentTypes ?? []
   const isActive = draft.status === 'ACTIVE'
-  const staleAdvisoryCopy = /stores config only|advisory workflow|does not auto-approve/i.test(
-    draft.description ?? '',
-  )
+  const staleAdvisoryCopy = /stores config only|advisory workflow|does not auto-approve/i.test(draft.description ?? '')
 
   const startEdit = () => {
     setEditor(toEditorState(draft))
@@ -253,10 +245,21 @@ function WorkflowCard({
             <Badge variant="outline">{humanize(draft.triggerType)}</Badge>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="cursor-pointer" disabled={saving || busy} onClick={cancelEdit}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="cursor-pointer"
+              disabled={saving || busy}
+              onClick={cancelEdit}
+            >
               Cancel
             </Button>
-            <Button size="sm" className="cursor-pointer" disabled={saving || busy || !editor.name.trim()} onClick={() => void save()}>
+            <Button
+              size="sm"
+              className="cursor-pointer"
+              disabled={saving || busy || !editor.name.trim()}
+              onClick={() => void save()}
+            >
               Save
             </Button>
           </div>
@@ -342,7 +345,9 @@ function WorkflowCard({
             })}
           </div>
           {editor.documentTypes.length === 0 ? (
-            <p className="text-xs text-amber-800">No types selected — workflow will match any document for this trigger.</p>
+            <p className="text-xs text-amber-800">
+              No types selected — workflow will match any document for this trigger.
+            </p>
           ) : (
             <p className="text-xs text-slate-500">
               Selected: {editor.documentTypes.map((t) => humanize(t)).join(', ')}
@@ -442,7 +447,9 @@ function WorkflowCard({
                 Enforcing approvals on matching convert / confirm actions. Deactivate to edit steps.
               </p>
             ) : (
-              <p className="text-sm text-slate-500">Draft only — edit steps, then activate to gate matching sales documents.</p>
+              <p className="text-sm text-slate-500">
+                Draft only — edit steps, then activate to gate matching sales documents.
+              </p>
             )}
           </div>
 
@@ -653,9 +660,7 @@ export function AiWorkflowsPage() {
   const libraryBusy = activate.isPending || deactivate.isPending || remove.isPending || update.isPending
 
   const confirmDelete = (d: AiWorkflowDraft) => {
-    const ok = window.confirm(
-      `Remove "${d.name}"? It will stop gating sales actions and disappear from the library.`,
-    )
+    const ok = window.confirm(`Remove "${d.name}"? It will stop gating sales actions and disappear from the library.`)
     if (ok) remove.mutate(d.id)
   }
 
@@ -716,15 +721,9 @@ export function AiWorkflowsPage() {
             const total = a.totalSteps ?? 1
             const current = a.currentStep ?? 1
             const canApprove = a.canApprove !== false
-            const stepSteps = parseJson<{ order?: number; role?: string; action?: string }[]>(
-              a.stepsSnapshotJson,
-              [],
-            )
+            const stepSteps = parseJson<{ order?: number; role?: string; action?: string }[]>(a.stepsSnapshotJson, [])
             return (
-              <article
-                key={a.id}
-                className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between"
-              >
+              <article key={a.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="warning">{a.status}</Badge>
@@ -771,20 +770,14 @@ export function AiWorkflowsPage() {
                       Waiting for {humanize(a.currentStepRole)} (or Organization Admin) to approve this step.
                     </p>
                   ) : null}
-                  <p className="text-xs text-slate-400">
-                    Requested {new Date(a.requestedAt).toLocaleString()}
-                  </p>
+                  <p className="text-xs text-slate-400">Requested {new Date(a.requestedAt).toLocaleString()}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Button
                     size="sm"
                     className="cursor-pointer gap-1"
                     disabled={approve.isPending || !canApprove}
-                    title={
-                      canApprove
-                        ? undefined
-                        : `Requires ${humanize(a.currentStepRole)} or Organization Admin`
-                    }
+                    title={canApprove ? undefined : `Requires ${humanize(a.currentStepRole)} or Organization Admin`}
                     onClick={() => approve.mutate(a.id)}
                   >
                     <Check className="size-3.5" />
@@ -882,9 +875,7 @@ export function AiWorkflowsPage() {
                 key={value}
                 type="button"
                 className={`cursor-pointer rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                  statusFilter === value
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
+                  statusFilter === value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                 }`}
                 onClick={() => setStatusFilter(value)}
               >

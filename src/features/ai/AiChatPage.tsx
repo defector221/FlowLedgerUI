@@ -1,17 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ArrowUp,
-  Bot,
-  MessageSquarePlus,
-  Mic,
-  MicOff,
-  Package,
-  Receipt,
-  Scale,
-  Sparkles,
-  Wallet,
-} from 'lucide-react'
+import { ArrowUp, Bot, MessageSquarePlus, Mic, MicOff, Package, Receipt, Scale, Sparkles, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { aiApi, type AiMessage } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -110,8 +99,7 @@ export function AiChatPage() {
   })
 
   const chat = useMutation({
-    mutationFn: (message: string) =>
-      aiApi.chat({ message, conversationId, agent: agent || 'ASK' }),
+    mutationFn: (message: string) => aiApi.chat({ message, conversationId, agent: agent || 'ASK' }),
     onSuccess: (res) => {
       setConversationId(res.conversationId)
       setDraft('')
@@ -196,9 +184,7 @@ export function AiChatPage() {
             <span
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium',
-                liveMode
-                  ? 'border-teal-200 bg-teal-50 text-teal-800'
-                  : 'border-amber-200 bg-amber-50 text-amber-800',
+                liveMode ? 'border-teal-200 bg-teal-50 text-teal-800' : 'border-amber-200 bg-amber-50 text-amber-800',
               )}
             >
               <Sparkles className="size-3" />
@@ -298,7 +284,8 @@ export function AiChatPage() {
                   How can I help today?
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-                  Ask operational questions. Specialists use read-only ERP tools; Ask can consult several agents before answering.
+                  Ask operational questions. Specialists use read-only ERP tools; Ask can consult several agents before
+                  answering.
                 </p>
                 <div className="mt-8 grid w-full gap-2 sm:grid-cols-2">
                   {SUGGESTIONS.map(({ icon: Icon, label, prompt }) => (

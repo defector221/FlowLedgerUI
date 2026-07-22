@@ -74,7 +74,13 @@ export function PaymentDetailPage({ kind }: { kind: 'received' | 'suppliers' }) 
     return purchaseInvoices
       .filter((inv) => {
         if (data.supplierId && String(inv.supplierId) !== String(data.supplierId)) return false
-        return Number((inv as { outstandingAmount?: number }).outstandingAmount ?? (inv as { outstanding?: number }).outstanding ?? 0) > 0
+        return (
+          Number(
+            (inv as { outstandingAmount?: number }).outstandingAmount ??
+              (inv as { outstanding?: number }).outstanding ??
+              0,
+          ) > 0
+        )
       })
       .map((inv) => {
         const due = Number(

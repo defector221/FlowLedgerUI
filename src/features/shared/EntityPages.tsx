@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/auth'
-import { PageHeader } from '@/components/layout/PageChrome'
+import { PageHeader, ListPageShell, ListTablePanel, ListPanelMessage } from '@/components/layout/PageChrome'
 import {
   categoryApi,
   customerApi,
@@ -83,7 +83,10 @@ type EntityConfig = {
   fields: FieldConfig[]
   schema: z.ZodTypeAny
   searchable?: boolean
-  buildPayload?: (values: Record<string, unknown>, extras?: { supplierPrices?: SupplierPriceDraft[] }) => Record<string, unknown>
+  buildPayload?: (
+    values: Record<string, unknown>,
+    extras?: { supplierPrices?: SupplierPriceDraft[] },
+  ) => Record<string, unknown>
 }
 
 function formFields(config: EntityConfig, isEdit: boolean) {
@@ -609,98 +612,102 @@ export function EntityListPage({ kind }: { kind: EntityKind }) {
     )
   }, [data, deferredSearch, listFields, serverSearchable])
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={config.title}
-        subtitle={`Manage your ${config.title.toLowerCase()}.`}
-        actions={
-          canWrite ? (
-            <Button asChild>
-              <Link to={`/${kind}/new`}>
-                <Plus className="size-4" />
-                Add {config.singular}
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
-      <Card>
-        <CardContent className="p-4">
-          {config.searchable !== false && (
-            <div className="mb-4 flex gap-3">
-              <div className="relative max-w-md flex-1">
-                <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
-                <Input
-                  className="pl-9"
-                  placeholder={`Search ${config.title.toLowerCase()}…`}
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </div>
+    <ListPageShell
+      header={
+        <PageHeader
+          title={config.title}
+          subtitle={`Manage your ${config.title.toLowerCase()}.`}
+          actions={
+            canWrite ? (
+              <Button asChild>
+                <Link to={`/${kind}/new`}>
+                  <Plus className="size-4" />
+                  Add {config.singular}
+                </Link>
+              </Button>
+            ) : null
+          }
+        />
+      }
+    >
+      <ListTablePanel
+        toolbar={
+          config.searchable !== false ? (
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+              <Input
+                className="pl-9"
+                placeholder={`Search ${config.title.toLowerCase()}…`}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
             </div>
-          )}
-          {isLoading ? (
-            <div className="space-y-3">
+          ) : undefined
+        }
+      >
+        {isLoading ? (
+          <ListPanelMessage>
+            <div className="w-full max-w-3xl space-y-3">
               {[1, 2, 3].map((id) => (
                 <Skeleton key={id} className="h-12 w-full" />
               ))}
             </div>
-          ) : (
-            <Table>
-              <thead>
-                <tr className="border-b border-slate-200">
-                  {listFields.map((field) => (
-                    <th
-                      key={field.name}
-                      className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
-                    >
-                      {field.label}
-                    </th>
-                  ))}
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length ? (
-                  rows.map((row) => (
-                    <tr key={String(row.id)} className="border-b border-slate-100 hover:bg-slate-50">
-                      {listFields.map((field) => (
-                        <td key={field.name} className="px-3 py-3 text-slate-700">
-                          {formatValue(field, row[field.name])}
-                        </td>
-                      ))}
-                      <td className="px-3 py-3 text-right">
-                        <div className="flex justify-end gap-3">
-                          <Link className="text-sm font-medium text-teal-700 hover:underline" to={`/${kind}/${row.id}`}>
-                            View
-                          </Link>
-                          {canWrite && config.update ? (
-                            <Link
-                              className="text-sm font-medium text-slate-700 hover:underline"
-                              to={`/${kind}/${row.id}/edit`}
-                            >
-                              Edit
-                            </Link>
-                          ) : null}
-                        </div>
+          </ListPanelMessage>
+        ) : (
+          <Table fill stickyHeader>
+            <thead>
+              <tr className="border-b border-slate-200">
+                {listFields.map((field) => (
+                  <th
+                    key={field.name}
+                    className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    {field.label}
+                  </th>
+                ))}
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? (
+                rows.map((row) => (
+                  <tr key={String(row.id)} className="border-b border-slate-100 hover:bg-slate-50">
+                    {listFields.map((field) => (
+                      <td key={field.name} className="px-3 py-3 text-slate-700">
+                        {formatValue(field, row[field.name])}
                       </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={listFields.length + 1} className="py-16 text-center text-sm text-slate-500">
-                      {deferredSearch
-                        ? `No ${config.title.toLowerCase()} match “${deferredSearch}”.`
-                        : `No ${config.title.toLowerCase()} found.`}
+                    ))}
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex justify-end gap-3">
+                        <Link className="text-sm font-medium text-teal-700 hover:underline" to={`/${kind}/${row.id}`}>
+                          View
+                        </Link>
+                        {canWrite && config.update ? (
+                          <Link
+                            className="text-sm font-medium text-slate-700 hover:underline"
+                            to={`/${kind}/${row.id}/edit`}
+                          >
+                            Edit
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={listFields.length + 1} className="py-16 text-center text-sm text-slate-500">
+                    {deferredSearch
+                      ? `No ${config.title.toLowerCase()} match “${deferredSearch}”.`
+                      : `No ${config.title.toLowerCase()} found.`}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        )}
+      </ListTablePanel>
+    </ListPageShell>
   )
 }
 

@@ -288,10 +288,20 @@ export const paymentApi = {
     to?: string
     search?: string
   }) => api.get('/payments', { params }).then((r) => unwrapList<PaymentResponse>(r)),
-  listReceived: async (params?: { status?: string; customerId?: string; from?: string; to?: string; search?: string }) =>
-    paymentApi.list({ type: 'RECEIPT', partyType: 'CUSTOMER', ...params }),
-  listSupplier: async (params?: { status?: string; supplierId?: string; from?: string; to?: string; search?: string }) =>
-    paymentApi.list({ type: 'PAYMENT', partyType: 'SUPPLIER', ...params }),
+  listReceived: async (params?: {
+    status?: string
+    customerId?: string
+    from?: string
+    to?: string
+    search?: string
+  }) => paymentApi.list({ type: 'RECEIPT', partyType: 'CUSTOMER', ...params }),
+  listSupplier: async (params?: {
+    status?: string
+    supplierId?: string
+    from?: string
+    to?: string
+    search?: string
+  }) => paymentApi.list({ type: 'PAYMENT', partyType: 'SUPPLIER', ...params }),
   create: (payload: Record<string, unknown>) =>
     api.post('/payments', payload).then((r) => unwrapApi<PaymentResponse>(r)),
   get: (id: string) => api.get(`/payments/${id}`).then((r) => unwrapApi<PaymentResponse>(r)),
@@ -923,15 +933,19 @@ export const aiApi = {
   messages: (conversationId: string) =>
     api.get(`/ai/conversations/${conversationId}/messages`).then((r) => unwrapList<AiMessage>(r)),
   recommendations: (status?: string) =>
-    api.get('/ai/recommendations', { params: status ? { status } : undefined }).then((r) => unwrapList<AiRecommendation>(r)),
+    api
+      .get('/ai/recommendations', { params: status ? { status } : undefined })
+      .then((r) => unwrapList<AiRecommendation>(r)),
   ack: (id: string) => api.patch(`/ai/recommendations/${id}/acknowledge`).then((r) => unwrapApi<AiRecommendation>(r)),
   dismiss: (id: string) => api.patch(`/ai/recommendations/${id}/dismiss`).then((r) => unwrapApi<AiRecommendation>(r)),
   forecasts: (type: 'DEMAND' | 'SALES' | 'CASHFLOW' | 'INVENTORY') =>
     api.get('/ai/analytics/forecasts', { params: { type } }).then((r) => unwrapApi<AiForecast>(r)),
   voiceTranscribe: (payload: { contentType: string; audioBase64: string }) =>
-    api.post('/ai/workflow/voice-transcribe', payload).then((r) =>
-      unwrapApi<{ configured: boolean; message: string; transcript?: string; result?: Record<string, unknown> }>(r),
-    ),
+    api
+      .post('/ai/workflow/voice-transcribe', payload)
+      .then((r) =>
+        unwrapApi<{ configured: boolean; message: string; transcript?: string; result?: Record<string, unknown> }>(r),
+      ),
   workflowDrafts: () => api.get('/ai/workflow/drafts').then((r) => unwrapList<AiWorkflowDraft>(r)),
   createWorkflowDraft: (payload: {
     name: string
@@ -962,11 +976,11 @@ export const aiApi = {
   workflowApprovals: (status: 'pending' | 'all' = 'pending') =>
     api.get('/ai/workflow/approvals', { params: { status } }).then((r) => unwrapList<AiWorkflowApproval>(r)),
   approveWorkflow: (id: string, remarks?: string) =>
-    api.post(`/ai/workflow/approvals/${id}/approve`, remarks ? { remarks } : {}).then((r) =>
-      unwrapApi<AiWorkflowApproval>(r),
-    ),
+    api
+      .post(`/ai/workflow/approvals/${id}/approve`, remarks ? { remarks } : {})
+      .then((r) => unwrapApi<AiWorkflowApproval>(r)),
   rejectWorkflow: (id: string, remarks?: string) =>
-    api.post(`/ai/workflow/approvals/${id}/reject`, remarks ? { remarks } : {}).then((r) =>
-      unwrapApi<AiWorkflowApproval>(r),
-    ),
+    api
+      .post(`/ai/workflow/approvals/${id}/reject`, remarks ? { remarks } : {})
+      .then((r) => unwrapApi<AiWorkflowApproval>(r)),
 }

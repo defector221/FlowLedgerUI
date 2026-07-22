@@ -149,13 +149,13 @@ flowchart LR
   Client --> Axios["Axios interceptors"]
 ```
 
-| File                  | Purpose                                                   |
-| --------------------- | --------------------------------------------------------- |
-| `lib/api-client.ts`   | Axios instance, JWT attach, 401 refresh, session R/W      |
+| File                  | Purpose                                                            |
+| --------------------- | ------------------------------------------------------------------ |
+| `lib/api-client.ts`   | Axios instance, JWT attach, 401 refresh, session R/W               |
 | `services/api.ts`     | Domain APIs: `authApi`, `salesApi`, `accountingApi`, `aiApi`, etc. |
-| `lib/api-response.ts` | `unwrapApi`, `unwrapPage`, `unwrapList`                   |
-| `lib/api-error.ts`    | Error messages, form field mapping                        |
-| `types/api.ts`        | Request/response TypeScript types                         |
+| `lib/api-response.ts` | `unwrapApi`, `unwrapPage`, `unwrapList`                            |
+| `lib/api-error.ts`    | Error messages, form field mapping                                 |
+| `types/api.ts`        | Request/response TypeScript types                                  |
 
 **Base URL resolution (`api-client.ts`):**
 
@@ -207,15 +207,15 @@ flowchart LR
   PI --> SP["Supplier Payment"]
 ```
 
-| Module            | List                                        | Create | Detail                    |
-| ----------------- | ------------------------------------------- | ------ | ------------------------- |
-| Quotations        | `/sales/quotations`                         | `/new` | —                         |
-| Sales orders      | `/sales/orders`                             | `/new` | —                         |
-| Delivery challans | `/sales/challans`                           | `/new` | —                         |
-| Sales invoices    | `/sales/invoices`                           | `/new` | `/sales/invoices/:id`     |
-| Purchase orders   | `/purchases/orders`                         | `/new` | —                         |
-| GRN               | `/purchases/grn`                            | `/new` | —                         |
-| Purchase invoices | `/purchases/invoices`                       | `/new` | `/purchases/invoices/:id` |
+| Module            | List                                        | Create | Detail                                              |
+| ----------------- | ------------------------------------------- | ------ | --------------------------------------------------- |
+| Quotations        | `/sales/quotations`                         | `/new` | —                                                   |
+| Sales orders      | `/sales/orders`                             | `/new` | —                                                   |
+| Delivery challans | `/sales/challans`                           | `/new` | —                                                   |
+| Sales invoices    | `/sales/invoices`                           | `/new` | `/sales/invoices/:id`                               |
+| Purchase orders   | `/purchases/orders`                         | `/new` | —                                                   |
+| GRN               | `/purchases/grn`                            | `/new` | —                                                   |
+| Purchase invoices | `/purchases/invoices`                       | `/new` | `/purchases/invoices/:id`                           |
 | Payments          | `/payments/received`, `/payments/suppliers` | `/new` | `/payments/received/:id`, `/payments/suppliers/:id` |
 
 **Files:** `src/features/sales/SalesPages.tsx`, `src/features/sales/InvoiceDetailPages.tsx`, `src/features/sales/PaymentDetailPage.tsx`
@@ -249,17 +249,17 @@ Payment detail supports allocate remainder and cancel. Create page supports mult
 
 ### Settings and admin
 
-| Route                      | Access | Purpose               |
-| -------------------------- | ------ | --------------------- |
-| `/settings/organization`   | Admin  | Org profile           |
-| `/settings/users`          | Admin  | Team and invites      |
+| Route                      | Access | Purpose                                             |
+| -------------------------- | ------ | --------------------------------------------------- |
+| `/settings/organization`   | Admin  | Org profile                                         |
+| `/settings/users`          | Admin  | Team and invites                                    |
 | `/settings/billing`        | Admin  | Subscription hub (plans, checkout, usage, invoices) |
-| `/settings/tax-rates`      | Admin  | GST rates             |
-| `/settings/units`          | Admin  | Units of measure      |
-| `/settings/reminder-rules` | Admin  | Payment reminders     |
-| `/settings/password`       | All    | Change password       |
-| `/templates`               | All    | Invoice PDF templates |
-| `/audit`                   | All    | Audit log             |
+| `/settings/tax-rates`      | Admin  | GST rates                                           |
+| `/settings/units`          | Admin  | Units of measure                                    |
+| `/settings/reminder-rules` | Admin  | Payment reminders                                   |
+| `/settings/password`       | All    | Change password                                     |
+| `/templates`               | All    | Invoice PDF templates                               |
+| `/audit`                   | All    | Audit log                                           |
 
 ### Subscriptions
 
@@ -269,13 +269,18 @@ The subscription hub lives at **`/settings/billing`** (`BillingPage.tsx`). It ca
 
 Optional UI for the FlowLedger AI platform (backend `flowledger.ai.enabled`). Nav group is hidden when `GET /ai/health` fails or AI is disabled.
 
-| Route | Page | Module permission |
-|-------|------|-------------------|
-| `/ai/chat` | Conversation UI (`AiChatPage`) | `AI_CHAT` |
-| `/ai/recommendations` | List + ack/dismiss (`AiRecommendationsPage`) | `AI_RECOMMENDATION` |
-| `/ai/analytics` | Forecast cards (`AiAnalyticsPage`) | `AI_CHAT` |
+| Route                 | Page                                               | Module permission   |
+| --------------------- | -------------------------------------------------- | ------------------- |
+| `/ai/chat`            | Assistant with agent picker + voice (`AiChatPage`) | `AI_CHAT`           |
+| `/ai/recommendations` | List + ack/dismiss (`AiRecommendationsPage`)       | `AI_RECOMMENDATION` |
+| `/ai/analytics`       | Forecast cards (`AiAnalyticsPage`)                 | `AI_CHAT`           |
+| `/ai/workflows`       | Workflow Builder drafts (`AiWorkflowsPage`)        | `AI_WORKFLOW`       |
 
-API client: `aiApi` in `src/services/api.ts` (`health`, `chat`, `conversations`, `messages`, `recommendations`, `ack`, `dismiss`, `forecasts`).
+Global **Ask AI** FAB (`GlobalAskFab`, shortcut ⌘J / Ctrl+J) calls `POST /ai/ask` from any authenticated page.
+
+API client: `aiApi` in `src/services/api.ts` (`health`, `agents`, `chat`, `ask`, `voiceTranscribe`, workflow drafts, recommendations, forecasts).
+
+See API [`docs/ai/ROADMAP.md`](../FlowLedgerAPI/docs/ai/ROADMAP.md) for the full specialist agent catalog.
 
 ---
 

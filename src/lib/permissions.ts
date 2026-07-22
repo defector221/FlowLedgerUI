@@ -115,6 +115,7 @@ export const MODULE_PERMISSIONS = {
   audit: 'reports:read',
   ai: 'AI_CHAT',
   aiRecommendations: 'AI_RECOMMENDATION',
+  aiWorkflow: 'AI_WORKFLOW',
 } as const
 
 export function canAccessModule(roles: RoleCode[] | undefined, module: keyof typeof MODULE_PERMISSIONS): boolean {

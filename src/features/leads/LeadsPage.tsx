@@ -8,7 +8,7 @@ import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { leadApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { PageHeader, EmptyState } from '@/components/layout/PageChrome'
+import { PageHeader, EmptyState, ListPageShell, ListTablePanel, ListPanelMessage } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
@@ -39,66 +39,69 @@ const leadSchema = z.object({
 export function LeadsListPage() {
   const { data = [], isLoading } = useQuery({ queryKey: ['leads'], queryFn: () => leadApi.list({ size: 100 }) })
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Leads"
-        subtitle="Track prospects and convert them to customers."
-        actions={
-          <Button asChild>
-            <Link to="/leads/new">
-              <Plus className="size-4" />
-              New lead
-            </Link>
-          </Button>
-        }
-      />
-      <Card>
-        <CardContent className="p-4">
-          {isLoading ? (
+    <ListPageShell
+      header={
+        <PageHeader
+          title="Leads"
+          subtitle="Track prospects and convert them to customers."
+          actions={
+            <Button asChild>
+              <Link to="/leads/new">
+                <Plus className="size-4" />
+                New lead
+              </Link>
+            </Button>
+          }
+        />
+      }
+    >
+      <ListTablePanel>
+        {isLoading ? (
+          <ListPanelMessage>
             <EmptyState title="Loading…" />
-          ) : (
-            <Table>
-              <thead>
-                <tr className="border-b">
-                  <th className="p-3 text-xs text-slate-500">NAME</th>
-                  <th className="p-3 text-xs text-slate-500">COMPANY</th>
-                  <th className="p-3 text-xs text-slate-500">EMAIL</th>
-                  <th className="p-3 text-xs text-slate-500">PHONE</th>
-                  <th className="p-3 text-xs text-slate-500">SOURCE</th>
-                  <th className="p-3 text-xs text-slate-500">STATUS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.length ? (
-                  data.map((lead) => (
-                    <tr key={String(lead.id)} className="border-b">
-                      <td className="p-3">
-                        <Link className="text-teal-700 hover:underline" to={`/leads/${String(lead.id)}`}>
-                          {String(lead.leadName ?? '—')}
-                        </Link>
-                      </td>
-                      <td className="p-3">{String(lead.companyName ?? '—')}</td>
-                      <td className="p-3">{String(lead.email ?? '—')}</td>
-                      <td className="p-3">{String(lead.phone ?? '—')}</td>
-                      <td className="p-3">{String(lead.source ?? '—')}</td>
-                      <td className="p-3">
-                        <Badge>{String(lead.status ?? 'NEW')}</Badge>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="py-16 text-center text-sm text-slate-500">
-                      No leads found.
+          </ListPanelMessage>
+        ) : (
+          <Table fill stickyHeader>
+            <thead>
+              <tr className="border-b">
+                <th className="p-3 text-xs text-slate-500">NAME</th>
+                <th className="p-3 text-xs text-slate-500">COMPANY</th>
+                <th className="p-3 text-xs text-slate-500">EMAIL</th>
+                <th className="p-3 text-xs text-slate-500">PHONE</th>
+                <th className="p-3 text-xs text-slate-500">SOURCE</th>
+                <th className="p-3 text-xs text-slate-500">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length ? (
+                data.map((lead) => (
+                  <tr key={String(lead.id)} className="border-b">
+                    <td className="p-3">
+                      <Link className="text-teal-700 hover:underline" to={`/leads/${String(lead.id)}`}>
+                        {String(lead.leadName ?? '—')}
+                      </Link>
+                    </td>
+                    <td className="p-3">{String(lead.companyName ?? '—')}</td>
+                    <td className="p-3">{String(lead.email ?? '—')}</td>
+                    <td className="p-3">{String(lead.phone ?? '—')}</td>
+                    <td className="p-3">{String(lead.source ?? '—')}</td>
+                    <td className="p-3">
+                      <Badge>{String(lead.status ?? 'NEW')}</Badge>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-sm text-slate-500">
+                    No leads found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        )}
+      </ListTablePanel>
+    </ListPageShell>
   )
 }
 

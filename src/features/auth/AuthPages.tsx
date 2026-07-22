@@ -74,8 +74,11 @@ export function LoginPage() {
   const form = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
 
   useEffect(() => {
-    if (searchParams.get('reason') === 'session_expired') {
-      toast.message('Your session expired. Please sign in again.')
+    const reason = searchParams.get('reason')
+    if (reason === 'session_expired') {
+      toast.message('Your session expired. Please sign in again.', {
+        description: 'Sign in to continue where you left off.',
+      })
     }
   }, [searchParams])
 

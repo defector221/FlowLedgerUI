@@ -211,9 +211,15 @@ export const Table = ({
   className,
   zebra,
   stickyHeader,
+  fill,
   ...props
-}: React.TableHTMLAttributes<HTMLTableElement> & { zebra?: boolean; stickyHeader?: boolean }) => (
-  <div className="data-table-wrap">
+}: React.TableHTMLAttributes<HTMLTableElement> & {
+  zebra?: boolean
+  stickyHeader?: boolean
+  /** Fill parent height and scroll inside the wrap (use with ListTablePanel + stickyHeader). */
+  fill?: boolean
+}) => (
+  <div className={cn('data-table-wrap', fill && 'data-table-wrap--fill scrollbar-panel')}>
     <table
       className={cn('data-table', zebra && 'data-table--zebra', stickyHeader && 'data-table-sticky', className)}
       {...props}

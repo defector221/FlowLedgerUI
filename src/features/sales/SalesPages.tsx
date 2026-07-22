@@ -23,7 +23,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { resolveDefaultWarehouseId } from '@/lib/warehouse'
 import { currency, customerLabel, supplierLabel } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
-import { PageHeader, EmptyState } from '@/components/layout/PageChrome'
+import { PageHeader, EmptyState, ListPageShell, ListTablePanel, ListPanelMessage } from '@/components/layout/PageChrome'
 import { useAuth } from '@/features/auth/auth'
 import {
   Badge,
@@ -375,283 +375,289 @@ export function DocumentListPage({
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={title}
-        subtitle={`Create and track ${title.toLowerCase()}.`}
-        actions={
-          showCreate && createPath ? (
-            <Button asChild>
-              <Link to={createPath}>
-                <Plus className="size-4" />
-                {createLabel}
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
-      <Card>
-        <CardContent className="p-4">
-          {unavailable ? (
+    <ListPageShell
+      header={
+        <PageHeader
+          title={title}
+          subtitle={`Create and track ${title.toLowerCase()}.`}
+          actions={
+            showCreate && createPath ? (
+              <Button asChild>
+                <Link to={createPath}>
+                  <Plus className="size-4" />
+                  {createLabel}
+                </Link>
+              </Button>
+            ) : null
+          }
+        />
+      }
+    >
+      <ListTablePanel>
+        {unavailable ? (
+          <ListPanelMessage>
             <EmptyState
               title="Not available yet"
               description="This list endpoint is not yet exposed by the backend API."
             />
-          ) : isLoading ? (
+          </ListPanelMessage>
+        ) : isLoading ? (
+          <ListPanelMessage>
             <EmptyState title="Loading…" />
-          ) : (
-            <Table>
-              <thead>
-                <tr className="border-b">
-                  <th className="p-3 text-xs text-slate-500">NUMBER</th>
-                  <th className="p-3 text-xs text-slate-500">PARTY</th>
-                  <th className="p-3 text-xs text-slate-500">DATE</th>
-                  <th className="p-3 text-xs text-slate-500">TOTAL</th>
-                  <th className="p-3 text-xs text-slate-500">STATUS</th>
-                  {showActions && <th className="p-3 text-xs text-slate-500">ACTIONS</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length ? (
-                  rows.map((row) => {
-                    const status = String(row.status ?? row.paymentType ?? 'DRAFT')
-                    const cancelled = status === 'CANCELLED'
-                    return (
-                      <tr
-                        key={String(row.id)}
-                        id={`doc-row-${String(row.id)}`}
-                        className={`border-b ${focusId === String(row.id) ? 'bg-teal-50' : ''}`}
-                      >
-                        <td className="p-3">
-                          {endpoint === 'challans' ? (
-                            <Link
-                              className="font-medium text-teal-700 hover:underline"
-                              to={`/sales/challans/${row.id}`}
-                            >
-                              {documentNumber(row)}
-                            </Link>
-                          ) : endpoint === 'invoices' ? (
-                            <Link
-                              className="font-medium text-teal-700 hover:underline"
-                              to={`/sales/invoices/${row.id}`}
-                            >
-                              {documentNumber(row)}
-                            </Link>
-                          ) : endpoint === 'purchase-invoices' ? (
-                            <Link
-                              className="font-medium text-teal-700 hover:underline"
-                              to={`/purchases/invoices/${row.id}`}
-                            >
-                              {documentNumber(row)}
-                            </Link>
-                          ) : endpoint === 'received' ? (
-                            <Link
-                              className="font-medium text-teal-700 hover:underline"
-                              to={`/payments/received/${row.id}`}
-                            >
-                              {documentNumber(row)}
-                            </Link>
-                          ) : endpoint === 'suppliers-payments' ? (
-                            <Link
-                              className="font-medium text-teal-700 hover:underline"
-                              to={`/payments/suppliers/${row.id}`}
-                            >
-                              {documentNumber(row)}
-                            </Link>
-                          ) : (
-                            documentNumber(row)
-                          )}
-                        </td>
-                        <td className="p-3">{partyLabel(row)}</td>
-                        <td className="p-3">{documentDate(row)}</td>
-                        <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
-                        <td className="p-3">
-                          <Badge>{status}</Badge>
-                        </td>
-                        {endpoint === 'quotations' && canWrite && (
-                          <td className="p-3">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={status === 'CONVERTED' || cancelled}
-                              onClick={() => convertQuotation(String(row.id))}
-                            >
-                              Convert to order
-                            </Button>
-                          </td>
+          </ListPanelMessage>
+        ) : (
+          <Table fill stickyHeader>
+            <thead>
+              <tr className="border-b">
+                <th className="p-3 text-xs text-slate-500">NUMBER</th>
+                <th className="p-3 text-xs text-slate-500">PARTY</th>
+                <th className="p-3 text-xs text-slate-500">DATE</th>
+                <th className="p-3 text-xs text-slate-500">TOTAL</th>
+                <th className="p-3 text-xs text-slate-500">STATUS</th>
+                {showActions && <th className="p-3 text-xs text-slate-500">ACTIONS</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? (
+                rows.map((row) => {
+                  const status = String(row.status ?? row.paymentType ?? 'DRAFT')
+                  const cancelled = status === 'CANCELLED'
+                  return (
+                    <tr
+                      key={String(row.id)}
+                      id={`doc-row-${String(row.id)}`}
+                      className={`border-b ${focusId === String(row.id) ? 'bg-teal-50' : ''}`}
+                    >
+                      <td className="p-3">
+                        {endpoint === 'quotations' ? (
+                          <Link
+                            className="font-medium text-teal-700 hover:underline"
+                            to={`/sales/quotations/${row.id}`}
+                          >
+                            {documentNumber(row)}
+                          </Link>
+                        ) : endpoint === 'orders' ? (
+                          <Link className="font-medium text-teal-700 hover:underline" to={`/sales/orders/${row.id}`}>
+                            {documentNumber(row)}
+                          </Link>
+                        ) : endpoint === 'challans' ? (
+                          <Link className="font-medium text-teal-700 hover:underline" to={`/sales/challans/${row.id}`}>
+                            {documentNumber(row)}
+                          </Link>
+                        ) : endpoint === 'invoices' ? (
+                          <Link className="font-medium text-teal-700 hover:underline" to={`/sales/invoices/${row.id}`}>
+                            {documentNumber(row)}
+                          </Link>
+                        ) : endpoint === 'purchase-invoices' ? (
+                          <Link
+                            className="font-medium text-teal-700 hover:underline"
+                            to={`/purchases/invoices/${row.id}`}
+                          >
+                            {documentNumber(row)}
+                          </Link>
+                        ) : endpoint === 'received' ? (
+                          <Link
+                            className="font-medium text-teal-700 hover:underline"
+                            to={`/payments/received/${row.id}`}
+                          >
+                            {documentNumber(row)}
+                          </Link>
+                        ) : endpoint === 'suppliers-payments' ? (
+                          <Link
+                            className="font-medium text-teal-700 hover:underline"
+                            to={`/payments/suppliers/${row.id}`}
+                          >
+                            {documentNumber(row)}
+                          </Link>
+                        ) : (
+                          documentNumber(row)
                         )}
-                        {endpoint === 'orders' && canWrite && (
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-2">
-                              {challanByOrderId[String(row.id)]?.id ? (
-                                <Link
-                                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                  to={`/sales/challans?focus=${String(challanByOrderId[String(row.id)].id)}`}
-                                >
-                                  View challan
-                                </Link>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={cancelled}
-                                  onClick={() => convertOrderToChallan(String(row.id))}
-                                >
-                                  To challan
-                                </Button>
-                              )}
+                      </td>
+                      <td className="p-3">{partyLabel(row)}</td>
+                      <td className="p-3">{documentDate(row)}</td>
+                      <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
+                      <td className="p-3">
+                        <Badge>{status}</Badge>
+                      </td>
+                      {endpoint === 'quotations' && canWrite && (
+                        <td className="p-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={status === 'CONVERTED' || cancelled}
+                            onClick={() => convertQuotation(String(row.id))}
+                          >
+                            Convert to order
+                          </Button>
+                        </td>
+                      )}
+                      {endpoint === 'orders' && canWrite && (
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2">
+                            {challanByOrderId[String(row.id)]?.id ? (
+                              <Link
+                                className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                to={`/sales/challans?focus=${String(challanByOrderId[String(row.id)].id)}`}
+                              >
+                                View challan
+                              </Link>
+                            ) : (
                               <Button
                                 variant="outline"
                                 size="sm"
                                 disabled={cancelled}
-                                onClick={() => convertOrderToInvoice(String(row.id))}
+                                onClick={() => convertOrderToChallan(String(row.id))}
                               >
-                                To invoice
+                                To challan
                               </Button>
-                            </div>
-                          </td>
-                        )}
-                        {endpoint === 'challans' && canWrite && (
-                          <td className="p-3">
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
                               disabled={cancelled}
-                              onClick={() => convertChallanToInvoice(String(row.id))}
+                              onClick={() => convertOrderToInvoice(String(row.id))}
                             >
                               To invoice
                             </Button>
-                          </td>
-                        )}
-                        {endpoint === 'purchase-orders' && canWrite && (
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-2">
-                              {status === 'DRAFT' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => confirmPurchaseOrder(String(row.id))}
-                                >
-                                  Confirm
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={cancelled}
-                                onClick={() => createGrnFromOrder(String(row.id))}
-                              >
-                                Create GRN
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={cancelled}
-                                onClick={() => createPurchaseInvoiceFromOrder(String(row.id))}
-                              >
-                                Create invoice
-                              </Button>
-                            </div>
-                          </td>
-                        )}
-                        {endpoint === 'grn' && canWrite && (
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-2">
-                              {status !== 'CONFIRMED' && !cancelled && (
-                                <Button variant="outline" size="sm" onClick={() => confirmGrn(String(row.id))}>
-                                  Confirm
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={cancelled}
-                                onClick={() => createPurchaseInvoiceFromGrn(String(row.id))}
-                              >
-                                Create invoice
-                              </Button>
-                            </div>
-                          </td>
-                        )}
-                        {endpoint === 'purchase-invoices' && (
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-2">
-                              <Link
-                                className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                to={`/purchases/invoices/${row.id}`}
-                              >
-                                View
-                              </Link>
-                              {canWrite && status === 'DRAFT' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => confirmPurchaseInvoice(String(row.id))}
-                                >
-                                  Confirm
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        )}
-                        {endpoint === 'invoices' && (
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-2">
-                              {canWrite && status === 'DRAFT' && (
-                                <>
-                                  <Link
-                                    className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                    to={`/sales/invoices/${row.id}/edit`}
-                                  >
-                                    Edit
-                                  </Link>
-                                  <Button variant="outline" size="sm" onClick={() => confirmInvoice(String(row.id))}>
-                                    Confirm
-                                  </Button>
-                                </>
-                              )}
-                              <Button variant="outline" size="sm" onClick={() => downloadPdf(String(row.id))}>
-                                <Download className="size-3.5" />
-                                PDF
-                              </Button>
-                              {canWrite && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={cancelled}
-                                  onClick={() => cancelInvoice(String(row.id))}
-                                >
-                                  Cancel
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    )
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={showActions ? 6 : 5} className="py-16 text-center text-sm text-slate-500">
-                      {showCreate && createPath ? (
-                        <span>
-                          No {title.toLowerCase()} found.{' '}
-                          <Link className="font-medium text-teal-700 hover:underline" to={createPath}>
-                            Create one
-                          </Link>
-                        </span>
-                      ) : (
-                        `No ${title.toLowerCase()} found.`
+                          </div>
+                        </td>
                       )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                      {endpoint === 'challans' && canWrite && (
+                        <td className="p-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={cancelled}
+                            onClick={() => convertChallanToInvoice(String(row.id))}
+                          >
+                            To invoice
+                          </Button>
+                        </td>
+                      )}
+                      {endpoint === 'purchase-orders' && canWrite && (
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2">
+                            {status === 'DRAFT' && (
+                              <Button variant="outline" size="sm" onClick={() => confirmPurchaseOrder(String(row.id))}>
+                                Confirm
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={cancelled}
+                              onClick={() => createGrnFromOrder(String(row.id))}
+                            >
+                              Create GRN
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={cancelled}
+                              onClick={() => createPurchaseInvoiceFromOrder(String(row.id))}
+                            >
+                              Create invoice
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                      {endpoint === 'grn' && canWrite && (
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2">
+                            {status !== 'CONFIRMED' && !cancelled && (
+                              <Button variant="outline" size="sm" onClick={() => confirmGrn(String(row.id))}>
+                                Confirm
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={cancelled}
+                              onClick={() => createPurchaseInvoiceFromGrn(String(row.id))}
+                            >
+                              Create invoice
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                      {endpoint === 'purchase-invoices' && (
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              to={`/purchases/invoices/${row.id}`}
+                            >
+                              View
+                            </Link>
+                            {canWrite && status === 'DRAFT' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => confirmPurchaseInvoice(String(row.id))}
+                              >
+                                Confirm
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      {endpoint === 'invoices' && (
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2">
+                            {canWrite && status === 'DRAFT' && (
+                              <>
+                                <Link
+                                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                  to={`/sales/invoices/${row.id}/edit`}
+                                >
+                                  Edit
+                                </Link>
+                                <Button variant="outline" size="sm" onClick={() => confirmInvoice(String(row.id))}>
+                                  Confirm
+                                </Button>
+                              </>
+                            )}
+                            <Button variant="outline" size="sm" onClick={() => downloadPdf(String(row.id))}>
+                              <Download className="size-3.5" />
+                              PDF
+                            </Button>
+                            {canWrite && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={cancelled}
+                                onClick={() => cancelInvoice(String(row.id))}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={showActions ? 6 : 5} className="py-16 text-center text-sm text-slate-500">
+                    {showCreate && createPath ? (
+                      <span>
+                        No {title.toLowerCase()} found.{' '}
+                        <Link className="font-medium text-teal-700 hover:underline" to={createPath}>
+                          Create one
+                        </Link>
+                      </span>
+                    ) : (
+                      `No ${title.toLowerCase()} found.`
+                    )}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        )}
+      </ListTablePanel>
+    </ListPageShell>
   )
 }
 

@@ -1,16 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import {
-  Building2,
-  CalendarClock,
-  Check,
-  CreditCard,
-  FileText,
-  Receipt,
-  Sparkles,
-  Users,
-} from 'lucide-react'
+import { Building2, CalendarClock, Check, CreditCard, FileText, Receipt, Sparkles, Users } from 'lucide-react'
 import { billingApi, subscriptionApi, type SubscriptionPlan, type CheckoutResponse } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { PageHeader } from '@/components/layout/PageChrome'
@@ -76,7 +67,11 @@ export function BillingPage() {
     queryKey: ['billing-current'],
     queryFn: billingApi.current,
   })
-  const { data: current, isLoading: loadingCurrent, refetch: refetchCurrent } = useQuery({
+  const {
+    data: current,
+    isLoading: loadingCurrent,
+    refetch: refetchCurrent,
+  } = useQuery({
     queryKey: ['subscriptions-current'],
     queryFn: subscriptionApi.current,
   })
@@ -153,9 +148,13 @@ export function BillingPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
   const cancelMutation = useMutation({
-    mutationFn: () => subscriptionApi.cancel(),
-    onSuccess: async () => {
-      toast.success('Auto-renew cancelled')
+    mutationFn: (immediate: boolean) => subscriptionApi.cancel(immediate),
+    onSuccess: async (_data, immediate) => {
+      toast.success(
+        immediate
+          ? 'Subscription cancelled — switched to Free'
+          : 'Subscription will cancel at period end (auto-renew off)',
+      )
       await invalidate()
       await refetchCurrent()
     },
@@ -224,9 +223,7 @@ export function BillingPage() {
                   {planName}
                 </h2>
                 <Badge variant={statusVariant(status)}>{status.replaceAll('_', ' ')}</Badge>
-                {current?.billingCycle ? (
-                  <Badge variant="outline">{current.billingCycle.toLowerCase()}</Badge>
-                ) : null}
+                {current?.billingCycle ? <Badge variant="outline">{current.billingCycle.toLowerCase()}</Badge> : null}
               </div>
               {planDescription ? <p className="max-w-xl text-sm text-slate-500">{planDescription}</p> : null}
             </div>
@@ -242,11 +239,7 @@ export function BillingPage() {
             label="Organizations"
             value={`${usageView.organizationCount} / ${usageView.organizationLimit}`}
           />
-          <SummaryStat
-            icon={Users}
-            label="Users in org"
-            value={`${usageView.userCount} / ${usageView.userLimit}`}
-          />
+          <SummaryStat icon={Users} label="Users in org" value={`${usageView.userCount} / ${usageView.userLimit}`} />
           <SummaryStat
             icon={FileText}
             label="Invoices this month"
@@ -314,27 +307,57 @@ export function BillingPage() {
                     </p>
                     <p className="mt-0.5 text-slate-500">
                       Auto-renew {current?.autoRenew ? 'enabled' : 'disabled'}
-                      {current?.endDate ? ` · ends ${formatDate(current.endDate)}` : ''}
+                      {current?.nextBillingDate ? ` · next bill ${formatDate(current.nextBillingDate)}` : ''}
+                      {current?.endDate ? ` · access until ${formatDate(current.endDate)}` : ''}
                     </p>
+                    {!current?.autoRenew && current?.plan?.code !== 'FREE' && current?.endDate ? (
+                      <p className="mt-1 text-xs font-medium text-amber-800">
+                        Cancellation scheduled — Pro access continues until {formatDate(current.endDate)}.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" className="cursor-pointer" onClick={() => setTab('pricing')}>
                     Change plan
                   </Button>
-                  {current?.autoRenew && current.plan?.code !== 'FREE' ? (
-                    <Button
-                      variant="ghost"
-                      className="cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                      loading={cancelMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm('Cancel auto-renew at the end of the current period?')) {
-                          cancelMutation.mutate()
-                        }
-                      }}
-                    >
-                      Cancel auto-renew
-                    </Button>
+                  {current?.plan?.code && current.plan.code !== 'FREE' ? (
+                    <>
+                      {current.autoRenew ? (
+                        <Button
+                          variant="ghost"
+                          className="cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                          loading={cancelMutation.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                'Cancel subscription at period end? You keep Pro until the current billing period ends, then move to Free.',
+                              )
+                            ) {
+                              cancelMutation.mutate(false)
+                            }
+                          }}
+                        >
+                          Cancel at period end
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        className="cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        loading={cancelMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              'Cancel immediately and switch to Free now? This ends Pro access right away.',
+                            )
+                          ) {
+                            cancelMutation.mutate(true)
+                          }
+                        }}
+                      >
+                        Cancel now
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </CardContent>
@@ -418,9 +441,7 @@ export function BillingPage() {
                           <span className="text-3xl font-semibold tracking-tight text-slate-900">
                             {formatMoney(price)}
                           </span>
-                          <span className="text-sm text-slate-500">
-                            / {cycle === 'YEARLY' ? 'year' : 'month'}
-                          </span>
+                          <span className="text-sm text-slate-500">/ {cycle === 'YEARLY' ? 'year' : 'month'}</span>
                         </p>
                         {savings ? (
                           <p className="mt-1 text-xs font-medium text-teal-700">{savings} vs paying monthly</p>
@@ -438,11 +459,7 @@ export function BillingPage() {
                             Current plan
                           </Button>
                         ) : (
-                          <Button
-                            className="w-full cursor-pointer"
-                            loading={busy}
-                            onClick={() => selectPlan(p)}
-                          >
+                          <Button className="w-full cursor-pointer" loading={busy} onClick={() => selectPlan(p)}>
                             {p.code === 'FREE'
                               ? 'Switch to Free'
                               : current?.plan?.code === 'FREE' || !current
@@ -533,11 +550,7 @@ export function BillingPage() {
                 limit={usageView.organizationLimit}
               />
               <UsageBar label="Users in current org" used={usageView.userCount} limit={usageView.userLimit} />
-              <UsageBar
-                label="Invoices this month"
-                used={usageView.invoiceCount}
-                limit={usageView.invoiceLimit}
-              />
+              <UsageBar label="Invoices this month" used={usageView.invoiceCount} limit={usageView.invoiceLimit} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -546,15 +559,7 @@ export function BillingPage() {
   )
 }
 
-function SummaryStat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Building2
-  label: string
-  value: string
-}) {
+function SummaryStat({ icon: Icon, label, value }: { icon: typeof Building2; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 bg-white px-5 py-4">
       <div className="flex size-9 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
@@ -568,15 +573,7 @@ function SummaryStat({
   )
 }
 
-function LimitTile({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Building2
-  label: string
-  value?: number | null
-}) {
+function LimitTile({ icon: Icon, label, value }: { icon: typeof Building2; label: string; value?: number | null }) {
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
       <div className="mb-2 flex size-8 items-center justify-center rounded-lg bg-white text-teal-700 shadow-sm">

@@ -31,7 +31,9 @@ import type {
   CategoryResponse,
   PaymentResponse,
   InventoryAlertResponse,
+  InventoryLedgerRow,
   InventoryStockPosition,
+  InventoryStockSnapshot,
   StockAdjustmentRequest,
   StockTransferRequest,
   AuditLogResponse,
@@ -286,10 +288,20 @@ export const paymentApi = {
     to?: string
     search?: string
   }) => api.get('/payments', { params }).then((r) => unwrapList<PaymentResponse>(r)),
-  listReceived: async (params?: { status?: string; customerId?: string; from?: string; to?: string; search?: string }) =>
-    paymentApi.list({ type: 'RECEIPT', partyType: 'CUSTOMER', ...params }),
-  listSupplier: async (params?: { status?: string; supplierId?: string; from?: string; to?: string; search?: string }) =>
-    paymentApi.list({ type: 'PAYMENT', partyType: 'SUPPLIER', ...params }),
+  listReceived: async (params?: {
+    status?: string
+    customerId?: string
+    from?: string
+    to?: string
+    search?: string
+  }) => paymentApi.list({ type: 'RECEIPT', partyType: 'CUSTOMER', ...params }),
+  listSupplier: async (params?: {
+    status?: string
+    supplierId?: string
+    from?: string
+    to?: string
+    search?: string
+  }) => paymentApi.list({ type: 'PAYMENT', partyType: 'SUPPLIER', ...params }),
   create: (payload: Record<string, unknown>) =>
     api.post('/payments', payload).then((r) => unwrapApi<PaymentResponse>(r)),
   get: (id: string) => api.get(`/payments/${id}`).then((r) => unwrapApi<PaymentResponse>(r)),
@@ -325,11 +337,11 @@ export const inventoryApi = {
   openingStock: (payload: StockAdjustmentRequest) =>
     api.post('/inventory/opening-stock', payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
   ledger: (productId: string, params?: { warehouseId?: string; from?: string; to?: string }) =>
-    api.get(`/inventory/ledger/${productId}`, { params }).then((r) => unwrapList<Record<string, unknown>>(r)),
+    api.get(`/inventory/ledger/${productId}`, { params }).then((r) => unwrapList<InventoryLedgerRow>(r)),
   stock: (productId: string, warehouseId?: string) =>
     api
       .get(`/inventory/stock/${productId}`, { params: warehouseId ? { warehouseId } : undefined })
-      .then((r) => unwrapApi<Record<string, unknown>>(r)),
+      .then((r) => unwrapApi<InventoryStockSnapshot>(r)),
 }
 
 export const leadApi = {
@@ -593,7 +605,8 @@ export const subscriptionApi = {
     api.post('/subscriptions/checkout', payload).then((r) => unwrapApi<CheckoutResponse>(r)),
   upgrade: (payload: { planCode: string; billingCycle: 'MONTHLY' | 'YEARLY' }) =>
     api.post('/subscriptions/upgrade', payload).then((r) => unwrapApi<CheckoutResponse>(r)),
-  cancel: () => api.post('/subscriptions/cancel').then((r) => unwrapApi<CurrentSubscription>(r)),
+  cancel: (immediate = false) =>
+    api.post('/subscriptions/cancel', null, { params: { immediate } }).then((r) => unwrapApi<CurrentSubscription>(r)),
   invoices: () => api.get('/subscriptions/invoices').then((r) => unwrapList<SubscriptionInvoice>(r)),
   usage: () => api.get('/subscriptions/usage').then((r) => unwrapApi<SubscriptionUsage>(r)),
   verifyPayment: (payload: {
@@ -807,6 +820,17 @@ export type AiHealth = {
   documentAiEnabled: boolean
   voiceEnabled: boolean
   apiKeyConfigured: boolean
+  multiAgentEnabled?: boolean
+  workflowBuilderEnabled?: boolean
+}
+
+export type AiAgentInfo = {
+  code: string
+  displayName: string
+  description: string
+  allowedTools: string[]
+  permission: string
+  supportsCollaboration: boolean
 }
 
 export type AiChatResponse = {
@@ -816,6 +840,7 @@ export type AiChatResponse = {
   content: string
   model: string
   latencyMs: number
+  consultedAgents?: string[]
 }
 
 export type AiConversation = {
@@ -864,17 +889,98 @@ export type AiForecast = {
   summary: Record<string, unknown>
 }
 
+export type AiWorkflowDraft = {
+  id: string
+  name: string
+  triggerType: string
+  description?: string
+  conditionsJson?: string
+  stepsJson?: string
+  suggestedApprovers?: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AiWorkflowApproval = {
+  id: string
+  entityType: string
+  entityId: string
+  status: string
+  requestedBy: string
+  requestedAt: string
+  decidedBy?: string
+  decidedAt?: string
+  remarks?: string
+  workflowDraftId?: string
+  workflowName?: string
+  currentStep?: number
+  totalSteps?: number
+  currentStepRole?: string
+  currentStepAction?: string
+  canApprove?: boolean
+  stepsSnapshotJson?: string
+}
+
 export const aiApi = {
   health: () => api.get('/ai/health').then((r) => unwrapApi<AiHealth>(r)),
+  agents: () => api.get('/ai/agents').then((r) => unwrapList<AiAgentInfo>(r)),
   chat: (payload: { message: string; conversationId?: string; agent?: string; useRag?: boolean }) =>
     api.post('/ai/chat', payload).then((r) => unwrapApi<AiChatResponse>(r)),
+  ask: (payload: { message: string; conversationId?: string; useRag?: boolean }) =>
+    api.post('/ai/ask', payload).then((r) => unwrapApi<AiChatResponse>(r)),
   conversations: () => api.get('/ai/conversations').then((r) => unwrapList<AiConversation>(r)),
   messages: (conversationId: string) =>
     api.get(`/ai/conversations/${conversationId}/messages`).then((r) => unwrapList<AiMessage>(r)),
   recommendations: (status?: string) =>
-    api.get('/ai/recommendations', { params: status ? { status } : undefined }).then((r) => unwrapList<AiRecommendation>(r)),
+    api
+      .get('/ai/recommendations', { params: status ? { status } : undefined })
+      .then((r) => unwrapList<AiRecommendation>(r)),
   ack: (id: string) => api.patch(`/ai/recommendations/${id}/acknowledge`).then((r) => unwrapApi<AiRecommendation>(r)),
   dismiss: (id: string) => api.patch(`/ai/recommendations/${id}/dismiss`).then((r) => unwrapApi<AiRecommendation>(r)),
   forecasts: (type: 'DEMAND' | 'SALES' | 'CASHFLOW' | 'INVENTORY') =>
     api.get('/ai/analytics/forecasts', { params: { type } }).then((r) => unwrapApi<AiForecast>(r)),
+  voiceTranscribe: (payload: { contentType: string; audioBase64: string }) =>
+    api
+      .post('/ai/workflow/voice-transcribe', payload)
+      .then((r) =>
+        unwrapApi<{ configured: boolean; message: string; transcript?: string; result?: Record<string, unknown> }>(r),
+      ),
+  workflowDrafts: () => api.get('/ai/workflow/drafts').then((r) => unwrapList<AiWorkflowDraft>(r)),
+  createWorkflowDraft: (payload: {
+    name: string
+    triggerType?: string
+    description?: string
+    conditionsJson?: string
+    stepsJson?: string
+    suggestedApprovers?: string
+  }) => api.post('/ai/workflow/drafts', payload).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  updateWorkflowDraft: (
+    id: string,
+    payload: {
+      name?: string
+      triggerType?: string
+      description?: string
+      conditionsJson?: string
+      stepsJson?: string
+      suggestedApprovers?: string
+    },
+  ) => api.put(`/ai/workflow/drafts/${id}`, payload).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  deleteWorkflowDraft: (id: string) => api.delete(`/ai/workflow/drafts/${id}`).then(() => undefined),
+  suggestWorkflow: (prompt: string) =>
+    api.post('/ai/workflow/suggest', { prompt }).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  activateWorkflow: (id: string) =>
+    api.post(`/ai/workflow/drafts/${id}/activate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  deactivateWorkflow: (id: string) =>
+    api.post(`/ai/workflow/drafts/${id}/deactivate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  workflowApprovals: (status: 'pending' | 'all' = 'pending') =>
+    api.get('/ai/workflow/approvals', { params: { status } }).then((r) => unwrapList<AiWorkflowApproval>(r)),
+  approveWorkflow: (id: string, remarks?: string) =>
+    api
+      .post(`/ai/workflow/approvals/${id}/approve`, remarks ? { remarks } : {})
+      .then((r) => unwrapApi<AiWorkflowApproval>(r)),
+  rejectWorkflow: (id: string, remarks?: string) =>
+    api
+      .post(`/ai/workflow/approvals/${id}/reject`, remarks ? { remarks } : {})
+      .then((r) => unwrapApi<AiWorkflowApproval>(r)),
 }

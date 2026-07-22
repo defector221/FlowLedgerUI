@@ -38,6 +38,75 @@
   box-sizing: border-box;
 }
 
+/* Subtle dark scrollbars for navy panels (Chrome / Safari / Edge / Firefox) */
+.scrollbar-dark {
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(100 116 139 / 65%) rgb(15 23 42 / 40%);
+}
+
+.scrollbar-dark::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: rgb(15 23 42 / 35%);
+  border-radius: 999px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgb(100 116 139 / 70%);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184 / 85%);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+.scrollbar-dark::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Light panels (product lists, tables on white cards) */
+.scrollbar-panel {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 55%) rgb(241 245 249);
+}
+
+.scrollbar-panel::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-panel::-webkit-scrollbar-track {
+  margin-block: 4px;
+  background: rgb(241 245 249);
+  border-radius: 999px;
+}
+
+.scrollbar-panel::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 55%);
+  border-radius: 999px;
+  border: 2px solid rgb(241 245 249);
+  background-clip: padding-box;
+}
+
+.scrollbar-panel::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139 / 70%);
+  border: 2px solid rgb(241 245 249);
+  background-clip: padding-box;
+}
+
+.scrollbar-panel::-webkit-scrollbar-corner {
+  background: rgb(241 245 249);
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -167,6 +236,15 @@ select {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Section-scroll tables: sticky header sticks to this wrap, not the page */
+.data-table-wrap--fill {
+  flex: 1 1 0%;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -221,7 +299,7 @@ select {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f8fafc;
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
   box-shadow: 0 1px 0 #e2e8f0;
 }
 

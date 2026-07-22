@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageChrome'
+import { PageHeader, ListPageShell, ListTablePanel, ListPanelMessage } from '@/components/layout/PageChrome'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { generateEntityCode, slugifyName } from '@/lib/entity-code'
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -114,23 +112,28 @@ export function TransportMasterPage({
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={title}
-        subtitle={`Manage transport ${title.toLowerCase()}.`}
-        actions={
-          <Button onClick={() => showForm()}>
-            <Plus className="size-4" />
-            Add {singular}
-          </Button>
+    <>
+      <ListPageShell
+        header={
+          <PageHeader
+            title={title}
+            subtitle={`Manage transport ${title.toLowerCase()}.`}
+            actions={
+              <Button onClick={() => showForm()}>
+                <Plus className="size-4" />
+                Add {singular}
+              </Button>
+            }
+          />
         }
-      />
-      <Card>
-        <CardContent className="p-4">
+      >
+        <ListTablePanel>
           {isLoading ? (
-            <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
+            <ListPanelMessage>
+              <p className="text-sm text-slate-500">Loading…</p>
+            </ListPanelMessage>
           ) : (
-            <Table>
+            <Table fill stickyHeader>
               <thead>
                 <tr className="border-b">
                   {columns.map((column) => (
@@ -175,8 +178,8 @@ export function TransportMasterPage({
               </tbody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </ListTablePanel>
+      </ListPageShell>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogTitle>{editing ? `Edit ${singular}` : `Add ${singular}`}</DialogTitle>
@@ -223,6 +226,6 @@ export function TransportMasterPage({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

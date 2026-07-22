@@ -29,7 +29,13 @@ import { toast } from 'sonner'
 import { accountingApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { currency } from '@/lib/utils'
-import { PageHeader, SectionTitle } from '@/components/layout/PageChrome'
+import {
+  PageHeader,
+  SectionTitle,
+  ListPageShell,
+  ListTablePanel,
+  ListPanelMessage,
+} from '@/components/layout/PageChrome'
 import {
   Button,
   Card,
@@ -389,28 +395,34 @@ export function JournalsPage() {
     queryFn: () => accountingApi.listJournals({ size: 50 }) as Promise<JournalResponse[]>,
   })
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Journals"
-        subtitle="Manual and system-generated double-entry vouchers."
-        actions={
-          <>
-            <Button variant="outline" onClick={() => refetch()}>
-              Refresh
-            </Button>
-            <Link
-              className="inline-flex h-9 items-center rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600"
-              to="/accounting/journals/new"
-            >
-              New journal
-            </Link>
-          </>
-        }
-      />
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? <p className="p-5 text-sm text-slate-500">Loading…</p> : null}
-          <Table>
+    <ListPageShell
+      header={
+        <PageHeader
+          title="Journals"
+          subtitle="Manual and system-generated double-entry vouchers."
+          actions={
+            <>
+              <Button variant="outline" onClick={() => refetch()}>
+                Refresh
+              </Button>
+              <Link
+                className="inline-flex h-9 items-center rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600"
+                to="/accounting/journals/new"
+              >
+                New journal
+              </Link>
+            </>
+          }
+        />
+      }
+    >
+      <ListTablePanel>
+        {isLoading ? (
+          <ListPanelMessage>
+            <p className="text-sm text-slate-500">Loading…</p>
+          </ListPanelMessage>
+        ) : (
+          <Table fill stickyHeader>
             <thead>
               <tr className="text-left text-[0.7rem] uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-3 font-semibold">Number</th>
@@ -440,11 +452,18 @@ export function JournalsPage() {
                   <td className="px-5 py-3 text-right tabular-nums">{money(j.totalCredit)}</td>
                 </tr>
               ))}
+              {!data.length && (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-sm text-slate-500">
+                    No journals found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </ListTablePanel>
+    </ListPageShell>
   )
 }
 

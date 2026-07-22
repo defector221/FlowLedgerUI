@@ -21,6 +21,8 @@ import {
 } from '@/features/sales/SalesPages'
 import { PurchaseInvoiceDetailPage, SalesInvoiceDetailPage } from '@/features/sales/InvoiceDetailPages'
 import { DeliveryChallanDetailPage } from '@/features/sales/DeliveryChallanDetailPage'
+import { QuotationDetailPage } from '@/features/sales/QuotationDetailPage'
+import { SalesOrderDetailPage } from '@/features/sales/SalesOrderDetailPage'
 import { PaymentDetailPage } from '@/features/sales/PaymentDetailPage'
 import { LeadCreatePage, LeadDetailPage, LeadsListPage } from '@/features/leads/LeadsPage'
 import { MarketingSequencesPage } from '@/features/marketing/MarketingPages'
@@ -42,6 +44,7 @@ import { TeamManagementPage } from '@/features/settings/TeamManagementPage'
 import { BillingPage } from '@/features/settings/BillingPage'
 import { ReminderRulesPage } from '@/features/settings/ReminderRulesPage'
 import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
+import { ProfileSettingsPage } from '@/features/settings/ProfileSettingsPage'
 import {
   AccountingDashboardPage,
   AccountingReportsPage,
@@ -62,6 +65,7 @@ import { TransportReportsPage } from '@/features/transport/TransportReportsPage'
 import { AiChatPage } from '@/features/ai/AiChatPage'
 import { AiRecommendationsPage } from '@/features/ai/AiRecommendationsPage'
 import { AiAnalyticsPage } from '@/features/ai/AiAnalyticsPage'
+import { AiWorkflowsPage } from '@/features/ai/AiWorkflowsPage'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -147,6 +151,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'sales/quotations/new', element: <CreateQuotationPage /> },
+      { path: 'sales/quotations/:id', element: <QuotationDetailPage /> },
       {
         path: 'sales/orders',
         element: (
@@ -159,6 +164,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'sales/orders/new', element: <CreateSalesOrderPage /> },
+      { path: 'sales/orders/:id', element: <SalesOrderDetailPage /> },
       {
         path: 'sales/challans',
         element: (
@@ -304,10 +310,12 @@ export const router = createBrowserRouter([
       { path: 'settings/units', element: <UnitsPage /> },
       { path: 'settings/reminder-rules', element: <ReminderRulesPage /> },
       { path: 'settings/password', element: <ChangePasswordPage /> },
+      { path: 'settings/profile', element: <ProfileSettingsPage /> },
       { path: 'audit', element: <AuditLogsPage /> },
       { path: 'ai/chat', element: <AiChatPage /> },
       { path: 'ai/recommendations', element: <AiRecommendationsPage /> },
       { path: 'ai/analytics', element: <AiAnalyticsPage /> },
+      { path: 'ai/workflows', element: <AiWorkflowsPage /> },
     ],
   },
 ])

@@ -10,6 +10,7 @@ import { organizationApi, roleApi, userApi, warehouseApi } from '@/services/api'
 import { getApiErrorMessage, getApiFieldErrors } from '@/lib/api-error'
 import { mergeDefined } from '@/lib/api-payload'
 import { generateEntityCode, slugifyName } from '@/lib/entity-code'
+import { LogoUploadZone } from '@/features/onboarding/LogoUploadZone'
 import {
   Button,
   Card,
@@ -499,14 +500,16 @@ export function OnboardingPage() {
 
             {step === 6 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-slate-900">Business Branding</h2>
-                <Field label="Organization Logo">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
-                  />
-                </Field>
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Business Branding</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Add your organization logo. It will appear on invoices and other documents.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-sm font-medium text-slate-700">Organization Logo</span>
+                  <LogoUploadZone file={logoFile} onChange={setLogoFile} />
+                </div>
                 <Actions onBack={back} onContinue={saveLogo} continueLabel="Continue" />
               </div>
             )}

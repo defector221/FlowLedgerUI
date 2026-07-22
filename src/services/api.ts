@@ -92,6 +92,17 @@ export const organizationApi = {
     form.append('file', file)
     return api.post('/organizations/current/logo', form).then((r) => unwrapApi<string>(r))
   },
+  /** Authenticated logo image as an object URL. Caller should revoke when done. */
+  fetchLogoObjectUrl: async () => {
+    try {
+      const response = await api.get<Blob>('/organizations/current/logo', { responseType: 'blob' })
+      if (!(response.data instanceof Blob) || response.data.size === 0) return null
+      if (response.data.type.includes('application/json')) return null
+      return URL.createObjectURL(response.data)
+    } catch {
+      return null
+    }
+  },
   completeOnboarding: () =>
     api.post('/organizations/current/complete-onboarding').then((r) => unwrapApi<OrganizationResponse>(r)),
   settings: () => api.get('/organizations/current/settings').then((r) => unwrapApi<OrganizationSettingsResponse>(r)),

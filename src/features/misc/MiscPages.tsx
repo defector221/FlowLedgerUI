@@ -20,6 +20,7 @@ import { applyApiFieldErrors, getApiErrorMessage } from '@/lib/api-error'
 import { currency, date, quantity } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth'
 import { PageHeader } from '@/components/layout/PageChrome'
+import { LogoUploadZone } from '@/features/onboarding/LogoUploadZone'
 import { EmailDesignEditor, type EmailDesignEditorHandle } from '@/components/email/EmailDesignEditor'
 import {
   Button,
@@ -73,8 +74,24 @@ const orgSchema = z.object({
 })
 
 export function OrganizationSettingsPage() {
+  const queryClient = useQueryClient()
   const { refreshOrganization } = useAuth()
   const { data: organization } = useQuery({ queryKey: ['organization', 'settings'], queryFn: organizationApi.current })
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [savingLogo, setSavingLogo] = useState(false)
+  const { data: existingLogoUrl } = useQuery({
+    queryKey: ['organization', 'logo', organization?.logoObjectKey],
+    queryFn: () => organizationApi.fetchLogoObjectUrl(),
+    enabled: !!organization?.logoObjectKey,
+    staleTime: 5 * 60_000,
+  })
+
+  useEffect(() => {
+    return () => {
+      if (existingLogoUrl) URL.revokeObjectURL(existingLogoUrl)
+    }
+  }, [existingLogoUrl])
+
   const form = useForm<z.infer<typeof orgSchema>>({
     resolver: zodResolver(orgSchema),
     values: organization
@@ -125,9 +142,53 @@ export function OrganizationSettingsPage() {
       if (!applyApiFieldErrors(error, form.setError)) toast.error(getApiErrorMessage(error))
     }
   })
+
+  const saveLogo = async () => {
+    if (!logoFile) {
+      toast.message('Choose a logo file first')
+      return
+    }
+    setSavingLogo(true)
+    try {
+      await organizationApi.uploadLogo(logoFile)
+      setLogoFile(null)
+      await refreshOrganization()
+      await queryClient.invalidateQueries({ queryKey: ['organization', 'settings'] })
+      await queryClient.invalidateQueries({ queryKey: ['organization', 'logo'] })
+      toast.success('Logo updated')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setSavingLogo(false)
+    }
+  }
+
   return (
     <div className="max-w-4xl space-y-6">
       <PageHeader title="Organization settings" subtitle="Manage business details, tax and preferences." />
+
+      <Card>
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <h2 className="text-lg font-semibold text-slate-900">Business branding</h2>
+          <p className="text-sm text-slate-500">
+            Upload or replace your organization logo. It appears on invoices and documents.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4 p-6">
+          <LogoUploadZone
+            file={logoFile}
+            onChange={setLogoFile}
+            existingUrl={existingLogoUrl}
+            pendingHint="Click Save logo to apply"
+          />
+          <div className="flex justify-end">
+            <Button type="button" disabled={!logoFile || savingLogo} onClick={saveLogo}>
+              {savingLogo ? 'Saving…' : 'Save logo'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           <form className="contents" onSubmit={submit}>

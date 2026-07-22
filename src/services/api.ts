@@ -31,7 +31,9 @@ import type {
   CategoryResponse,
   PaymentResponse,
   InventoryAlertResponse,
+  InventoryLedgerRow,
   InventoryStockPosition,
+  InventoryStockSnapshot,
   StockAdjustmentRequest,
   StockTransferRequest,
   AuditLogResponse,
@@ -325,11 +327,11 @@ export const inventoryApi = {
   openingStock: (payload: StockAdjustmentRequest) =>
     api.post('/inventory/opening-stock', payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
   ledger: (productId: string, params?: { warehouseId?: string; from?: string; to?: string }) =>
-    api.get(`/inventory/ledger/${productId}`, { params }).then((r) => unwrapList<Record<string, unknown>>(r)),
+    api.get(`/inventory/ledger/${productId}`, { params }).then((r) => unwrapList<InventoryLedgerRow>(r)),
   stock: (productId: string, warehouseId?: string) =>
     api
       .get(`/inventory/stock/${productId}`, { params: warehouseId ? { warehouseId } : undefined })
-      .then((r) => unwrapApi<Record<string, unknown>>(r)),
+      .then((r) => unwrapApi<InventoryStockSnapshot>(r)),
 }
 
 export const leadApi = {

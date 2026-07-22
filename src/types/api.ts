@@ -788,6 +788,23 @@ export interface InventoryStockPosition {
   reorderLevel: number
 }
 
+export interface InventoryLedgerRow {
+  date: string
+  type: string
+  reference?: string | null
+  inward: number
+  outward: number
+  runningBalance: number
+}
+
+export interface InventoryStockSnapshot {
+  productId?: string
+  warehouseId?: string | null
+  available?: number
+  onHand?: number
+  reserved?: number
+}
+
 export interface StockAdjustmentRequest {
   productId: string
   warehouseId: string

@@ -24,7 +24,7 @@ export function NotificationBell() {
   const unread = Number(unreadQuery.data?.count ?? 0)
   const items = listQuery.data ?? []
 
-  const markRead = async (id: string, link?: string | null) => {
+  const markRead = async (id: string) => {
     try {
       await notificationApi.markRead(id)
       await queryClient.invalidateQueries({ queryKey: ['notifications'] })

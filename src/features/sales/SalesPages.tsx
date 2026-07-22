@@ -14,6 +14,7 @@ import {
   paymentApi,
   salesApi,
   supplierApi,
+  supplierCatalogApi,
   taxRateApi,
   templateApi,
   warehouseApi,
@@ -422,7 +423,14 @@ export function DocumentListPage({
                         className={`border-b ${focusId === String(row.id) ? 'bg-teal-50' : ''}`}
                       >
                         <td className="p-3">
-                          {endpoint === 'invoices' ? (
+                          {endpoint === 'challans' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/sales/challans/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
+                          ) : endpoint === 'invoices' ? (
                             <Link
                               className="font-medium text-teal-700 hover:underline"
                               to={`/sales/invoices/${row.id}`}
@@ -680,12 +688,31 @@ function lineAmount(line: Pick<Line, 'quantity' | 'rate' | 'discountPercent' | '
   return lineTaxable(line) + lineTaxAmount(line)
 }
 
-function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellingPrice') {
+function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellingPrice', supplierId?: string) {
   const [lines, setLines] = useState<Line[]>([{ id: 1, ...defaultLine() }])
-  const { data: products = [] } = useQuery({
+  const { data: allProducts = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products', 'document-lines'],
     queryFn: () => productApi.list({ active: true, size: 100 }),
+    enabled: defaultRateKey !== 'purchasePrice',
   })
+  const { data: catalog = [], isLoading: loadingCatalog } = useQuery({
+    queryKey: ['supplier-catalog', 'active', supplierId],
+    queryFn: () => supplierCatalogApi.listActiveBySupplier(supplierId!),
+    enabled: defaultRateKey === 'purchasePrice' && !!supplierId,
+  })
+  const products =
+    defaultRateKey === 'purchasePrice'
+      ? catalog.map((item) => ({
+          id: item.productId,
+          name: item.productName,
+          itemType: 'PRODUCT',
+          unitName: null,
+          taxRateId: null,
+          taxType: null,
+          sellingPrice: 0,
+          purchasePrice: Number(item.purchasePrice),
+        }))
+      : allProducts
   const { data: taxRates = [] } = useQuery({
     queryKey: ['tax-rates'],
     queryFn: taxRateApi.list,
@@ -748,6 +775,7 @@ function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellin
     subtotal,
     discountTotal,
     tax,
+    isLoadingProducts: loadingProducts || loadingCatalog,
   }
 }
 
@@ -759,6 +787,8 @@ function LineItemsEditor({
   onPatch,
   onRemove,
   onAdd,
+  disabled = false,
+  emptyMessage,
 }: {
   lines: Line[]
   products: { id: string; name: string; itemType?: string; unitName?: string | null }[]
@@ -767,148 +797,162 @@ function LineItemsEditor({
   onPatch: (id: number, values: Partial<Line>) => void
   onRemove: (id: number) => void
   onAdd: () => void
+  disabled?: boolean
+  emptyMessage?: string
 }) {
   return (
     <Card>
       <CardHeader>
         <h2 className="font-semibold text-slate-900">Line items</h2>
-        <Button variant="outline" size="sm" onClick={onAdd}>
+        <Button variant="outline" size="sm" onClick={onAdd} disabled={disabled}>
           <Plus className="size-4" />
           Add item
         </Button>
       </CardHeader>
       <CardContent>
-        <Table>
-          <thead>
-            <tr className="border-b">
-              <th className="p-2 text-xs text-slate-500">ITEM</th>
-              <th className="p-2 text-xs text-slate-500">QTY</th>
-              <th className="p-2 text-xs text-slate-500">RATE</th>
-              <th className="p-2 text-xs text-slate-500">DISC %</th>
-              <th className="p-2 text-xs text-slate-500">TAX %</th>
-              <th className="p-2 text-xs text-slate-500">TYPE</th>
-              <th className="p-2 text-right text-xs text-slate-500">AMOUNT</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => {
-              const selected = products.find((p) => p.id === line.productId)
-              const isService = selected?.itemType === 'SERVICE'
-              return (
-                <tr key={line.id} className="border-b">
-                  <td className="min-w-[10rem] p-2 sm:min-w-[14rem]">
-                    <Select value={line.productId} onValueChange={(value) => onSelectProduct(line.id, value)}>
-                      <SelectTrigger className="h-auto min-h-10 min-w-0 py-2">
-                        {selected ? (
-                          <span className="flex min-w-0 flex-col items-start text-left">
-                            <span className="truncate font-medium">{selected.name}</span>
-                            <span className="text-[11px] font-normal text-slate-500">
-                              {isService ? 'Service' : 'Product'}
-                              {selected.unitName ? ` · ${selected.unitName}` : ''}
-                            </span>
-                          </span>
-                        ) : (
-                          'Select item'
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id} textValue={product.name}>
-                            <span className="flex flex-col items-start">
-                              <span>{product.name}</span>
-                              <span className="text-[11px] text-slate-500">
-                                {product.itemType === 'SERVICE' ? 'Service' : 'Product'}
-                                {product.unitName ? ` · ${product.unitName}` : ''}
+        {disabled || (!products.length && emptyMessage) ? (
+          <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+            {disabled ? 'Select a supplier before adding items.' : emptyMessage}
+          </p>
+        ) : (
+          <Table>
+            <thead>
+              <tr className="border-b">
+                <th className="p-2 text-xs text-slate-500">ITEM</th>
+                <th className="p-2 text-xs text-slate-500">QTY</th>
+                <th className="p-2 text-xs text-slate-500">RATE</th>
+                <th className="p-2 text-xs text-slate-500">DISC %</th>
+                <th className="p-2 text-xs text-slate-500">TAX %</th>
+                <th className="p-2 text-xs text-slate-500">TYPE</th>
+                <th className="p-2 text-right text-xs text-slate-500">AMOUNT</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line) => {
+                const selected = products.find((p) => p.id === line.productId)
+                const isService = selected?.itemType === 'SERVICE'
+                return (
+                  <tr key={line.id} className="border-b">
+                    <td className="min-w-[10rem] p-2 sm:min-w-[14rem]">
+                      <Select
+                        disabled={disabled}
+                        value={line.productId}
+                        onValueChange={(value) => onSelectProduct(line.id, value)}
+                      >
+                        <SelectTrigger className="h-auto min-h-10 min-w-0 py-2">
+                          {selected ? (
+                            <span className="flex min-w-0 flex-col items-start text-left">
+                              <span className="truncate font-medium">{selected.name}</span>
+                              <span className="text-[11px] font-normal text-slate-500">
+                                {isService ? 'Service' : 'Product'}
+                                {selected.unitName ? ` · ${selected.unitName}` : ''}
                               </span>
                             </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="p-2">
-                    <NumberInput
-                      className="w-20"
-                      allowDecimal
-                      value={line.quantity}
-                      onValueChange={(value) => onUpdate(line.id, 'quantity', Math.max(0.001, value))}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <NumberInput
-                      className="w-24"
-                      value={line.rate}
-                      onValueChange={(value) => onUpdate(line.id, 'rate', value)}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <NumberInput
-                      className="w-16"
-                      value={line.discountPercent}
-                      onValueChange={(value) => onUpdate(line.id, 'discountPercent', Math.min(100, Math.max(0, value)))}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <NumberInput
-                      className="w-16"
-                      value={line.taxRate}
-                      onValueChange={(value) => onUpdate(line.id, 'taxRate', value)}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <Select
-                      value={line.taxType}
-                      onValueChange={(value) => {
-                        const taxType = value as TaxType
-                        if (taxType === 'IGST') {
-                          onPatch(line.id, {
-                            taxType,
-                            splitStrategy: 'NO_SPLIT_IGST',
-                            cgstSharePercent: 0,
-                            sgstSharePercent: 0,
-                          })
-                        } else if (taxType === 'OTHER') {
-                          onPatch(line.id, {
-                            taxType,
-                            splitStrategy: 'NO_SPLIT_OTHER',
-                            cgstSharePercent: 0,
-                            sgstSharePercent: 0,
-                          })
-                        } else {
-                          onPatch(line.id, {
-                            taxType,
-                            splitStrategy: 'PLACE_OF_SUPPLY',
-                            cgstSharePercent: 50,
-                            sgstSharePercent: 50,
-                          })
+                          ) : (
+                            'Select item'
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id} textValue={product.name}>
+                              <span className="flex flex-col items-start">
+                                <span>{product.name}</span>
+                                <span className="text-[11px] text-slate-500">
+                                  {product.itemType === 'SERVICE' ? 'Service' : 'Product'}
+                                  {product.unitName ? ` · ${product.unitName}` : ''}
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="p-2">
+                      <NumberInput
+                        className="w-20"
+                        allowDecimal
+                        value={line.quantity}
+                        onValueChange={(value) => onUpdate(line.id, 'quantity', Math.max(0.001, value))}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <NumberInput
+                        className="w-24"
+                        value={line.rate}
+                        onValueChange={(value) => onUpdate(line.id, 'rate', value)}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <NumberInput
+                        className="w-16"
+                        value={line.discountPercent}
+                        onValueChange={(value) =>
+                          onUpdate(line.id, 'discountPercent', Math.min(100, Math.max(0, value)))
                         }
-                      }}
-                    >
-                      <SelectTrigger className="w-[5.5rem]">{line.taxType}</SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GST">GST</SelectItem>
-                        <SelectItem value="IGST">IGST</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="p-2 text-right text-sm font-medium">
-                    <div>{currency(lineAmount(line))}</div>
-                    {line.discountPercent > 0 && (
-                      <div className="text-xs font-normal text-slate-500">−{currency(lineDiscount(line))} disc</div>
-                    )}
-                  </td>
-                  <td className="p-2">
-                    <Button variant="ghost" size="icon" onClick={() => onRemove(line.id)}>
-                      <Trash2 className="size-4 text-rose-500" />
-                    </Button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </Table>
+                      />
+                    </td>
+                    <td className="p-2">
+                      <NumberInput
+                        className="w-16"
+                        value={line.taxRate}
+                        onValueChange={(value) => onUpdate(line.id, 'taxRate', value)}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <Select
+                        value={line.taxType}
+                        onValueChange={(value) => {
+                          const taxType = value as TaxType
+                          if (taxType === 'IGST') {
+                            onPatch(line.id, {
+                              taxType,
+                              splitStrategy: 'NO_SPLIT_IGST',
+                              cgstSharePercent: 0,
+                              sgstSharePercent: 0,
+                            })
+                          } else if (taxType === 'OTHER') {
+                            onPatch(line.id, {
+                              taxType,
+                              splitStrategy: 'NO_SPLIT_OTHER',
+                              cgstSharePercent: 0,
+                              sgstSharePercent: 0,
+                            })
+                          } else {
+                            onPatch(line.id, {
+                              taxType,
+                              splitStrategy: 'PLACE_OF_SUPPLY',
+                              cgstSharePercent: 50,
+                              sgstSharePercent: 50,
+                            })
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[5.5rem]">{line.taxType}</SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GST">GST</SelectItem>
+                          <SelectItem value="IGST">IGST</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="p-2 text-right text-sm font-medium">
+                      <div>{currency(lineAmount(line))}</div>
+                      {line.discountPercent > 0 && (
+                        <div className="text-xs font-normal text-slate-500">−{currency(lineDiscount(line))} disc</div>
+                      )}
+                    </td>
+                    <td className="p-2">
+                      <Button variant="ghost" size="icon" onClick={() => onRemove(line.id)}>
+                        <Trash2 className="size-4 text-rose-500" />
+                      </Button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   )
@@ -2021,6 +2065,11 @@ const purchaseOrderSchema = z.object({
 export function CreatePurchaseOrderPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const form = useForm({
+    resolver: zodResolver(purchaseOrderSchema),
+    defaultValues: { supplierId: '', orderDate: new Date().toISOString().slice(0, 10), notes: '' },
+  })
+  const supplierId = form.watch('supplierId')
   const {
     lines,
     products,
@@ -2033,15 +2082,19 @@ export function CreatePurchaseOrderPage() {
     subtotal,
     discountTotal,
     tax,
-  } = useLineItems('purchasePrice')
-  const form = useForm({
-    resolver: zodResolver(purchaseOrderSchema),
-    defaultValues: { supplierId: '', orderDate: new Date().toISOString().slice(0, 10), notes: '' },
-  })
+    replaceLines,
+    isLoadingProducts,
+  } = useLineItems('purchasePrice', supplierId)
   const { data: suppliers = [] } = useQuery({
     queryKey: ['suppliers', 'po'],
     queryFn: () => supplierApi.list({ size: 100 }),
   })
+
+  useEffect(() => {
+    replaceLines([])
+    // Supplier changes intentionally reset lines that may not belong to the new catalog.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplierId])
 
   const save = form.handleSubmit(async (values) => {
     try {
@@ -2098,7 +2151,7 @@ export function CreatePurchaseOrderPage() {
             <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Supplier</Label>
-                <Select value={form.watch('supplierId')} onValueChange={(value) => form.setValue('supplierId', value)}>
+                <Select value={supplierId} onValueChange={(value) => form.setValue('supplierId', value)}>
                   <SelectTrigger className="h-auto min-h-10 py-2">
                     {(() => {
                       const selected = suppliers.find((s) => s.id === form.watch('supplierId'))
@@ -2128,6 +2181,8 @@ export function CreatePurchaseOrderPage() {
             onPatch={patch}
             onRemove={removeLine}
             onAdd={addLine}
+            disabled={!supplierId || isLoadingProducts}
+            emptyMessage="This supplier has no active catalog items. Add products from the supplier detail page first."
           />
         </div>
         <Card>

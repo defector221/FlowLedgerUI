@@ -18,6 +18,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'products:read',
     'products:write',
     'inventory:read',
+    'transport:read',
   ],
   SALES_MANAGER: [
     'sales:read',
@@ -46,6 +47,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'warehouses:write',
     'categories:read',
     'categories:write',
+    'transport:read',
   ],
   VIEWER: [
     'sales:read',
@@ -98,6 +100,7 @@ export const MODULE_PERMISSIONS = {
   payments: 'payments:read',
   reports: 'reports:read',
   accounting: 'accounting:read',
+  transport: 'transport:read',
   templates: 'sales:read',
   settings: 'org:read',
   billing: 'org:read',

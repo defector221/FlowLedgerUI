@@ -38,6 +38,7 @@ import {
   Switch,
   Table,
 } from '@/components/ui'
+import { SupplierCatalogSection } from './SupplierCatalogSection'
 
 type EntityKind = 'customers' | 'suppliers' | 'products' | 'categories' | 'warehouses'
 
@@ -690,7 +691,7 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
     fields.filter((f) => f.defaultValue !== undefined).map((f) => [f.name, f.defaultValue]),
   )
   const form = useForm<Record<string, unknown>>({
-    resolver: zodResolver(config.schema as z.ZodType<Record<string, unknown>>),
+    resolver: zodResolver(config.schema as never),
     defaultValues,
   })
   const needsUnits = fields.some((f) => f.optionsKey === 'units')
@@ -1003,6 +1004,9 @@ export function EntityDetailPage({ kind }: { kind: EntityKind }) {
           ))}
         </CardContent>
       </Card>
+      {(kind === 'products' || kind === 'suppliers') && (
+        <SupplierCatalogSection kind={kind} ownerId={id} canWrite={canWrite} />
+      )}
     </div>
   )
 }

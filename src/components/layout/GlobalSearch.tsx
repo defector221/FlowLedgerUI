@@ -1,4 +1,4 @@
-import { Building2, Package, ReceiptText, Search, ShoppingCart, Users } from 'lucide-react'
+import { Building2, Package, ReceiptText, Search, ShoppingCart, Truck, Users } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/auth'
@@ -16,6 +16,7 @@ const GROUP_ORDER: { type: SearchEntityType; label: string; icon: typeof Package
   { type: 'SUPPLIER', label: 'Suppliers', icon: Building2 },
   { type: 'SALES_INVOICE', label: 'Sales Invoices', icon: ReceiptText },
   { type: 'PURCHASE_INVOICE', label: 'Purchase Invoices', icon: ShoppingCart },
+  { type: 'SHIPMENT', label: 'Shipments', icon: Truck },
 ]
 
 function pathFor(hit: GlobalSearchHit) {
@@ -30,6 +31,8 @@ function pathFor(hit: GlobalSearchHit) {
       return `/sales/invoices/${hit.entityId}`
     case 'PURCHASE_INVOICE':
       return `/purchases/invoices/${hit.entityId}`
+    case 'SHIPMENT':
+      return `/transport/shipments/${hit.entityId}`
     default:
       return '/'
   }

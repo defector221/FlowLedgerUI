@@ -115,6 +115,12 @@ export interface OrganizationSettingsResponse {
   taxInclusiveDefault: boolean
   roundOffEnabled: boolean
   defaultWarehouseId: string | null
+  transportEnabled: boolean
+  transportRequiredDefault: boolean
+  transportAllowOverride: boolean
+  transportApprovalRequired: boolean
+  transportDefaultFreightPayer: FreightPayer | null
+  transportDelayThresholdHours: number
   settingsJson: string
 }
 
@@ -123,6 +129,12 @@ export interface UpdateOrganizationSettingsRequest {
   taxInclusiveDefault?: boolean
   roundOffEnabled?: boolean
   defaultWarehouseId?: string
+  transportEnabled?: boolean
+  transportRequiredDefault?: boolean
+  transportAllowOverride?: boolean
+  transportApprovalRequired?: boolean
+  transportDefaultFreightPayer?: FreightPayer
+  transportDelayThresholdHours?: number
   settingsJson?: string
 }
 
@@ -205,6 +217,7 @@ export interface CustomerResponse {
   city: string | null
   state: string | null
   stateCode: string | null
+  paymentTerms?: string | null
   creditLimit: number
   openingBalance: number
   archived: boolean
@@ -330,6 +343,229 @@ export interface ProductResponse {
   minimumStockLevel: number
   reorderLevel: number
   active: boolean
+}
+
+export interface CreateSupplierCatalogItemRequest {
+  productId?: string
+  supplierId?: string
+  supplierSku?: string
+  supplierProductName?: string
+  purchasePrice: number
+  currency?: string
+  moq?: number
+  leadTimeDays?: number
+  preferred?: boolean
+  validFrom?: string
+  validTo?: string
+  notes?: string
+  active?: boolean
+}
+
+export type UpdateSupplierCatalogItemRequest = Partial<
+  Omit<CreateSupplierCatalogItemRequest, 'productId' | 'supplierId'>
+>
+
+export interface SupplierCatalogItemResponse {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  supplierId: string
+  supplierName: string
+  supplierSku: string | null
+  supplierProductName: string | null
+  purchasePrice: number
+  currency: string
+  moq: number | null
+  leadTimeDays: number | null
+  preferred: boolean
+  validFrom: string | null
+  validTo: string | null
+  notes: string | null
+  active: boolean
+  version: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type ShipmentStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'ASSIGNED'
+  | 'LOADING'
+  | 'LOADED'
+  | 'PARTIALLY_DISPATCHED'
+  | 'DISPATCHED'
+  | 'IN_TRANSIT'
+  | 'DELIVERED'
+  | 'CLOSED'
+  | 'CANCELLED'
+  | 'REJECTED'
+export type TransportMode = 'ROAD' | 'RAIL' | 'AIR' | 'SEA' | 'COURIER' | 'CUSTOMER_PICKUP' | 'INTERNAL_VEHICLE'
+export type TransportType = 'SELF' | 'THIRD_PARTY' | 'CUSTOMER_ARRANGED'
+export type FreightPayer = 'SENDER' | 'RECEIVER' | 'THIRD_PARTY'
+export type VehicleStatus = 'AVAILABLE' | 'IN_TRANSIT' | 'MAINTENANCE' | 'INACTIVE'
+export type DriverStatus = 'AVAILABLE' | 'ON_TRIP' | 'INACTIVE'
+
+interface TransportRecord {
+  id: string
+  createdAt?: string
+  updatedAt?: string
+  version?: number
+}
+
+export interface TransportCompany extends TransportRecord {
+  name: string
+  code: string
+  gstin?: string | null
+  pan?: string | null
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  stateCode?: string | null
+  country?: string | null
+  status: string
+  notes?: string | null
+}
+export type TransportCompanyRequest = Omit<TransportCompany, keyof TransportRecord>
+
+export interface TransportVehicle extends TransportRecord {
+  companyId?: string | null
+  vehicleNumber: string
+  vehicleType: string
+  capacity?: number | null
+  capacityUnit?: string | null
+  ownership: 'SELF' | 'THIRD_PARTY'
+  driverId?: string | null
+  fitnessExpiry?: string | null
+  insuranceExpiry?: string | null
+  permitExpiry?: string | null
+  currentStatus: VehicleStatus
+  notes?: string | null
+}
+export type TransportVehicleRequest = Omit<TransportVehicle, keyof TransportRecord>
+
+export interface TransportDriver extends TransportRecord {
+  companyId?: string | null
+  name: string
+  licenseNumber: string
+  licenseExpiry?: string | null
+  mobile?: string | null
+  emergencyContact?: string | null
+  assignedVehicleId?: string | null
+  currentStatus: DriverStatus
+  notes?: string | null
+}
+export type TransportDriverRequest = Omit<TransportDriver, keyof TransportRecord>
+
+export interface ShipmentLine {
+  id?: string
+  shipmentId?: string
+  sourceLineId?: string | null
+  productId?: string | null
+  productName?: string | null
+  description?: string | null
+  quantity: number
+  unitId?: string | null
+  unitName?: string | null
+  batchNumber?: string | null
+  serialNumber?: string | null
+  lineOrder: number
+}
+
+export interface ShipmentLeg {
+  id?: string
+  shipmentId?: string
+  sequenceNo: number
+  transportCompanyId?: string | null
+  transportCompanyName?: string | null
+  vehicleId?: string | null
+  driverId?: string | null
+  lrNumber?: string | null
+  consignmentNumber?: string | null
+  vehicleNumberSnapshot?: string | null
+  driverNameSnapshot?: string | null
+  driverMobileSnapshot?: string | null
+  expectedDeparture?: string | null
+  expectedArrival?: string | null
+  actualDeparture?: string | null
+  actualArrival?: string | null
+  remarks?: string | null
+}
+
+export interface ShipmentEvent {
+  id: string
+  shipmentId: string
+  eventType: string
+  occurredAt: string
+  actorUserId?: string | null
+  actorType: 'USER' | 'SYSTEM'
+  remarks?: string | null
+  locationJson?: string | Record<string, unknown> | null
+  payloadJson?: string | Record<string, unknown> | null
+}
+
+export interface Shipment extends TransportRecord {
+  shipmentNumber: string
+  status: ShipmentStatus
+  sourceDocumentType?: string | null
+  sourceDocumentId?: string | null
+  transportRequired: boolean
+  transportMode?: TransportMode | null
+  transportType?: TransportType | null
+  transportCompanyId?: string | null
+  transportCompanyName?: string | null
+  fromWarehouseId?: string | null
+  fromWarehouseName?: string | null
+  shipToPartyType?: string | null
+  shipToPartyId?: string | null
+  shipToPartyName?: string | null
+  shipToAddress?: string | null
+  expectedDispatchDate?: string | null
+  expectedDeliveryDate?: string | null
+  actualDispatchDate?: string | null
+  actualDeliveryDate?: string | null
+  freightCharges: number
+  freightPaidBy?: FreightPayer | null
+  insuranceDetails?: string | null
+  gpsTrackingUrl?: string | null
+  ewayBillNumber?: string | null
+  einvoiceReference?: string | null
+  remarks?: string | null
+  lines?: ShipmentLine[]
+  legs?: ShipmentLeg[]
+  events?: ShipmentEvent[]
+}
+
+export type ShipmentRequest = Omit<Shipment, keyof TransportRecord | 'shipmentNumber' | 'status' | 'events'>
+
+export interface DeliveryChallanItem {
+  id: string
+  productId: string
+  productName?: string | null
+  description?: string | null
+  quantity: number
+  quantityDispatched?: number
+  unitName?: string | null
+}
+
+export interface DeliveryChallan {
+  id: string
+  challanNumber: string
+  challanDate: string
+  status: string
+  customerId: string
+  customerName?: string | null
+  warehouseId?: string | null
+  warehouseName?: string | null
+  salesOrderId?: string | null
+  salesOrderNumber?: string | null
+  notes?: string | null
+  transportRequired?: boolean
+  items?: DeliveryChallanItem[]
 }
 
 export interface CreateCategoryRequest {
@@ -633,7 +869,7 @@ export interface GlobalSearchHit {
   referenceNumber?: string | null
 }
 
-export type SearchEntityType = 'PRODUCT' | 'CUSTOMER' | 'SUPPLIER' | 'SALES_INVOICE' | 'PURCHASE_INVOICE'
+export type SearchEntityType = 'PRODUCT' | 'CUSTOMER' | 'SUPPLIER' | 'SALES_INVOICE' | 'PURCHASE_INVOICE' | 'SHIPMENT'
 
 export interface GlobalSearchResponse {
   query: string

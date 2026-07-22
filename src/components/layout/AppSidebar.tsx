@@ -12,12 +12,14 @@ import {
   Package,
   Percent,
   ReceiptText,
+  Search,
   Settings,
   ShieldCheck,
   ShoppingCart,
   Target,
   Users,
   Wallet,
+  Truck,
   X,
 } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
@@ -55,6 +57,17 @@ const groups = [
       { to: '/inventory/adjustments', label: 'Adjustments', icon: Package, module: 'inventory' as const },
       { to: '/inventory/transfers', label: 'Transfers', icon: ArrowLeftRight, module: 'inventory' as const },
       { to: '/inventory/opening-stock', label: 'Opening stock', icon: Package, module: 'inventory' as const },
+    ],
+  },
+  {
+    label: 'TRANSPORT',
+    items: [
+      { to: '/transport', label: 'Overview', icon: Truck, module: 'transport' as const },
+      { to: '/transport/companies', label: 'Companies', icon: Building2, module: 'transport' as const },
+      { to: '/transport/vehicles', label: 'Vehicles', icon: Truck, module: 'transport' as const },
+      { to: '/transport/drivers', label: 'Drivers', icon: Users, module: 'transport' as const },
+      { to: '/transport/shipments', label: 'Shipments', icon: Package, module: 'transport' as const },
+      { to: '/transport/search', label: 'Shipment search', icon: Search, module: 'transport' as const },
     ],
   },
   {

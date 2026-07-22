@@ -20,6 +20,7 @@ import {
   PaymentCreatePage,
 } from '@/features/sales/SalesPages'
 import { PurchaseInvoiceDetailPage, SalesInvoiceDetailPage } from '@/features/sales/InvoiceDetailPages'
+import { DeliveryChallanDetailPage } from '@/features/sales/DeliveryChallanDetailPage'
 import { LeadCreatePage, LeadDetailPage, LeadsListPage } from '@/features/leads/LeadsPage'
 import { MarketingSequencesPage } from '@/features/marketing/MarketingPages'
 import {
@@ -49,6 +50,14 @@ import {
   PartyLedgerPage,
 } from '@/features/accounting/AccountingPages'
 import { ChartOfAccountsPage } from '@/features/accounting/ChartOfAccountsPage'
+import { TransportDashboardPage } from '@/features/transport/TransportDashboardPage'
+import { TransportCompaniesPage } from '@/features/transport/TransportCompaniesPage'
+import { TransportVehiclesPage } from '@/features/transport/TransportVehiclesPage'
+import { TransportDriversPage } from '@/features/transport/TransportDriversPage'
+import { TransportShipmentsPage } from '@/features/transport/TransportShipmentsPage'
+import { TransportShipmentDetailPage } from '@/features/transport/TransportShipmentDetailPage'
+import { TransportSearchPage } from '@/features/transport/TransportSearchPage'
+import { TransportReportsPage } from '@/features/transport/TransportReportsPage'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -158,6 +167,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'sales/challans/new', element: <CreateChallanPage /> },
+      { path: 'sales/challans/:id', element: <DeliveryChallanDetailPage /> },
       {
         path: 'sales/invoices',
         element: (
@@ -242,6 +252,14 @@ export const router = createBrowserRouter([
       { path: 'accounting/ledgers/accounts/:id', element: <PartyLedgerPage party="accounts" /> },
       { path: 'accounting/ledgers/customers/:id', element: <PartyLedgerPage party="customers" /> },
       { path: 'accounting/ledgers/suppliers/:id', element: <PartyLedgerPage party="suppliers" /> },
+      { path: 'transport', element: <TransportDashboardPage /> },
+      { path: 'transport/companies', element: <TransportCompaniesPage /> },
+      { path: 'transport/vehicles', element: <TransportVehiclesPage /> },
+      { path: 'transport/drivers', element: <TransportDriversPage /> },
+      { path: 'transport/shipments', element: <TransportShipmentsPage /> },
+      { path: 'transport/shipments/:id', element: <TransportShipmentDetailPage /> },
+      { path: 'transport/search', element: <TransportSearchPage /> },
+      { path: 'transport/reports', element: <TransportReportsPage /> },
       { path: 'leads', element: <LeadsListPage /> },
       { path: 'leads/new', element: <LeadCreatePage /> },
       { path: 'leads/:id', element: <LeadDetailPage /> },

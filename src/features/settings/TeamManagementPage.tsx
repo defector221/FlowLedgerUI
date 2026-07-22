@@ -131,12 +131,14 @@ export function TeamManagementPage() {
       />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['Total Users', totalUsers],
-          ['Active Users', activeUsers],
-          ['Pending Invitations', pendingInvitations],
-          ['Administrators', administrators],
-        ].map(([label, value]) => (
+        {(
+          [
+            ['Total Users', totalUsers],
+            ['Active Users', activeUsers],
+            ['Pending Invitations', pendingInvitations],
+            ['Administrators', administrators],
+          ] as Array<[string, number]>
+        ).map(([label, value]) => (
           <MetricCard key={label} label={label} value={value} />
         ))}
       </section>

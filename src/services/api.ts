@@ -42,6 +42,18 @@ import type {
   CreateInvoiceTemplateRequest,
   InvoiceTemplateConfig,
   GlobalSearchResponse,
+  CreateSupplierCatalogItemRequest,
+  UpdateSupplierCatalogItemRequest,
+  SupplierCatalogItemResponse,
+  TransportCompany,
+  TransportCompanyRequest,
+  TransportVehicle,
+  TransportVehicleRequest,
+  TransportDriver,
+  TransportDriverRequest,
+  Shipment,
+  ShipmentRequest,
+  DeliveryChallan,
 } from '@/types/api'
 
 export const authApi = {
@@ -138,6 +150,22 @@ export const productApi = {
     api.put(`/products/${id}`, payload).then((r) => unwrapApi<ProductResponse>(r)),
 }
 
+export const supplierCatalogApi = {
+  listBySupplier: (supplierId: string) =>
+    api.get(`/suppliers/${supplierId}/catalog`).then((r) => unwrapList<SupplierCatalogItemResponse>(r)),
+  listActiveBySupplier: (supplierId: string) =>
+    api.get(`/suppliers/${supplierId}/catalog/active`).then((r) => unwrapList<SupplierCatalogItemResponse>(r)),
+  create: (supplierId: string, payload: CreateSupplierCatalogItemRequest) =>
+    api.post(`/suppliers/${supplierId}/catalog`, payload).then((r) => unwrapApi<SupplierCatalogItemResponse>(r)),
+  update: (supplierId: string, id: string, payload: UpdateSupplierCatalogItemRequest) =>
+    api.put(`/suppliers/${supplierId}/catalog/${id}`, payload).then((r) => unwrapApi<SupplierCatalogItemResponse>(r)),
+  remove: (supplierId: string, id: string) => api.delete(`/suppliers/${supplierId}/catalog/${id}`),
+  listByProduct: (productId: string) =>
+    api.get(`/products/${productId}/suppliers`).then((r) => unwrapList<SupplierCatalogItemResponse>(r)),
+  createForProduct: (productId: string, payload: CreateSupplierCatalogItemRequest) =>
+    api.post(`/products/${productId}/suppliers`, payload).then((r) => unwrapApi<SupplierCatalogItemResponse>(r)),
+}
+
 export const categoryApi = {
   list: () => api.get('/categories').then((r) => unwrapList<CategoryResponse>(r)),
   get: (id: string) => api.get(`/categories/${id}`).then((r) => unwrapApi<CategoryResponse>(r)),
@@ -192,9 +220,12 @@ export const salesApi = {
     api.post(`/sales/orders/${id}/convert-to-invoice`, body).then((r) => unwrapApi<Record<string, unknown>>(r)),
 
   listChallans: () => api.get('/sales/challans').then((r) => unwrapList<Record<string, unknown>>(r)),
-  getChallan: (id: string) => api.get(`/sales/challans/${id}`).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  getChallan: (id: string) => api.get(`/sales/challans/${id}`).then((r) => unwrapApi<DeliveryChallan>(r)),
   createChallan: (payload: Record<string, unknown>) =>
     api.post('/sales/challans', payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  updateChallan: (id: string, payload: Partial<DeliveryChallan>) =>
+    api.put(`/sales/challans/${id}`, payload).then((r) => unwrapApi<DeliveryChallan>(r)),
+  cancelChallan: (id: string) => api.post(`/sales/challans/${id}/cancel`).then((r) => unwrapApi<DeliveryChallan>(r)),
   convertChallanToInvoice: (id: string) =>
     api.post(`/sales/challans/${id}/convert-to-invoice`).then((r) => unwrapApi<Record<string, unknown>>(r)),
 
@@ -569,6 +600,48 @@ export const searchApi = {
       .get('/search', { params: { q, types: params?.types, limit: params?.limit, page: params?.page } })
       .then((r) => unwrapApi<GlobalSearchResponse>(r)),
   reindex: () => api.post('/search/reindex').then((r) => unwrapApi<{ indexed: number; failed: number }>(r)),
+}
+
+const transportCrud = <T, P>(path: string) => ({
+  list: (params?: Record<string, string | number | boolean | undefined>) =>
+    api.get(path, { params }).then((r) => unwrapList<T>(r)),
+  get: (id: string) => api.get(`${path}/${id}`).then((r) => unwrapApi<T>(r)),
+  create: (payload: P) => api.post(path, payload).then((r) => unwrapApi<T>(r)),
+  update: (id: string, payload: Partial<P>) => api.put(`${path}/${id}`, payload).then((r) => unwrapApi<T>(r)),
+  remove: (id: string) => api.delete(`${path}/${id}`),
+})
+
+export const transportApi = {
+  companies: transportCrud<TransportCompany, TransportCompanyRequest>('/transport/companies'),
+  vehicles: transportCrud<TransportVehicle, TransportVehicleRequest>('/transport/vehicles'),
+  drivers: transportCrud<TransportDriver, TransportDriverRequest>('/transport/drivers'),
+  shipments: {
+    ...transportCrud<Shipment, ShipmentRequest>('/transport/shipments'),
+    submit: (id: string) => api.post(`/transport/shipments/${id}/submit`).then((r) => unwrapApi<Shipment>(r)),
+    approve: (id: string, remarks?: string) =>
+      api.post(`/transport/shipments/${id}/approve`, { remarks }).then((r) => unwrapApi<Shipment>(r)),
+    assign: (id: string, payload: Record<string, unknown>) =>
+      api.post(`/transport/shipments/${id}/assign`, payload).then((r) => unwrapApi<Shipment>(r)),
+    dispatch: (id: string, payload?: Record<string, unknown>) =>
+      api.post(`/transport/shipments/${id}/dispatch`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
+    deliver: (id: string, payload?: Record<string, unknown>) =>
+      api.post(`/transport/shipments/${id}/deliver`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
+    close: (id: string) => api.post(`/transport/shipments/${id}/close`).then((r) => unwrapApi<Shipment>(r)),
+    cancel: (id: string, remarks?: string) =>
+      api.post(`/transport/shipments/${id}/cancel`, { remarks }).then((r) => unwrapApi<Shipment>(r)),
+    checkpoint: (id: string, payload: { eventType: string; remarks?: string; locationJson?: unknown }) =>
+      api.post(`/transport/shipments/${id}/checkpoint`, payload).then((r) => unwrapApi<Shipment>(r)),
+  },
+  search: (params: Record<string, string | number | undefined>) =>
+    api.get('/transport/shipments/search', { params }).then((r) => unwrapList<Shipment>(r)),
+  reports: (name: string, params?: Record<string, string>) =>
+    api.get(`/transport/reports/${name}`, { params }).then((r) => unwrapList<Record<string, unknown>>(r)),
+  shipmentsForSource: (sourceDocumentType: string, sourceDocumentId: string) =>
+    api
+      .get('/transport/shipments/search', { params: { sourceDocumentType, sourceDocumentId } })
+      .then((r) => unwrapList<Shipment>(r)),
+  timeline: (id: string) =>
+    api.get(`/transport/shipments/${id}/timeline`).then((r) => unwrapList<import('@/types/api').ShipmentEvent>(r)),
 }
 
 export const accountingApi = {

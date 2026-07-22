@@ -196,6 +196,12 @@ function OrgOperationalSettings() {
   const [taxInclusiveDefault, setTaxInclusiveDefault] = useState(false)
   const [roundOffEnabled, setRoundOffEnabled] = useState(true)
   const [defaultWarehouseId, setDefaultWarehouseId] = useState('')
+  const [transportEnabled, setTransportEnabled] = useState(false)
+  const [transportRequiredDefault, setTransportRequiredDefault] = useState(false)
+  const [transportAllowOverride, setTransportAllowOverride] = useState(true)
+  const [transportApprovalRequired, setTransportApprovalRequired] = useState(false)
+  const [transportDefaultFreightPayer, setTransportDefaultFreightPayer] = useState('SENDER')
+  const [transportDelayThresholdHours, setTransportDelayThresholdHours] = useState(24)
 
   useEffect(() => {
     if (!settings) return
@@ -203,6 +209,12 @@ function OrgOperationalSettings() {
     setTaxInclusiveDefault(!!settings.taxInclusiveDefault)
     setRoundOffEnabled(settings.roundOffEnabled !== false)
     setDefaultWarehouseId(settings.defaultWarehouseId ?? '')
+    setTransportEnabled(!!settings.transportEnabled)
+    setTransportRequiredDefault(!!settings.transportRequiredDefault)
+    setTransportAllowOverride(settings.transportAllowOverride !== false)
+    setTransportApprovalRequired(!!settings.transportApprovalRequired)
+    setTransportDefaultFreightPayer(settings.transportDefaultFreightPayer ?? 'SENDER')
+    setTransportDelayThresholdHours(settings.transportDelayThresholdHours ?? 24)
   }, [settings])
 
   const save = async () => {
@@ -212,6 +224,12 @@ function OrgOperationalSettings() {
         taxInclusiveDefault,
         roundOffEnabled,
         defaultWarehouseId: defaultWarehouseId || undefined,
+        transportEnabled,
+        transportRequiredDefault,
+        transportAllowOverride,
+        transportApprovalRequired,
+        transportDefaultFreightPayer: transportDefaultFreightPayer as 'SENDER' | 'RECEIVER' | 'THIRD_PARTY',
+        transportDelayThresholdHours,
       })
       await queryClient.invalidateQueries({ queryKey: ['organization', 'ops-settings'] })
       toast.success('Operational settings saved')
@@ -266,6 +284,41 @@ function OrgOperationalSettings() {
           <input type="checkbox" checked={roundOffEnabled} onChange={(e) => setRoundOffEnabled(e.target.checked)} />
           Enable round off
         </label>
+        <div className="col-span-full border-t border-slate-100 pt-4">
+          <h3 className="font-semibold text-slate-900">Transport management</h3>
+          <p className="text-xs text-slate-500">Control shipment requirements and approvals for delivery documents.</p>
+        </div>
+        {[
+          ['Enable transport module', transportEnabled, setTransportEnabled],
+          ['Require transport by default', transportRequiredDefault, setTransportRequiredDefault],
+          ['Allow per-document override', transportAllowOverride, setTransportAllowOverride],
+          ['Require shipment approval', transportApprovalRequired, setTransportApprovalRequired],
+        ].map(([label, checked, setter]) => (
+          <label
+            key={String(label)}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
+          >
+            {String(label)}
+            <Switch checked={Boolean(checked)} onCheckedChange={setter as (checked: boolean) => void} />
+          </label>
+        ))}
+        <div className="space-y-1.5">
+          <Label>Default freight payer</Label>
+          <Select value={transportDefaultFreightPayer} onValueChange={setTransportDefaultFreightPayer}>
+            <SelectTrigger>{transportDefaultFreightPayer}</SelectTrigger>
+            <SelectContent>
+              {['SENDER', 'RECEIVER', 'THIRD_PARTY'].map((value) => (
+                <SelectItem key={value} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Delay threshold (hours)</Label>
+          <NumberInput value={transportDelayThresholdHours} onValueChange={setTransportDelayThresholdHours} />
+        </div>
         <div className="col-span-full flex justify-end">
           <Button type="button" onClick={save}>
             Save operational settings
@@ -641,7 +694,7 @@ export function TemplateDesignerPage() {
     queryFn: () => salesApi.listInvoices(),
   })
 
-  const [templateName, setTemplateName] = useState(FIXED_DESIGNS[0].name)
+  const [templateName, setTemplateName] = useState<string>(FIXED_DESIGNS[0].name)
   const [documentType, setDocumentType] = useState('SALES_INVOICE')
   const [editorMode, setEditorMode] = useState<'SECTION' | 'UNLAYER'>('SECTION')
   const [editingId, setEditingId] = useState<string | null>(null)

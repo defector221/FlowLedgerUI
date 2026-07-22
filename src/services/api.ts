@@ -796,3 +796,85 @@ export const accountingApi = {
         unwrapApi<{ healthy: boolean; issues: Array<{ code: string; message: string; journalEntryId?: string }> }>(r),
       ),
 }
+
+export type AiHealth = {
+  enabled: boolean
+  provider: string
+  chatEnabled: boolean
+  ragEnabled: boolean
+  embeddingsEnabled: boolean
+  analyticsEnabled: boolean
+  documentAiEnabled: boolean
+  voiceEnabled: boolean
+  apiKeyConfigured: boolean
+}
+
+export type AiChatResponse = {
+  conversationId: string
+  messageId: string
+  agent: string
+  content: string
+  model: string
+  latencyMs: number
+}
+
+export type AiConversation = {
+  id: string
+  title: string
+  agentType: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AiMessage = {
+  id: string
+  role: string
+  content: string
+  model?: string
+  promptTokens?: number
+  completionTokens?: number
+  latencyMs?: number
+  createdAt: string
+}
+
+export type AiRecommendation = {
+  id: string
+  type: string
+  priority: string
+  title: string
+  description?: string
+  confidence?: number
+  reason?: string
+  evidence?: Record<string, unknown>
+  suggestedAction?: string
+  status: string
+  relatedEntityType?: string
+  relatedEntityId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AiForecast = {
+  enabled: boolean
+  message: string
+  type: string
+  runId?: string
+  points: { period: string; actual: number; forecast: number }[]
+  summary: Record<string, unknown>
+}
+
+export const aiApi = {
+  health: () => api.get('/ai/health').then((r) => unwrapApi<AiHealth>(r)),
+  chat: (payload: { message: string; conversationId?: string; agent?: string; useRag?: boolean }) =>
+    api.post('/ai/chat', payload).then((r) => unwrapApi<AiChatResponse>(r)),
+  conversations: () => api.get('/ai/conversations').then((r) => unwrapList<AiConversation>(r)),
+  messages: (conversationId: string) =>
+    api.get(`/ai/conversations/${conversationId}/messages`).then((r) => unwrapList<AiMessage>(r)),
+  recommendations: (status?: string) =>
+    api.get('/ai/recommendations', { params: status ? { status } : undefined }).then((r) => unwrapList<AiRecommendation>(r)),
+  ack: (id: string) => api.patch(`/ai/recommendations/${id}/acknowledge`).then((r) => unwrapApi<AiRecommendation>(r)),
+  dismiss: (id: string) => api.patch(`/ai/recommendations/${id}/dismiss`).then((r) => unwrapApi<AiRecommendation>(r)),
+  forecasts: (type: 'DEMAND' | 'SALES' | 'CASHFLOW' | 'INVENTORY') =>
+    api.get('/ai/analytics/forecasts', { params: { type } }).then((r) => unwrapApi<AiForecast>(r)),
+}

@@ -152,7 +152,7 @@ flowchart LR
 | File                  | Purpose                                                   |
 | --------------------- | --------------------------------------------------------- |
 | `lib/api-client.ts`   | Axios instance, JWT attach, 401 refresh, session R/W      |
-| `services/api.ts`     | Domain APIs: `authApi`, `salesApi`, `accountingApi`, etc. |
+| `services/api.ts`     | Domain APIs: `authApi`, `salesApi`, `accountingApi`, `aiApi`, etc. |
 | `lib/api-response.ts` | `unwrapApi`, `unwrapPage`, `unwrapList`                   |
 | `lib/api-error.ts`    | Error messages, form field mapping                        |
 | `types/api.ts`        | Request/response TypeScript types                         |
@@ -264,6 +264,18 @@ Payment detail supports allocate remainder and cancel. Create page supports mult
 ### Subscriptions
 
 The subscription hub lives at **`/settings/billing`** (`BillingPage.tsx`). It calls `/api/v1/subscriptions/*` for plans, checkout/upgrade (Razorpay and other providers), verify-payment, usage, and invoices. Organization subscription is the API source of truth; `user_subscriptions` is soft-deprecated on the backend.
+
+### AI Assistant
+
+Optional UI for the FlowLedger AI platform (backend `flowledger.ai.enabled`). Nav group is hidden when `GET /ai/health` fails or AI is disabled.
+
+| Route | Page | Module permission |
+|-------|------|-------------------|
+| `/ai/chat` | Conversation UI (`AiChatPage`) | `AI_CHAT` |
+| `/ai/recommendations` | List + ack/dismiss (`AiRecommendationsPage`) | `AI_RECOMMENDATION` |
+| `/ai/analytics` | Forecast cards (`AiAnalyticsPage`) | `AI_CHAT` |
+
+API client: `aiApi` in `src/services/api.ts` (`health`, `chat`, `conversations`, `messages`, `recommendations`, `ack`, `dismiss`, `forecasts`).
 
 ---
 

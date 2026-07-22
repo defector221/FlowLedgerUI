@@ -19,6 +19,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'products:write',
     'inventory:read',
     'transport:read',
+    'AI_CHAT',
+    'AI_RECOMMENDATION',
   ],
   SALES_MANAGER: [
     'sales:read',
@@ -28,6 +30,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'products:read',
     'payments:read',
     'payments:write',
+    'AI_CHAT',
   ],
   PURCHASE_MANAGER: [
     'purchases:read',
@@ -37,6 +40,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'products:read',
     'payments:read',
     'payments:write',
+    'AI_CHAT',
   ],
   INVENTORY_MANAGER: [
     'inventory:read',
@@ -48,6 +52,8 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'categories:read',
     'categories:write',
     'transport:read',
+    'AI_CHAT',
+    'AI_RECOMMENDATION',
   ],
   VIEWER: [
     'sales:read',
@@ -58,6 +64,7 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'products:read',
     'reports:read',
     'payments:read',
+    'AI_CHAT',
   ],
 }
 
@@ -106,6 +113,8 @@ export const MODULE_PERMISSIONS = {
   billing: 'org:read',
   users: 'users:read',
   audit: 'reports:read',
+  ai: 'AI_CHAT',
+  aiRecommendations: 'AI_RECOMMENDATION',
 } as const
 
 export function canAccessModule(roles: RoleCode[] | undefined, module: keyof typeof MODULE_PERMISSIONS): boolean {

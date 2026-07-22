@@ -216,9 +216,11 @@ flowchart LR
 | Purchase orders   | `/purchases/orders`                         | `/new` | —                         |
 | GRN               | `/purchases/grn`                            | `/new` | —                         |
 | Purchase invoices | `/purchases/invoices`                       | `/new` | `/purchases/invoices/:id` |
-| Payments          | `/payments/received`, `/payments/suppliers` | `/new` | —                         |
+| Payments          | `/payments/received`, `/payments/suppliers` | `/new` | `/payments/received/:id`, `/payments/suppliers/:id` |
 
-**Files:** `src/features/sales/SalesPages.tsx`, `src/features/sales/InvoiceDetailPages.tsx`
+**Files:** `src/features/sales/SalesPages.tsx`, `src/features/sales/InvoiceDetailPages.tsx`, `src/features/sales/PaymentDetailPage.tsx`
+
+Payment detail supports allocate remainder and cancel. Create page supports multi-invoice allocation lines.
 
 ### Accounting
 
@@ -251,13 +253,17 @@ flowchart LR
 | -------------------------- | ------ | --------------------- |
 | `/settings/organization`   | Admin  | Org profile           |
 | `/settings/users`          | Admin  | Team and invites      |
-| `/settings/billing`        | Admin  | Plan and usage        |
+| `/settings/billing`        | Admin  | Subscription hub (plans, checkout, usage, invoices) |
 | `/settings/tax-rates`      | Admin  | GST rates             |
 | `/settings/units`          | Admin  | Units of measure      |
 | `/settings/reminder-rules` | Admin  | Payment reminders     |
 | `/settings/password`       | All    | Change password       |
 | `/templates`               | All    | Invoice PDF templates |
 | `/audit`                   | All    | Audit log             |
+
+### Subscriptions
+
+The subscription hub lives at **`/settings/billing`** (`BillingPage.tsx`). It calls `/api/v1/subscriptions/*` for plans, checkout/upgrade (Razorpay and other providers), verify-payment, usage, and invoices. Organization subscription is the API source of truth; `user_subscriptions` is soft-deprecated on the backend.
 
 ---
 

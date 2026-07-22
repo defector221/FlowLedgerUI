@@ -27,7 +27,7 @@ export const Button = forwardRef<
   }
 >(({ className, variant = 'default', size, loading, disabled, asChild = false, children, ...props }, ref) => {
   const classNames = cn(
-    'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold tracking-tight transition-all duration-150 disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold tracking-tight transition-all duration-150 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
     variant === 'default' &&
       'bg-gradient-to-b from-teal-600 to-teal-700 text-white shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_8px_18px_rgb(13_148_136/0.28)] hover:from-teal-500 hover:to-teal-700',
     variant === 'outline' &&
@@ -278,7 +278,10 @@ export const Switch = forwardRef<
 >(({ className, ...props }, ref) => (
   <SwitchPrimitive.Root
     ref={ref}
-    className={cn('relative h-5 w-9 rounded-full bg-slate-300 data-[state=checked]:bg-teal-700', className)}
+    className={cn(
+      'relative h-5 w-9 cursor-pointer rounded-full bg-slate-300 data-[state=checked]:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50',
+      className,
+    )}
     {...props}
   >
     <SwitchPrimitive.Thumb className="block size-4 translate-x-0.5 rounded-full bg-white transition-transform data-[state=checked]:translate-x-[18px]" />
@@ -320,7 +323,7 @@ export const SelectTrigger = ({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>) => (
   <SelectPrimitive.Trigger
     className={cn(
-      'flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 text-sm shadow-[0_1px_2px_rgb(15_23_42/0.03)] outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10',
+      'flex h-10 w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 text-sm shadow-[0_1px_2px_rgb(15_23_42/0.03)] outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...props}
@@ -382,7 +385,7 @@ export const TabsList = ({ className, ...props }: React.ComponentPropsWithoutRef
 export const TabsTrigger = ({ className, ...props }: React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>) => (
   <TabsPrimitive.Trigger
     className={cn(
-      'rounded-md px-3 py-1.5 text-sm text-slate-600 data-[state=active]:bg-white data-[state=active]:font-medium data-[state=active]:text-slate-900 data-[state=active]:shadow-sm',
+      'cursor-pointer rounded-md px-3 py-1.5 text-sm text-slate-600 transition-colors hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:font-medium data-[state=active]:text-slate-900 data-[state=active]:shadow-sm data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
       className,
     )}
     {...props}

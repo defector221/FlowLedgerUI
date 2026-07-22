@@ -726,6 +726,14 @@ export interface SalesInvoiceResponse {
   items?: SalesInvoiceItemResponse[] | null
 }
 
+export interface PaymentAllocationResponse {
+  id: string
+  documentType: string
+  documentId: string
+  allocatedAmount: number
+  createdAt?: string | null
+}
+
 export interface PaymentResponse {
   id: string
   paymentNumber: string
@@ -736,6 +744,13 @@ export interface PaymentResponse {
   supplierId: string | null
   amount: number
   paymentMode: string
+  transactionReference?: string | null
+  bankReference?: string | null
+  notes?: string | null
+  status?: string
+  allocatedAmount?: number
+  unallocatedAmount?: number
+  allocations?: PaymentAllocationResponse[]
 }
 
 export interface DashboardResponse {

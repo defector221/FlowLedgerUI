@@ -21,6 +21,7 @@ import {
 } from '@/features/sales/SalesPages'
 import { PurchaseInvoiceDetailPage, SalesInvoiceDetailPage } from '@/features/sales/InvoiceDetailPages'
 import { DeliveryChallanDetailPage } from '@/features/sales/DeliveryChallanDetailPage'
+import { PaymentDetailPage } from '@/features/sales/PaymentDetailPage'
 import { LeadCreatePage, LeadDetailPage, LeadsListPage } from '@/features/leads/LeadsPage'
 import { MarketingSequencesPage } from '@/features/marketing/MarketingPages'
 import {
@@ -231,6 +232,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'payments/received/new', element: <PaymentCreatePage defaultType="RECEIPT" /> },
+      { path: 'payments/received/:id', element: <PaymentDetailPage kind="received" /> },
       {
         path: 'payments/suppliers',
         element: (
@@ -243,6 +245,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'payments/suppliers/new', element: <PaymentCreatePage defaultType="PAYMENT" /> },
+      { path: 'payments/suppliers/:id', element: <PaymentDetailPage kind="suppliers" /> },
       { path: 'accounting', element: <AccountingDashboardPage /> },
       { path: 'accounting/chart-of-accounts', element: <ChartOfAccountsPage /> },
       { path: 'accounting/journals', element: <JournalsPage /> },

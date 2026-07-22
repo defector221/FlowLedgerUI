@@ -50,6 +50,20 @@ body {
   color: var(--foreground);
 }
 
+a,
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+[role='link'],
+summary {
+  cursor: pointer;
+}
+
+a[aria-disabled='true'],
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
 #root {
   min-height: 100vh;
   min-width: 0;

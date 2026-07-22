@@ -444,6 +444,20 @@ export function DocumentListPage({
                             >
                               {documentNumber(row)}
                             </Link>
+                          ) : endpoint === 'received' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/payments/received/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
+                          ) : endpoint === 'suppliers-payments' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/payments/suppliers/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
                           ) : (
                             documentNumber(row)
                           )}
@@ -2226,7 +2240,14 @@ const paymentSchema = z.object({
   paymentMode: z.string().min(1, 'Payment mode is required'),
   referenceNumber: z.string().optional(),
   notes: z.string().optional(),
-  invoiceId: z.string().optional(),
+  allocations: z
+    .array(
+      z.object({
+        documentId: z.string().min(1),
+        amount: z.coerce.number().positive(),
+      }),
+    )
+    .optional(),
 })
 
 export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: 'RECEIPT' | 'PAYMENT' }) {
@@ -2234,7 +2255,7 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const initialType = (searchParams.get('type') as 'RECEIPT' | 'PAYMENT' | null) ?? defaultType
-  const prefillCustomerId = searchParams.get('customerId') ?? ''
+  const prefillCustomerId = searchParams.get('customerId') ?? searchParams.get('supplierId') ?? ''
   const prefillInvoiceId = searchParams.get('invoiceId') ?? ''
   const prefillAmount = Number(searchParams.get('amount') ?? 0)
   const form = useForm({
@@ -2248,11 +2269,20 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
       paymentMode: 'BANK_TRANSFER',
       referenceNumber: '',
       notes: '',
-      invoiceId: prefillInvoiceId,
+      allocations: prefillInvoiceId
+        ? [
+            {
+              documentId: prefillInvoiceId,
+              amount: Number.isFinite(prefillAmount) && prefillAmount > 0 ? prefillAmount : 0,
+            },
+          ]
+        : [],
     },
   })
   const paymentType = form.watch('paymentType')
   const partyType = form.watch('partyType')
+  const partyId = form.watch('partyId')
+  const allocations = form.watch('allocations') ?? []
   const { data: customers = [] } = useQuery({
     queryKey: ['customers', 'payment'],
     queryFn: () => customerApi.list({ size: 100 }),
@@ -2263,24 +2293,64 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
     queryFn: () => supplierApi.list({ size: 100 }),
     enabled: partyType === 'SUPPLIER',
   })
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices', 'payment-alloc'],
-    queryFn: () => salesApi.listInvoices(),
+  const { data: salesInvoices = [] } = useQuery({
+    queryKey: ['invoices', 'payment-alloc', partyId],
+    queryFn: () => salesApi.listInvoices(partyId ? { customerId: partyId } : undefined),
     enabled: paymentType === 'RECEIPT',
   })
+  const { data: purchaseInvoices = [] } = useQuery({
+    queryKey: ['purchase-invoices', 'payment-alloc', partyId],
+    queryFn: () => purchaseApi.listInvoices(),
+    enabled: paymentType === 'PAYMENT',
+  })
+
+  const invoiceOptions =
+    paymentType === 'RECEIPT'
+      ? salesInvoices
+          .filter((inv) => Number(inv.outstandingAmount ?? 0) > 0)
+          .map((inv) => ({
+            id: inv.id,
+            label: `${inv.invoiceNumber} · due ${currency(Number(inv.outstandingAmount ?? 0))}`,
+            outstanding: Number(inv.outstandingAmount ?? 0),
+          }))
+      : purchaseInvoices
+          .filter((inv) => {
+            if (partyId && String(inv.supplierId) !== String(partyId)) return false
+            const due = Number(
+              (inv as { outstandingAmount?: number; outstanding?: number }).outstandingAmount ??
+                (inv as { outstanding?: number }).outstanding ??
+                0,
+            )
+            return due > 0
+          })
+          .map((inv) => {
+            const due = Number(
+              (inv as { outstandingAmount?: number; outstanding?: number }).outstandingAmount ??
+                (inv as { outstanding?: number }).outstanding ??
+                0,
+            )
+            return {
+              id: String(inv.id),
+              label: `${String(inv.invoiceNumber ?? inv.id)} · due ${currency(due)}`,
+              outstanding: due,
+            }
+          })
 
   const save = form.handleSubmit(async (values) => {
     try {
-      const allocations =
-        values.invoiceId && values.amount
-          ? [
-              {
-                documentType: 'SALES_INVOICE',
-                documentId: values.invoiceId,
-                amount: values.amount,
-              },
-            ]
-          : undefined
+      const documentType = values.paymentType === 'RECEIPT' ? 'SALES_INVOICE' : 'PURCHASE_INVOICE'
+      const allocLines = (values.allocations ?? [])
+        .filter((a) => a.documentId && a.amount > 0)
+        .map((a) => ({
+          documentType,
+          documentId: a.documentId,
+          amount: a.amount,
+        }))
+      const allocatedTotal = allocLines.reduce((sum, a) => sum + a.amount, 0)
+      if (allocatedTotal > values.amount) {
+        toast.error('Allocated total exceeds payment amount')
+        return
+      }
       await paymentApi.create({
         paymentDate: values.paymentDate,
         paymentType: values.paymentType,
@@ -2291,14 +2361,15 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
         paymentMode: values.paymentMode,
         transactionReference: values.referenceNumber || undefined,
         notes: values.notes || undefined,
-        allocations,
+        allocations: allocLines.length ? allocLines : undefined,
       })
       await queryClient.invalidateQueries({ queryKey: ['received'] })
       await queryClient.invalidateQueries({ queryKey: ['suppliers-payments'] })
-      if (values.invoiceId) {
-        await queryClient.invalidateQueries({ queryKey: ['sales-invoice', values.invoiceId] })
-        await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      for (const line of allocLines) {
+        await queryClient.invalidateQueries({ queryKey: ['sales-invoice', line.documentId] })
       }
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      await queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] })
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success('Payment recorded')
       navigate(values.paymentType === 'RECEIPT' ? '/payments/received' : '/payments/suppliers')
@@ -2312,6 +2383,22 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
       ? customers.map((c) => ({ id: c.id, label: customerLabel(c), party: c }))
       : suppliers.map((s) => ({ id: s.id, label: supplierLabel(s), party: s }))
 
+  const addAllocation = () => {
+    form.setValue('allocations', [...allocations, { documentId: '', amount: 0 }])
+  }
+
+  const updateAllocation = (index: number, patch: Partial<{ documentId: string; amount: number }>) => {
+    const next = allocations.map((row, i) => (i === index ? { ...row, ...patch } : row))
+    form.setValue('allocations', next)
+  }
+
+  const removeAllocation = (index: number) => {
+    form.setValue(
+      'allocations',
+      allocations.filter((_, i) => i !== index),
+    )
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex justify-between gap-3">
@@ -2319,7 +2406,7 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
           <h1 className="page-title">
             {paymentType === 'RECEIPT' ? 'Record payment received' : 'Record supplier payment'}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">Capture payment details and optional invoice allocation.</p>
+          <p className="mt-1 text-sm text-slate-500">Capture payment details and optional invoice allocations.</p>
         </div>
         <Button onClick={save}>Save payment</Button>
       </div>
@@ -2333,6 +2420,7 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
                 form.setValue('paymentType', value as 'RECEIPT' | 'PAYMENT')
                 form.setValue('partyType', value === 'RECEIPT' ? 'CUSTOMER' : 'SUPPLIER')
                 form.setValue('partyId', '')
+                form.setValue('allocations', [])
               }}
             >
               <SelectTrigger>{form.watch('paymentType')}</SelectTrigger>
@@ -2349,6 +2437,7 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
               onValueChange={(value) => {
                 form.setValue('partyType', value as 'CUSTOMER' | 'SUPPLIER')
                 form.setValue('partyId', '')
+                form.setValue('allocations', [])
               }}
             >
               <SelectTrigger>{form.watch('partyType')}</SelectTrigger>
@@ -2404,26 +2493,53 @@ export function PaymentCreatePage({ defaultType = 'RECEIPT' }: { defaultType?: '
             <Label>Reference number</Label>
             <Input {...form.register('referenceNumber')} />
           </div>
-          {paymentType === 'RECEIPT' && (
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Allocate to invoice (optional)</Label>
-              <Select
-                value={form.watch('invoiceId') || undefined}
-                onValueChange={(value) => form.setValue('invoiceId', value)}
-              >
-                <SelectTrigger>
-                  {invoices.find((i) => i.id === form.watch('invoiceId'))?.invoiceNumber ?? 'No allocation'}
-                </SelectTrigger>
-                <SelectContent>
-                  {invoices.map((invoice) => (
-                    <SelectItem key={invoice.id} value={invoice.id}>
-                      {invoice.invoiceNumber} · {currency(invoice.grandTotal)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3 sm:col-span-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Allocate to invoices (optional)</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addAllocation}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add line
+              </Button>
             </div>
-          )}
+            {allocations.length === 0 ? (
+              <p className="text-sm text-slate-500">No allocations — payment will remain unallocated.</p>
+            ) : (
+              <div className="space-y-2">
+                {allocations.map((row, index) => (
+                  <div key={index} className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
+                    <Select
+                      value={row.documentId || undefined}
+                      onValueChange={(value) => {
+                        const inv = invoiceOptions.find((o) => o.id === value)
+                        updateAllocation(index, {
+                          documentId: value,
+                          amount: Number(inv?.outstanding ?? row.amount ?? 0),
+                        })
+                      }}
+                    >
+                      <SelectTrigger>
+                        {invoiceOptions.find((o) => o.id === row.documentId)?.label ?? 'Select invoice'}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {invoiceOptions.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.id}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <NumberInput
+                      value={Number(row.amount ?? 0)}
+                      onValueChange={(value) => updateAllocation(index, { amount: value })}
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={() => removeAllocation(index)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Notes</Label>
             <Textarea {...form.register('notes')} />

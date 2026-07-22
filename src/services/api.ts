@@ -889,6 +889,18 @@ export type AiWorkflowDraft = {
   updatedAt: string
 }
 
+export type AiWorkflowApproval = {
+  id: string
+  entityType: string
+  entityId: string
+  status: string
+  requestedBy: string
+  requestedAt: string
+  decidedBy?: string
+  decidedAt?: string
+  remarks?: string
+}
+
 export const aiApi = {
   health: () => api.get('/ai/health').then((r) => unwrapApi<AiHealth>(r)),
   agents: () => api.get('/ai/agents').then((r) => unwrapList<AiAgentInfo>(r)),
@@ -924,4 +936,14 @@ export const aiApi = {
     api.post(`/ai/workflow/drafts/${id}/activate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
   deactivateWorkflow: (id: string) =>
     api.post(`/ai/workflow/drafts/${id}/deactivate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  workflowApprovals: (status: 'pending' | 'all' = 'pending') =>
+    api.get('/ai/workflow/approvals', { params: { status } }).then((r) => unwrapList<AiWorkflowApproval>(r)),
+  approveWorkflow: (id: string, remarks?: string) =>
+    api.post(`/ai/workflow/approvals/${id}/approve`, remarks ? { remarks } : {}).then((r) =>
+      unwrapApi<AiWorkflowApproval>(r),
+    ),
+  rejectWorkflow: (id: string, remarks?: string) =>
+    api.post(`/ai/workflow/approvals/${id}/reject`, remarks ? { remarks } : {}).then((r) =>
+      unwrapApi<AiWorkflowApproval>(r),
+    ),
 }

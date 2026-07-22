@@ -38,6 +38,11 @@ import {
   Switch,
   Table,
 } from '@/components/ui'
+import {
+  CreateSupplierPricingEditor,
+  toSupplierPricePayload,
+  type SupplierPriceDraft,
+} from './CreateSupplierPricingEditor'
 import { SupplierCatalogSection } from './SupplierCatalogSection'
 
 type EntityKind = 'customers' | 'suppliers' | 'products' | 'categories' | 'warehouses'
@@ -78,7 +83,7 @@ type EntityConfig = {
   fields: FieldConfig[]
   schema: z.ZodTypeAny
   searchable?: boolean
-  buildPayload?: (values: Record<string, unknown>) => Record<string, unknown>
+  buildPayload?: (values: Record<string, unknown>, extras?: { supplierPrices?: SupplierPriceDraft[] }) => Record<string, unknown>
 }
 
 function formFields(config: EntityConfig, isEdit: boolean) {
@@ -113,7 +118,7 @@ const customerSchema = z.object({
 })
 
 const supplierSchema = z.object({
-  supplierCode: z.string().min(1, 'Supplier code is required'),
+  supplierCode: z.string().optional(),
   companyName: z.string().min(1, 'Company name is required'),
   supplierName: z.string().min(1, 'Contact name is required'),
   gstin: z.string().optional(),
@@ -185,10 +190,12 @@ const withCountryDefaults = (values: Record<string, unknown>) => {
   }
 }
 
-const withProductDefaults = (values: Record<string, unknown>) => {
+const withProductDefaults = (values: Record<string, unknown>, supplierPrices?: SupplierPriceDraft[]) => {
   const cleaned = stripEmpty(values)
   const itemType = String(values.itemType || 'PRODUCT')
   const isService = itemType === 'SERVICE'
+  const prices = supplierPrices ? toSupplierPricePayload(supplierPrices) : undefined
+  const withPrices = prices?.length ? { supplierPrices: prices } : {}
   if (isService) {
     return {
       sku: cleaned.sku,
@@ -197,11 +204,12 @@ const withProductDefaults = (values: Record<string, unknown>) => {
       description: cleaned.description,
       taxRateId: cleaned.taxRateId,
       sellingPrice: values.sellingPrice ?? 0,
-      purchasePrice: 0,
+      purchasePrice: values.purchasePrice ?? 0,
       mrp: 0,
       openingStock: 0,
       minimumStockLevel: 0,
       reorderLevel: 0,
+      ...withPrices,
     }
   }
   return {
@@ -216,6 +224,7 @@ const withProductDefaults = (values: Record<string, unknown>) => {
     ...(values.categoryId ? { categoryId: values.categoryId } : {}),
     ...(values.taxRateId ? { taxRateId: values.taxRateId } : {}),
     ...(values.warehouseId ? { warehouseId: values.warehouseId } : {}),
+    ...withPrices,
   }
 }
 
@@ -242,7 +251,6 @@ const configs: Record<EntityKind, EntityConfig> = {
         createOnly: true,
         autoCodeFrom: 'companyName',
         autoCodePrefix: 'CUST',
-        readOnlyOnCreate: true,
       },
       { name: 'companyName', label: 'Company name', required: true, list: true, create: true, detail: true },
       { name: 'customerName', label: 'Contact name', required: true, list: true, create: true, detail: true },
@@ -285,12 +293,13 @@ const configs: Record<EntityKind, EntityConfig> = {
     fields: [
       {
         name: 'supplierCode',
-        label: 'Supplier code',
-        required: true,
+        label: 'Supplier code (auto)',
         list: true,
         create: true,
         detail: true,
         createOnly: true,
+        autoCodeFrom: 'companyName',
+        autoCodePrefix: 'SUP',
       },
       { name: 'companyName', label: 'Company name', required: true, list: true, create: true, detail: true },
       { name: 'supplierName', label: 'Contact name', required: true, list: true, create: true, detail: true },
@@ -331,7 +340,7 @@ const configs: Record<EntityKind, EntityConfig> = {
     create: (payload) => productApi.create(payload as never),
     update: (id, payload) => productApi.update(id, payload as never),
     schema: productSchema,
-    buildPayload: withProductDefaults,
+    buildPayload: (values, extras) => withProductDefaults(values, extras?.supplierPrices),
     fields: [
       {
         name: 'sku',
@@ -342,7 +351,6 @@ const configs: Record<EntityKind, EntityConfig> = {
         createOnly: true,
         autoCodeFrom: 'name',
         autoCodePrefix: 'SKU',
-        readOnlyOnCreate: true,
       },
       { name: 'name', label: 'Name', required: true, list: true, create: true, detail: true },
       {
@@ -402,12 +410,23 @@ const configs: Record<EntityKind, EntityConfig> = {
       },
       {
         name: 'purchasePrice',
-        label: 'Purchase / cost price',
+        label: 'Reference purchase price (fallback)',
         type: 'number',
         create: true,
         detail: true,
         defaultValue: 0,
-        showWhenItemType: 'PRODUCT',
+      },
+      {
+        name: 'supplierCount',
+        label: 'Suppliers',
+        list: true,
+        detail: true,
+      },
+      {
+        name: 'preferredSupplierName',
+        label: 'Preferred supplier',
+        list: true,
+        detail: true,
       },
       {
         name: 'mrp',
@@ -504,7 +523,6 @@ const configs: Record<EntityKind, EntityConfig> = {
         createOnly: true,
         autoCodeFrom: 'warehouseName',
         autoCodePrefix: 'WH',
-        readOnlyOnCreate: true,
       },
       { name: 'warehouseName', label: 'Warehouse name', required: true, list: true, create: true, detail: true },
       { name: 'address', label: 'Address', list: true, create: true, detail: true },
@@ -516,6 +534,14 @@ const configs: Record<EntityKind, EntityConfig> = {
 }
 
 function formatValue(field: FieldConfig, value: unknown) {
+  if (field.name === 'supplierCount') {
+    const count = Number(value ?? 0)
+    return (
+      <Badge variant={count > 0 ? 'success' : 'neutral'}>
+        {count} supplier{count === 1 ? '' : 's'}
+      </Badge>
+    )
+  }
   if (field.optionsKey === 'itemTypes') {
     if (value === 'SERVICE') return <Badge className="bg-sky-50 text-sky-800">Service</Badge>
     if (value === 'PRODUCT') return <Badge>Product</Badge>
@@ -694,10 +720,14 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
     resolver: zodResolver(config.schema as never),
     defaultValues,
   })
+  const [supplierPrices, setSupplierPrices] = useState<SupplierPriceDraft[]>([])
   const needsUnits = fields.some((f) => f.optionsKey === 'units')
   const needsCategories = fields.some((f) => f.optionsKey === 'categories')
   const needsTaxRates = fields.some((f) => f.optionsKey === 'taxRates')
   const needsWarehouses = fields.some((f) => f.optionsKey === 'warehouses')
+  const showSupplierPricing = kind === 'products' && !isEdit
+  const productSku = String(form.watch('sku' as never) ?? '')
+  const productName = String(form.watch('name' as never) ?? '')
   const { data: units = [] } = useQuery({ queryKey: ['units'], queryFn: unitApi.list, enabled: needsUnits })
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -805,7 +835,9 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
 
   const submit = form.handleSubmit(async (values) => {
     try {
-      const payload = config.buildPayload ? config.buildPayload(values) : stripEmpty(values)
+      const payload = config.buildPayload
+        ? config.buildPayload(values, showSupplierPricing ? { supplierPrices } : undefined)
+        : stripEmpty(values)
       if (isEdit) {
         for (const field of config.fields) {
           if (field.createOnly) delete payload[field.name]
@@ -895,7 +927,7 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                       />
                       {!isEdit && field.autoCodeFrom ? (
                         <p className="text-[11px] font-normal text-slate-400">
-                          Generated from {field.autoCodeFrom.replace(/([A-Z])/g, ' $1').toLowerCase()} + salt
+                          Auto-generated unique code — you can change it.
                         </p>
                       ) : null}
                     </>
@@ -906,6 +938,11 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                       hours/days). Services are never tracked in warehouse stock.
                     </p>
                   ) : null}
+                  {field.name === 'purchasePrice' && kind === 'products' ? (
+                    <p className="text-[11px] font-normal text-slate-400">
+                      Fallback only. Prefer supplier pricing below for purchase orders.
+                    </p>
+                  ) : null}
                   {form.formState.errors[field.name as keyof typeof form.formState.errors] && (
                     <p className="text-xs text-rose-600">
                       {String(form.formState.errors[field.name as keyof typeof form.formState.errors]?.message)}
@@ -914,6 +951,14 @@ export function EntityFormPage({ kind }: { kind: EntityKind }) {
                 </label>
               )
             })}
+            {showSupplierPricing ? (
+              <CreateSupplierPricingEditor
+                productSku={productSku}
+                productName={productName}
+                value={supplierPrices}
+                onChange={setSupplierPrices}
+              />
+            ) : null}
             <div className="col-span-full flex justify-end gap-3 border-t border-slate-100 pt-5">
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                 Cancel

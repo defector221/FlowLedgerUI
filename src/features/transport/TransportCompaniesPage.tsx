@@ -10,7 +10,7 @@ export function TransportCompaniesPage() {
       initial={{ name: '', code: '', phone: '', email: '', city: '', state: '', status: 'ACTIVE' }}
       fields={[
         { key: 'name', label: 'Company name', required: true },
-        { key: 'code', label: 'Code', required: true },
+        { key: 'code', label: 'Code (auto)', autoCodeFrom: 'name', autoCodePrefix: 'TRN' },
         { key: 'phone', label: 'Phone' },
         { key: 'email', label: 'Email' },
         { key: 'city', label: 'City' },

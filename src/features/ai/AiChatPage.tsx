@@ -195,6 +195,7 @@ export function AiChatPage() {
       />
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(15rem,17.5rem)_1fr]">
+        {/* Conversation rail */}
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
           <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Conversations</p>
@@ -218,7 +219,13 @@ export function AiChatPage() {
               <div className="space-y-2 p-2">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
+            ) : null}
+            {!conversations.isLoading && !(conversations.data?.length ?? 0) ? (
+              <p className="px-3 py-6 text-center text-xs leading-relaxed text-slate-400">
+                No conversations yet. Start with a question on the right.
+              </p>
             ) : null}
             {conversations.data?.map((c) => (
               <button
@@ -250,6 +257,7 @@ export function AiChatPage() {
           </div>
         </aside>
 
+        {/* Chat panel */}
         <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 via-white to-sky-50/40 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
@@ -296,7 +304,7 @@ export function AiChatPage() {
                       onClick={() => send(prompt)}
                       className="group flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-3 text-left transition hover:border-teal-200 hover:bg-teal-50/40 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-white text-teal-700 shadow-sm ring-1 ring-slate-100">
+                      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-white text-teal-700 shadow-sm ring-1 ring-slate-100 group-hover:ring-teal-100">
                         <Icon className="size-3.5" />
                       </span>
                       <span>
@@ -306,6 +314,13 @@ export function AiChatPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            ) : null}
+
+            {messages.isLoading && conversationId ? (
+              <div className="space-y-3">
+                <Skeleton className="ml-auto h-16 w-2/3 rounded-2xl" />
+                <Skeleton className="h-24 w-3/4 rounded-2xl" />
               </div>
             ) : null}
 
@@ -404,7 +419,7 @@ export function AiChatPage() {
                       {recording ? 'Stop' : 'Voice'}
                     </Button>
                   ) : null}
-                  <p className="hidden text-[11px] text-slate-400 sm:block">Enter to send</p>
+                  <p className="hidden text-[11px] text-slate-400 sm:block">Enter to send · Shift+Enter for new line</p>
                 </div>
                 <Button
                   type="submit"
@@ -417,6 +432,10 @@ export function AiChatPage() {
                 </Button>
               </div>
             </form>
+            <p className="mt-2 px-1 text-[11px] leading-relaxed text-slate-400">
+              Advisory only. AI does not create invoices, payments, or stock adjustments without your confirmation in
+              the ERP screens.
+            </p>
           </div>
         </section>
       </div>

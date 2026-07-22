@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { productApi, supplierApi, supplierCatalogApi } from '@/services/api'
 import type { SupplierCatalogItemResponse } from '@/types/api'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { generateEntityCode } from '@/lib/entity-code'
 import { currency } from '@/lib/utils'
 import {
   Badge,
@@ -62,6 +63,7 @@ export function SupplierCatalogSection({
   const [editing, setEditing] = useState<SupplierCatalogItemResponse | null>(null)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(() => blankForm(kind, ownerId))
+  const [supplierSkuTouched, setSupplierSkuTouched] = useState(false)
   const queryKey = ['supplier-catalog', kind, ownerId]
   const { data: rows = [] } = useQuery({
     queryKey,
@@ -72,13 +74,14 @@ export function SupplierCatalogSection({
   const { data: products = [] } = useQuery({
     queryKey: ['products', 'catalog-options'],
     queryFn: () => productApi.list({ active: true, size: 200 }),
-    enabled: kind === 'suppliers',
+    enabled: kind === 'suppliers' || open,
   })
   const { data: suppliers = [] } = useQuery({
     queryKey: ['suppliers', 'catalog-options'],
     queryFn: () => supplierApi.list({ archived: false, size: 200 }),
-    enabled: kind === 'products',
+    enabled: kind === 'products' || open,
   })
+  const lastAutoKey = useRef('')
 
   useEffect(() => {
     if (!open) return
@@ -93,8 +96,37 @@ export function SupplierCatalogSection({
         leadTimeDays: Number(editing.leadTimeDays ?? 0),
         active: editing.active,
       })
-    } else setForm(blankForm(kind, ownerId))
+      setSupplierSkuTouched(true)
+      lastAutoKey.current = ''
+    } else {
+      setForm(blankForm(kind, ownerId))
+      setSupplierSkuTouched(false)
+      lastAutoKey.current = ''
+    }
   }, [editing, kind, open, ownerId])
+
+  useEffect(() => {
+    if (!open || editing || supplierSkuTouched) return
+    if (!form.productId || !form.supplierId) return
+    const product = products.find((p) => p.id === form.productId)
+    const supplier = suppliers.find((s) => s.id === form.supplierId)
+    const autoKey = `${form.productId}:${form.supplierId}`
+    if (lastAutoKey.current === autoKey) return
+    lastAutoKey.current = autoKey
+    const source = [
+      product?.sku || product?.name || 'ITEM',
+      supplier?.supplierCode || supplier?.companyName || 'SUP',
+    ].join('-')
+    setForm((current) => ({ ...current, supplierSku: generateEntityCode(source, 'SSKU') }))
+  }, [
+    editing,
+    form.productId,
+    form.supplierId,
+    open,
+    products,
+    supplierSkuTouched,
+    suppliers,
+  ])
 
   const save = async () => {
     if (!form.productId || !form.supplierId) {
@@ -143,6 +175,7 @@ export function SupplierCatalogSection({
             <h2 className="font-semibold text-slate-900">Supplier pricing / Catalog</h2>
             <p className="text-xs text-slate-500">
               Supplier-specific prices, SKUs and lead times used on purchase orders.
+              {rows.length ? ` ${rows.length} supplier${rows.length === 1 ? '' : 's'} linked.` : ''}
             </p>
           </div>
           {canWrite && (
@@ -180,6 +213,9 @@ export function SupplierCatalogSection({
                     >
                       {kind === 'products' ? row.supplierName : row.productName}
                     </Link>
+                    {kind === 'suppliers' && row.itemType === 'SERVICE' ? (
+                      <Badge className="ml-2 bg-sky-50 text-sky-800">Service</Badge>
+                    ) : null}
                   </td>
                   <td className="p-3">{row.supplierSku || '—'}</td>
                   <td className="p-3">{currency(row.purchasePrice)}</td>
@@ -216,7 +252,8 @@ export function SupplierCatalogSection({
               {!rows.length && (
                 <tr>
                   <td colSpan={canWrite ? 6 : 5} className="py-12 text-center text-sm text-slate-500">
-                    No supplier catalog links yet.
+                    No supplier catalog links yet. Add at least one supplier price so this item can be purchased on
+                    POs.
                   </td>
                 </tr>
               )}
@@ -235,7 +272,10 @@ export function SupplierCatalogSection({
                 disabled={!!editing}
                 value={kind === 'products' ? form.supplierId : form.productId}
                 onValueChange={(value) =>
-                  setForm((current) => ({ ...current, [kind === 'products' ? 'supplierId' : 'productId']: value }))
+                  setForm((current) => ({
+                    ...current,
+                    [kind === 'products' ? 'supplierId' : 'productId']: value,
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -263,8 +303,12 @@ export function SupplierCatalogSection({
               <Label>Supplier SKU</Label>
               <Input
                 value={form.supplierSku}
-                onChange={(e) => setForm((v) => ({ ...v, supplierSku: e.target.value }))}
+                onChange={(e) => {
+                  setSupplierSkuTouched(true)
+                  setForm((v) => ({ ...v, supplierSku: e.target.value }))
+                }}
               />
+              <p className="text-[11px] text-slate-400">Auto-generated unique SKU — you can change it.</p>
             </div>
             <div className="space-y-1.5">
               <Label>Minimum order quantity</Label>

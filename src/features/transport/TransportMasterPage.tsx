@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageChrome'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { generateEntityCode, slugifyName } from '@/lib/entity-code'
 import {
   Badge,
   Button,
@@ -22,7 +23,14 @@ import {
 } from '@/components/ui'
 
 type Row = Record<string, unknown> & { id: string }
-type Field = { key: string; label: string; required?: boolean; options?: string[] }
+type Field = {
+  key: string
+  label: string
+  required?: boolean
+  options?: string[]
+  autoCodeFrom?: string
+  autoCodePrefix?: string
+}
 
 export function TransportMasterPage({
   title,
@@ -51,12 +59,37 @@ export function TransportMasterPage({
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Row | null>(null)
   const [form, setForm] = useState(initial)
+  const [codeTouched, setCodeTouched] = useState(false)
+  const [lastSlug, setLastSlug] = useState('')
 
   const showForm = (row?: Row) => {
     setEditing(row ?? null)
-    setForm(row ? { ...initial, ...row } : initial)
+    setForm(row ? { ...initial, ...row } : { ...initial })
+    setCodeTouched(!!row)
+    setLastSlug('')
     setOpen(true)
   }
+
+  const autoField = fields.find((field) => field.autoCodeFrom)
+  const sourceValue = autoField?.autoCodeFrom ? String(form[autoField.autoCodeFrom] ?? '') : ''
+
+  useEffect(() => {
+    if (!open || editing || codeTouched || !autoField?.autoCodeFrom) return
+    const source = sourceValue.trim()
+    if (!source) {
+      setForm((current) => (current[autoField.key] ? { ...current, [autoField.key]: '' } : current))
+      setLastSlug('')
+      return
+    }
+    const slug = slugifyName(source)
+    if (slug === lastSlug) return
+    setLastSlug(slug)
+    setForm((current) => ({
+      ...current,
+      [autoField.key]: generateEntityCode(source, autoField.autoCodePrefix),
+    }))
+  }, [autoField, codeTouched, editing, lastSlug, open, sourceValue])
+
   const save = async () => {
     const missing = fields.find((field) => field.required && !String(form[field.key] ?? '').trim())
     if (missing) return toast.error(`${missing.label} is required`)
@@ -113,8 +146,11 @@ export function TransportMasterPage({
                   <tr key={row.id} className="border-b">
                     {columns.map((column) => (
                       <td key={column.key} className="p-3">
-                        /status$/i.test(column.key) ? <Badge>{String(row[column.key] ?? '—')}</Badge> :
-                        String(row[column.key] ?? '—')
+                        {/status$/i.test(column.key) ? (
+                          <Badge>{String(row[column.key] ?? '—')}</Badge>
+                        ) : (
+                          String(row[column.key] ?? '—')
+                        )}
                       </td>
                     ))}
                     <td className="p-3 text-right">
@@ -163,10 +199,18 @@ export function TransportMasterPage({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input
-                    value={String(form[field.key] ?? '')}
-                    onChange={(event) => setForm((v) => ({ ...v, [field.key]: event.target.value }))}
-                  />
+                  <>
+                    <Input
+                      value={String(form[field.key] ?? '')}
+                      onChange={(event) => {
+                        if (field.autoCodeFrom) setCodeTouched(true)
+                        setForm((v) => ({ ...v, [field.key]: event.target.value }))
+                      }}
+                    />
+                    {!editing && field.autoCodeFrom ? (
+                      <p className="text-[11px] text-slate-400">Auto-generated unique code — you can change it.</p>
+                    ) : null}
+                  </>
                 )}
               </div>
             ))}

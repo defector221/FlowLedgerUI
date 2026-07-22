@@ -301,6 +301,14 @@ export interface CreateProductRequest {
   minimumStockLevel?: number
   maximumStockLevel?: number
   reorderLevel?: number
+  supplierPrices?: {
+    supplierId: string
+    purchasePrice: number
+    supplierSku?: string
+    moq?: number
+    leadTimeDays?: number
+    preferred?: boolean
+  }[]
 }
 
 export interface UpdateProductRequest {
@@ -343,6 +351,8 @@ export interface ProductResponse {
   minimumStockLevel: number
   reorderLevel: number
   active: boolean
+  supplierCount?: number
+  preferredSupplierName?: string | null
 }
 
 export interface CreateSupplierCatalogItemRequest {
@@ -370,6 +380,8 @@ export interface SupplierCatalogItemResponse {
   productId: string
   productName: string
   productSku: string
+  itemType?: string
+  taxRateId?: string | null
   supplierId: string
   supplierName: string
   supplierSku: string | null

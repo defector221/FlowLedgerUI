@@ -705,9 +705,9 @@ function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellin
       ? catalog.map((item) => ({
           id: item.productId,
           name: item.productName,
-          itemType: 'PRODUCT',
+          itemType: item.itemType || 'PRODUCT',
           unitName: null,
-          taxRateId: null,
+          taxRateId: item.taxRateId ?? null,
           taxType: null,
           sellingPrice: 0,
           purchasePrice: Number(item.purchasePrice),
@@ -2182,7 +2182,7 @@ export function CreatePurchaseOrderPage() {
             onRemove={removeLine}
             onAdd={addLine}
             disabled={!supplierId || isLoadingProducts}
-            emptyMessage="This supplier has no active catalog items. Add products from the supplier detail page first."
+            emptyMessage="This supplier has no active catalog items (products or services). Add pricing from the supplier or product detail page first."
           />
         </div>
         <Card>

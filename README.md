@@ -271,11 +271,16 @@ Optional UI for the FlowLedger AI platform (backend `flowledger.ai.enabled`). Na
 
 | Route | Page | Module permission |
 |-------|------|-------------------|
-| `/ai/chat` | Conversation UI (`AiChatPage`) | `AI_CHAT` |
+| `/ai/chat` | Assistant with agent picker + voice (`AiChatPage`) | `AI_CHAT` |
 | `/ai/recommendations` | List + ack/dismiss (`AiRecommendationsPage`) | `AI_RECOMMENDATION` |
 | `/ai/analytics` | Forecast cards (`AiAnalyticsPage`) | `AI_CHAT` |
+| `/ai/workflows` | Workflow Builder drafts (`AiWorkflowsPage`) | `AI_WORKFLOW` |
 
-API client: `aiApi` in `src/services/api.ts` (`health`, `chat`, `conversations`, `messages`, `recommendations`, `ack`, `dismiss`, `forecasts`).
+Global **Ask AI** FAB (`GlobalAskFab`, shortcut ⌘J / Ctrl+J) calls `POST /ai/ask` from any authenticated page.
+
+API client: `aiApi` in `src/services/api.ts` (`health`, `agents`, `chat`, `ask`, `voiceTranscribe`, workflow drafts, recommendations, forecasts).
+
+See API [`docs/ai/ROADMAP.md`](../FlowLedgerAPI/docs/ai/ROADMAP.md) for the full specialist agent catalog.
 
 ---
 

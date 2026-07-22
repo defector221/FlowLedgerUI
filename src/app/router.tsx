@@ -62,6 +62,7 @@ import { TransportReportsPage } from '@/features/transport/TransportReportsPage'
 import { AiChatPage } from '@/features/ai/AiChatPage'
 import { AiRecommendationsPage } from '@/features/ai/AiRecommendationsPage'
 import { AiAnalyticsPage } from '@/features/ai/AiAnalyticsPage'
+import { AiWorkflowsPage } from '@/features/ai/AiWorkflowsPage'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -308,6 +309,7 @@ export const router = createBrowserRouter([
       { path: 'ai/chat', element: <AiChatPage /> },
       { path: 'ai/recommendations', element: <AiRecommendationsPage /> },
       { path: 'ai/analytics', element: <AiAnalyticsPage /> },
+      { path: 'ai/workflows', element: <AiWorkflowsPage /> },
     ],
   },
 ])

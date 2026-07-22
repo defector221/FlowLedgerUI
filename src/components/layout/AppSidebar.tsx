@@ -25,6 +25,7 @@ import {
   MessageSquare,
   Lightbulb,
   LineChart,
+  Workflow,
 } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -109,6 +110,7 @@ const groups = [
       { to: '/ai/chat', label: 'Assistant', icon: MessageSquare, module: 'ai' as const },
       { to: '/ai/recommendations', label: 'Insights', icon: Lightbulb, module: 'aiRecommendations' as const },
       { to: '/ai/analytics', label: 'Forecasts', icon: LineChart, module: 'ai' as const },
+      { to: '/ai/workflows', label: 'Workflows', icon: Workflow, module: 'aiWorkflow' as const },
     ],
   },
   {

@@ -807,6 +807,17 @@ export type AiHealth = {
   documentAiEnabled: boolean
   voiceEnabled: boolean
   apiKeyConfigured: boolean
+  multiAgentEnabled?: boolean
+  workflowBuilderEnabled?: boolean
+}
+
+export type AiAgentInfo = {
+  code: string
+  displayName: string
+  description: string
+  allowedTools: string[]
+  permission: string
+  supportsCollaboration: boolean
 }
 
 export type AiChatResponse = {
@@ -816,6 +827,7 @@ export type AiChatResponse = {
   content: string
   model: string
   latencyMs: number
+  consultedAgents?: string[]
 }
 
 export type AiConversation = {
@@ -864,10 +876,26 @@ export type AiForecast = {
   summary: Record<string, unknown>
 }
 
+export type AiWorkflowDraft = {
+  id: string
+  name: string
+  triggerType: string
+  description?: string
+  conditionsJson?: string
+  stepsJson?: string
+  suggestedApprovers?: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
 export const aiApi = {
   health: () => api.get('/ai/health').then((r) => unwrapApi<AiHealth>(r)),
+  agents: () => api.get('/ai/agents').then((r) => unwrapList<AiAgentInfo>(r)),
   chat: (payload: { message: string; conversationId?: string; agent?: string; useRag?: boolean }) =>
     api.post('/ai/chat', payload).then((r) => unwrapApi<AiChatResponse>(r)),
+  ask: (payload: { message: string; conversationId?: string; useRag?: boolean }) =>
+    api.post('/ai/ask', payload).then((r) => unwrapApi<AiChatResponse>(r)),
   conversations: () => api.get('/ai/conversations').then((r) => unwrapList<AiConversation>(r)),
   messages: (conversationId: string) =>
     api.get(`/ai/conversations/${conversationId}/messages`).then((r) => unwrapList<AiMessage>(r)),
@@ -877,4 +905,23 @@ export const aiApi = {
   dismiss: (id: string) => api.patch(`/ai/recommendations/${id}/dismiss`).then((r) => unwrapApi<AiRecommendation>(r)),
   forecasts: (type: 'DEMAND' | 'SALES' | 'CASHFLOW' | 'INVENTORY') =>
     api.get('/ai/analytics/forecasts', { params: { type } }).then((r) => unwrapApi<AiForecast>(r)),
+  voiceTranscribe: (payload: { contentType: string; audioBase64: string }) =>
+    api.post('/ai/workflow/voice-transcribe', payload).then((r) =>
+      unwrapApi<{ configured: boolean; message: string; transcript?: string; result?: Record<string, unknown> }>(r),
+    ),
+  workflowDrafts: () => api.get('/ai/workflow/drafts').then((r) => unwrapList<AiWorkflowDraft>(r)),
+  createWorkflowDraft: (payload: {
+    name: string
+    triggerType?: string
+    description?: string
+    conditionsJson?: string
+    stepsJson?: string
+    suggestedApprovers?: string
+  }) => api.post('/ai/workflow/drafts', payload).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  suggestWorkflow: (prompt: string) =>
+    api.post('/ai/workflow/suggest', { prompt }).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  activateWorkflow: (id: string) =>
+    api.post(`/ai/workflow/drafts/${id}/activate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  deactivateWorkflow: (id: string) =>
+    api.post(`/ai/workflow/drafts/${id}/deactivate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
 }

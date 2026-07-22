@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { AppSidebar } from './AppSidebar'
 import { Header } from './Header'
+import { GlobalAskFab } from '@/features/ai/GlobalAskFab'
 
 export function AppLayout() {
   const [open, setOpen] = useState(false)
@@ -14,6 +15,7 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <GlobalAskFab />
     </div>
   )
 }

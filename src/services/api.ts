@@ -276,15 +276,20 @@ export const purchaseApi = {
 }
 
 export const paymentApi = {
-  list: () => api.get('/payments').then((r) => unwrapList<PaymentResponse>(r)),
-  listReceived: async () => {
-    const rows = await paymentApi.list()
-    return rows.filter((p) => p.paymentType === 'RECEIPT')
-  },
-  listSupplier: async () => {
-    const rows = await paymentApi.list()
-    return rows.filter((p) => p.paymentType === 'PAYMENT')
-  },
+  list: (params?: {
+    type?: 'RECEIPT' | 'PAYMENT'
+    partyType?: 'CUSTOMER' | 'SUPPLIER'
+    status?: string
+    customerId?: string
+    supplierId?: string
+    from?: string
+    to?: string
+    search?: string
+  }) => api.get('/payments', { params }).then((r) => unwrapList<PaymentResponse>(r)),
+  listReceived: async (params?: { status?: string; customerId?: string; from?: string; to?: string; search?: string }) =>
+    paymentApi.list({ type: 'RECEIPT', partyType: 'CUSTOMER', ...params }),
+  listSupplier: async (params?: { status?: string; supplierId?: string; from?: string; to?: string; search?: string }) =>
+    paymentApi.list({ type: 'PAYMENT', partyType: 'SUPPLIER', ...params }),
   create: (payload: Record<string, unknown>) =>
     api.post('/payments', payload).then((r) => unwrapApi<PaymentResponse>(r)),
   get: (id: string) => api.get(`/payments/${id}`).then((r) => unwrapApi<PaymentResponse>(r)),
@@ -499,6 +504,7 @@ export type BillingCurrent = {
     maxUsersPerOrg: number
     maxInvoicesPerMonth: number
     priceMonthly: number
+    priceYearly?: number
   }
   subscriptionStatus: string
   usage: {
@@ -506,7 +512,99 @@ export type BillingCurrent = {
     organizationLimit: number
     userCount: number
     userLimit: number
+    invoiceCount?: number
+    invoiceLimit?: number
   }
+}
+
+export type SubscriptionPlan = {
+  id: string
+  code: string
+  name: string
+  description?: string | null
+  maxOrganizations: number
+  maxUsersPerOrg: number
+  maxInvoicesPerMonth: number
+  priceMonthly: number
+  priceYearly: number
+  currency: string
+  displayOrder: number
+  highlightPlan: boolean
+  recommended: boolean
+  trialDays: number
+}
+
+export type CurrentSubscription = {
+  plan: SubscriptionPlan
+  status: string
+  billingCycle: string
+  startDate?: string | null
+  endDate?: string | null
+  nextBillingDate?: string | null
+  autoRenew: boolean
+  paymentProvider?: string | null
+  paymentReference?: string | null
+}
+
+export type CheckoutResponse = {
+  activated: boolean
+  provider: string
+  keyId?: string | null
+  orderId?: string | null
+  amount: number
+  currency: string
+  planCode: string
+  billingCycle: string
+  paymentTransactionId?: string | null
+  subscription?: CurrentSubscription | null
+  clientSecret?: string | null
+  checkoutUrl?: string | null
+}
+
+export type SubscriptionInvoice = {
+  id: string
+  invoiceNumber: string
+  amount: number
+  gst: number
+  discount: number
+  total: number
+  paidAt?: string | null
+  pdfUrl?: string | null
+  createdAt: string
+}
+
+export type SubscriptionUsage = {
+  organizationCount: number
+  organizationLimit: number
+  userCount: number
+  userLimit: number
+  invoiceCount: number
+  invoiceLimit: number
+}
+
+export const billingApi = {
+  current: () => api.get('/billing/current').then((r) => unwrapApi<BillingCurrent>(r)),
+}
+
+export const subscriptionApi = {
+  plans: () => api.get('/subscriptions/plans').then((r) => unwrapList<SubscriptionPlan>(r)),
+  current: () => api.get('/subscriptions/current').then((r) => unwrapApi<CurrentSubscription>(r)),
+  checkout: (payload: { planCode: string; billingCycle: 'MONTHLY' | 'YEARLY' }) =>
+    api.post('/subscriptions/checkout', payload).then((r) => unwrapApi<CheckoutResponse>(r)),
+  upgrade: (payload: { planCode: string; billingCycle: 'MONTHLY' | 'YEARLY' }) =>
+    api.post('/subscriptions/upgrade', payload).then((r) => unwrapApi<CheckoutResponse>(r)),
+  cancel: () => api.post('/subscriptions/cancel').then((r) => unwrapApi<CurrentSubscription>(r)),
+  invoices: () => api.get('/subscriptions/invoices').then((r) => unwrapList<SubscriptionInvoice>(r)),
+  usage: () => api.get('/subscriptions/usage').then((r) => unwrapApi<SubscriptionUsage>(r)),
+  verifyPayment: (payload: {
+    razorpayOrderId?: string
+    razorpayPaymentId?: string
+    razorpaySignature?: string
+    orderId?: string
+    paymentId?: string
+    signature?: string
+    provider?: string
+  }) => api.post('/subscriptions/verify-payment', payload).then((r) => unwrapApi<CurrentSubscription>(r)),
 }
 
 export const marketingApi = {
@@ -588,10 +686,6 @@ export const emailTemplateApi = {
     api
       .post(`/email-templates/${id}/preview`, { mergeTags })
       .then((r) => unwrapApi<{ subject: string; html: string }>(r)),
-}
-
-export const billingApi = {
-  current: () => api.get('/billing/current').then((r) => unwrapApi<BillingCurrent>(r)),
 }
 
 export const searchApi = {

@@ -16,7 +16,8 @@ import {
   Textarea,
 } from '@/components/ui'
 
-export function GlobalAskFab() {
+/** Header-mounted Ask control (no floating FAB — avoids sidebar/composer overlap). */
+export function GlobalAskButton() {
   const location = useLocation()
   const { canAccessModule } = useAuth()
   const [open, setOpen] = useState(false)
@@ -29,8 +30,8 @@ export function GlobalAskFab() {
   } | null>(null)
   const [aiOn, setAiOn] = useState(false)
 
-  // Full Assistant already has composer + agent picker — hide FAB to avoid covering Send.
-  const onAiAssistant = location.pathname.startsWith('/ai/')
+  // Full Assistant page already has a composer — skip header Ask there.
+  const onAiChat = location.pathname === '/ai/chat' || location.pathname.startsWith('/ai/chat/')
 
   useEffect(() => {
     if (!canAccessModule('ai')) return
@@ -43,14 +44,14 @@ export function GlobalAskFab() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
-        if (!canAccessModule('ai') || !aiOn || onAiAssistant) return
+        if (!canAccessModule('ai') || !aiOn || onAiChat) return
         e.preventDefault()
         setOpen(true)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [aiOn, canAccessModule, onAiAssistant])
+  }, [aiOn, canAccessModule, onAiChat])
 
   const ask = useMutation({
     mutationFn: (message: string) => aiApi.ask({ message }),
@@ -65,24 +66,26 @@ export function GlobalAskFab() {
     onError: (err) => toast.error(getApiErrorMessage(err)),
   })
 
-  if (!canAccessModule('ai') || !aiOn || onAiAssistant) return null
+  if (!canAccessModule('ai') || !aiOn || onAiChat) return null
 
   const shortcut = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘J' : 'Ctrl J'
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="outline"
+        className="cursor-pointer gap-1.5 border-teal-200 bg-teal-50/80 text-teal-800 hover:bg-teal-100 hover:text-teal-900"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex cursor-pointer items-center gap-2 rounded-full bg-gradient-to-br from-teal-600 to-cyan-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/25 transition hover:scale-[1.02] hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
         aria-label="Ask FlowLedger AI"
       >
-        <Sparkles className="size-4" />
-        Ask AI
-        <span className="hidden rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-medium sm:inline">
+        <Sparkles className="size-3.5" />
+        <span className="hidden sm:inline">Ask AI</span>
+        <span className="hidden rounded bg-white/70 px-1 py-0.5 text-[10px] font-medium text-teal-700/80 lg:inline">
           {shortcut}
         </span>
-      </button>
+      </Button>
 
       <Dialog
         open={open}
@@ -153,7 +156,7 @@ export function GlobalAskFab() {
                 </div>
                 <p className={cn('whitespace-pre-wrap text-sm leading-relaxed text-slate-800')}>{answer.content}</p>
                 <Link
-                  to={`/ai/chat`}
+                  to="/ai/chat"
                   className="mt-3 inline-block text-xs font-semibold text-teal-700 hover:underline"
                   onClick={() => setOpen(false)}
                 >
@@ -167,3 +170,6 @@ export function GlobalAskFab() {
     </>
   )
 }
+
+/** @deprecated Use GlobalAskButton in Header — kept so old imports fail loudly if any remain. */
+export const GlobalAskFab = GlobalAskButton

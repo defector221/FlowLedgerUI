@@ -423,7 +423,21 @@ export function DocumentListPage({
                         className={`border-b ${focusId === String(row.id) ? 'bg-teal-50' : ''}`}
                       >
                         <td className="p-3">
-                          {endpoint === 'challans' ? (
+                          {endpoint === 'quotations' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/sales/quotations/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
+                          ) : endpoint === 'orders' ? (
+                            <Link
+                              className="font-medium text-teal-700 hover:underline"
+                              to={`/sales/orders/${row.id}`}
+                            >
+                              {documentNumber(row)}
+                            </Link>
+                          ) : endpoint === 'challans' ? (
                             <Link
                               className="font-medium text-teal-700 hover:underline"
                               to={`/sales/challans/${row.id}`}

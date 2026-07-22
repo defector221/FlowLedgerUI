@@ -194,7 +194,7 @@ export function AppSidebar({
     return (
       <aside
         className={cn(
-          'flex h-full flex-col bg-[linear-gradient(180deg,#07111f_0%,#0b1a2b_48%,#0d2438_100%)] py-4 text-slate-300 shadow-[4px_0_24px_rgb(2_6_23/0.25)] transition-[width] duration-200 ease-out',
+          'scrollbar-dark flex h-full flex-col overflow-hidden bg-[linear-gradient(180deg,#07111f_0%,#0b1a2b_48%,#0d2438_100%)] py-4 text-slate-300 shadow-[4px_0_24px_rgb(2_6_23/0.25)] transition-[width] duration-200 ease-out [color-scheme:dark]',
           compact ? 'w-[4.5rem] px-2' : 'w-64 px-3',
         )}
       >

@@ -153,9 +153,13 @@ export function BillingPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
   const cancelMutation = useMutation({
-    mutationFn: () => subscriptionApi.cancel(),
-    onSuccess: async () => {
-      toast.success('Auto-renew cancelled')
+    mutationFn: (immediate: boolean) => subscriptionApi.cancel(immediate),
+    onSuccess: async (_data, immediate) => {
+      toast.success(
+        immediate
+          ? 'Subscription cancelled — switched to Free'
+          : 'Subscription will cancel at period end (auto-renew off)',
+      )
       await invalidate()
       await refetchCurrent()
     },
@@ -314,27 +318,57 @@ export function BillingPage() {
                     </p>
                     <p className="mt-0.5 text-slate-500">
                       Auto-renew {current?.autoRenew ? 'enabled' : 'disabled'}
-                      {current?.endDate ? ` · ends ${formatDate(current.endDate)}` : ''}
+                      {current?.nextBillingDate ? ` · next bill ${formatDate(current.nextBillingDate)}` : ''}
+                      {current?.endDate ? ` · access until ${formatDate(current.endDate)}` : ''}
                     </p>
+                    {!current?.autoRenew && current?.plan?.code !== 'FREE' && current?.endDate ? (
+                      <p className="mt-1 text-xs font-medium text-amber-800">
+                        Cancellation scheduled — Pro access continues until {formatDate(current.endDate)}.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" className="cursor-pointer" onClick={() => setTab('pricing')}>
                     Change plan
                   </Button>
-                  {current?.autoRenew && current.plan?.code !== 'FREE' ? (
-                    <Button
-                      variant="ghost"
-                      className="cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                      loading={cancelMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm('Cancel auto-renew at the end of the current period?')) {
-                          cancelMutation.mutate()
-                        }
-                      }}
-                    >
-                      Cancel auto-renew
-                    </Button>
+                  {current?.plan?.code && current.plan.code !== 'FREE' ? (
+                    <>
+                      {current.autoRenew ? (
+                        <Button
+                          variant="ghost"
+                          className="cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                          loading={cancelMutation.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                'Cancel subscription at period end? You keep Pro until the current billing period ends, then move to Free.',
+                              )
+                            ) {
+                              cancelMutation.mutate(false)
+                            }
+                          }}
+                        >
+                          Cancel at period end
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        className="cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        loading={cancelMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              'Cancel immediately and switch to Free now? This ends Pro access right away.',
+                            )
+                          ) {
+                            cancelMutation.mutate(true)
+                          }
+                        }}
+                      >
+                        Cancel now
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </CardContent>

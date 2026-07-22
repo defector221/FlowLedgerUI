@@ -38,28 +38,34 @@
   box-sizing: border-box;
 }
 
-/* Subtle dark scrollbars for navy panels (Chrome / Safari / Edge) */
+/* Subtle dark scrollbars for navy panels (Chrome / Safari / Edge / Firefox) */
 .scrollbar-dark {
+  color-scheme: dark;
   scrollbar-width: thin;
-  scrollbar-color: rgb(148 163 184 / 35%) transparent;
+  scrollbar-color: rgb(100 116 139 / 65%) rgb(15 23 42 / 40%);
 }
 
 .scrollbar-dark::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .scrollbar-dark::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-dark::-webkit-scrollbar-thumb {
-  background: rgb(148 163 184 / 35%);
+  background: rgb(15 23 42 / 35%);
   border-radius: 999px;
 }
 
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgb(100 116 139 / 70%);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
 .scrollbar-dark::-webkit-scrollbar-thumb:hover {
-  background: rgb(148 163 184 / 55%);
+  background: rgb(148 163 184 / 85%);
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 
 .scrollbar-dark::-webkit-scrollbar-corner {

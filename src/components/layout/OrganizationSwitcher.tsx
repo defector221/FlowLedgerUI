@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Building2, Check, ChevronDown, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/auth'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   Button,
   DropdownMenu,
@@ -17,6 +19,7 @@ export function OrganizationSwitcher() {
   const { activeOrganization, organizations, switchOrganization, createOrganization } = useAuth()
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   if (!activeOrganization) return null
 
@@ -64,9 +67,12 @@ export function OrganizationSwitcher() {
             <DropdownMenuItem
               key={org.id}
               onClick={async () => {
-                if (org.id !== activeOrganization.id) {
+                if (org.id === activeOrganization.id) return
+                try {
                   await switchOrganization(org.id)
                   navigate('/')
+                } catch (error) {
+                  toast.error(getApiErrorMessage(error, 'Unable to switch organization'))
                 }
               }}
             >
@@ -91,11 +97,19 @@ export function OrganizationSwitcher() {
           className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
           onSubmit={async (event) => {
             event.preventDefault()
-            if (!name.trim()) return
-            await createOrganization(name.trim())
-            setCreating(false)
-            setName('')
-            navigate('/onboarding')
+            if (!name.trim() || submitting) return
+            setSubmitting(true)
+            try {
+              await createOrganization(name.trim())
+              setCreating(false)
+              setName('')
+              toast.success('Organization created')
+              navigate('/onboarding')
+            } catch (error) {
+              toast.error(getApiErrorMessage(error, 'Unable to create organization'))
+            } finally {
+              setSubmitting(false)
+            }
           }}
         >
           <Input
@@ -103,15 +117,17 @@ export function OrganizationSwitcher() {
             placeholder="Organization name"
             value={name}
             onChange={(event) => setName(event.target.value)}
+            disabled={submitting}
           />
           <div className="flex gap-2">
-            <Button size="sm" type="submit">
-              Create
+            <Button size="sm" type="submit" disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create'}
             </Button>
             <Button
               size="sm"
               type="button"
               variant="outline"
+              disabled={submitting}
               onClick={() => {
                 setCreating(false)
                 setName('')

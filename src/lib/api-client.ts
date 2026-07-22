@@ -100,7 +100,7 @@ export const toAuthSession = (payload: LoginResponse): AuthSession => ({
 let forcingLogout = false
 
 /** Clear session and send the user to login when refresh is impossible/expired. */
-export function forceLogoutToLogin(reason?: string) {
+export function forceLogoutToLogin(reason: string = 'session_expired') {
   if (forcingLogout) return
   forcingLogout = true
   setSession(null)
@@ -116,9 +116,8 @@ export function forceLogoutToLogin(reason?: string) {
   const from = `${pathname}${search}`
   const params = new URLSearchParams()
   if (from && from !== '/') params.set('from', from)
-  if (reason) params.set('reason', reason)
-  const query = params.toString()
-  window.location.assign(query ? `/login?${query}` : '/login')
+  params.set('reason', reason)
+  window.location.assign(`/login?${params.toString()}`)
 }
 
 function resolveApiBaseUrl(): string {
@@ -145,11 +144,24 @@ export const api = axios.create({
   baseURL: resolveApiBaseUrl(),
 })
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = getSession()?.accessToken
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+function readJwtExpSeconds(token: string): number | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(json) as { exp?: number }
+    return typeof payload.exp === 'number' ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+function accessTokenNeedsRefresh(token: string | undefined, skewSeconds = 60): boolean {
+  if (!token) return false
+  const exp = readJwtExpSeconds(token)
+  if (exp == null) return false
+  return exp * 1000 <= Date.now() + skewSeconds * 1000
+}
 
 let refreshing: Promise<string | null> | null = null
 
@@ -160,16 +172,51 @@ async function refreshAccessToken(): Promise<string | null> {
     const response = await axios.post(
       `${api.defaults.baseURL}/auth/refresh`,
       { refreshToken },
-      { headers: { 'Content-Type': 'application/json' } },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 15_000 },
     )
     const payload = unwrapApi<LoginResponse>(response)
+    if (!payload?.accessToken || !payload?.refreshToken || !payload?.user || !payload?.activeOrganization) {
+      return null
+    }
     const next = toAuthSession(payload)
+    if (!isValidAuthSession(next)) return null
     setSession(next)
     return next.accessToken
   } catch {
     return null
   }
 }
+
+/** Single-flight refresh shared by request/response interceptors. */
+function ensureFreshAccessToken(): Promise<string | null> {
+  refreshing ??= refreshAccessToken().finally(() => {
+    refreshing = null
+  })
+  return refreshing
+}
+
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  if (isPublicAuthUrl(config.url)) return config
+
+  let session = getSession()
+  if (!session?.accessToken) return config
+
+  // Proactively refresh before the access token expires to avoid noisy 401s.
+  if (accessTokenNeedsRefresh(session.accessToken) && session.refreshToken) {
+    const token = await ensureFreshAccessToken()
+    if (!token) {
+      forceLogoutToLogin('session_expired')
+      const err = new Error('Your session has expired. Please sign in again.') as Error & { code?: string }
+      err.code = 'ERR_SESSION_EXPIRED'
+      return Promise.reject(err)
+    }
+    session = getSession()
+  }
+
+  const access = session?.accessToken
+  if (access) config.headers.Authorization = `Bearer ${access}`
+  return config
+})
 
 api.interceptors.response.use(
   (response) => response,
@@ -184,7 +231,7 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Already retried, or refresh itself failed via another path
+    // Already retried once after refresh
     if (request._retry) {
       forceLogoutToLogin('session_expired')
       return Promise.reject(error)
@@ -196,11 +243,7 @@ api.interceptors.response.use(
     }
 
     request._retry = true
-    refreshing ??= refreshAccessToken().finally(() => {
-      refreshing = null
-    })
-
-    const token = await refreshing
+    const token = await ensureFreshAccessToken()
     if (!token) {
       forceLogoutToLogin('session_expired')
       return Promise.reject(error)

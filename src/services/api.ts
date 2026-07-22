@@ -593,7 +593,8 @@ export const subscriptionApi = {
     api.post('/subscriptions/checkout', payload).then((r) => unwrapApi<CheckoutResponse>(r)),
   upgrade: (payload: { planCode: string; billingCycle: 'MONTHLY' | 'YEARLY' }) =>
     api.post('/subscriptions/upgrade', payload).then((r) => unwrapApi<CheckoutResponse>(r)),
-  cancel: () => api.post('/subscriptions/cancel').then((r) => unwrapApi<CurrentSubscription>(r)),
+  cancel: (immediate = false) =>
+    api.post('/subscriptions/cancel', null, { params: { immediate } }).then((r) => unwrapApi<CurrentSubscription>(r)),
   invoices: () => api.get('/subscriptions/invoices').then((r) => unwrapList<SubscriptionInvoice>(r)),
   usage: () => api.get('/subscriptions/usage').then((r) => unwrapApi<SubscriptionUsage>(r)),
   verifyPayment: (payload: {
@@ -899,6 +900,14 @@ export type AiWorkflowApproval = {
   decidedBy?: string
   decidedAt?: string
   remarks?: string
+  workflowDraftId?: string
+  workflowName?: string
+  currentStep?: number
+  totalSteps?: number
+  currentStepRole?: string
+  currentStepAction?: string
+  canApprove?: boolean
+  stepsSnapshotJson?: string
 }
 
 export const aiApi = {
@@ -930,6 +939,18 @@ export const aiApi = {
     stepsJson?: string
     suggestedApprovers?: string
   }) => api.post('/ai/workflow/drafts', payload).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  updateWorkflowDraft: (
+    id: string,
+    payload: {
+      name?: string
+      triggerType?: string
+      description?: string
+      conditionsJson?: string
+      stepsJson?: string
+      suggestedApprovers?: string
+    },
+  ) => api.put(`/ai/workflow/drafts/${id}`, payload).then((r) => unwrapApi<AiWorkflowDraft>(r)),
+  deleteWorkflowDraft: (id: string) => api.delete(`/ai/workflow/drafts/${id}`).then(() => undefined),
   suggestWorkflow: (prompt: string) =>
     api.post('/ai/workflow/suggest', { prompt }).then((r) => unwrapApi<AiWorkflowDraft>(r)),
   activateWorkflow: (id: string) =>

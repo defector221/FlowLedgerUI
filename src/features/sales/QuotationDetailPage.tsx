@@ -117,11 +117,7 @@ export function QuotationDetailPage() {
                 </Button>
               </Link>
             ) : (
-              <Button
-                className="cursor-pointer"
-                onClick={convert}
-                disabled={cancelled || converted}
-              >
+              <Button className="cursor-pointer" onClick={convert} disabled={cancelled || converted}>
                 Convert to order
               </Button>
             )}
@@ -140,11 +136,7 @@ export function QuotationDetailPage() {
             <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
               <Detail
                 label="Customer"
-                value={
-                  customer?.companyName ??
-                  customer?.customerName ??
-                  String(data.customerId ?? '—')
-                }
+                value={customer?.companyName ?? customer?.customerName ?? String(data.customerId ?? '—')}
               />
               <Detail label="Quotation date" value={data.quotationDate} />
               <Detail label="Expiry" value={data.expiryDate ?? '—'} />
@@ -182,12 +174,8 @@ export function QuotationDetailPage() {
                     items.map((item, idx) => (
                       <tr key={item.id ?? idx} className="border-b">
                         <td className="p-3">
-                          <div className="font-medium text-slate-800">
-                            {item.description || '—'}
-                          </div>
-                          {item.hsnSacCode ? (
-                            <div className="text-xs text-slate-400">HSN {item.hsnSacCode}</div>
-                          ) : null}
+                          <div className="font-medium text-slate-800">{item.description || '—'}</div>
+                          {item.hsnSacCode ? <div className="text-xs text-slate-400">HSN {item.hsnSacCode}</div> : null}
                         </td>
                         <td className="p-3 text-right tabular-nums">{formatQty(item.quantity)}</td>
                         <td className="p-3 text-right tabular-nums">{money(item.rate)}</td>

@@ -41,10 +41,7 @@ export function ProfileSettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader
-        title="Profile settings"
-        subtitle="Your account details for this FlowLedger workspace."
-      />
+      <PageHeader title="Profile settings" subtitle="Your account details for this FlowLedger workspace." />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="border-slate-200/90 shadow-[var(--shadow-soft)]">
@@ -69,25 +66,15 @@ export function ProfileSettingsPage() {
               </div>
             </div>
             <InfoRow icon={Mail} label="Email" value={user?.email ?? '—'} />
-            <InfoRow
-              icon={UserRound}
-              label="Status"
-              value={user?.status?.replace(/_/g, ' ') ?? '—'}
-            />
-            <InfoRow
-              icon={Building2}
-              label="Organization"
-              value={activeOrganization?.organizationName ?? '—'}
-            />
+            <InfoRow icon={UserRound} label="Status" value={user?.status?.replace(/_/g, ' ') ?? '—'} />
+            <InfoRow icon={Building2} label="Organization" value={activeOrganization?.organizationName ?? '—'} />
           </CardContent>
         </Card>
 
         <Card className="border-slate-200/90 shadow-[var(--shadow-soft)]">
           <CardHeader className="border-b border-slate-100 p-5 pb-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Shortcuts</p>
-            <h2 className="font-[family-name:var(--font-display)] text-base font-semibold text-slate-900">
-              Workspace
-            </h2>
+            <h2 className="font-[family-name:var(--font-display)] text-base font-semibold text-slate-900">Workspace</h2>
           </CardHeader>
           <CardContent className="space-y-2 p-5">
             {canAccessModule('settings') ? (
@@ -156,15 +143,7 @@ export function ProfileSettingsPage() {
   )
 }
 
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Mail
-  label: string
-  value: string
-}) {
+function InfoRow({ icon: Icon, label, value }: { icon: typeof Mail; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
       <Icon className="mt-0.5 size-4 text-teal-700" />

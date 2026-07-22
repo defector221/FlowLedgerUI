@@ -118,15 +118,7 @@ export function SupplierCatalogSection({
       supplier?.supplierCode || supplier?.companyName || 'SUP',
     ].join('-')
     setForm((current) => ({ ...current, supplierSku: generateEntityCode(source, 'SSKU') }))
-  }, [
-    editing,
-    form.productId,
-    form.supplierId,
-    open,
-    products,
-    supplierSkuTouched,
-    suppliers,
-  ])
+  }, [editing, form.productId, form.supplierId, open, products, supplierSkuTouched, suppliers])
 
   const save = async () => {
     if (!form.productId || !form.supplierId) {
@@ -252,8 +244,7 @@ export function SupplierCatalogSection({
               {!rows.length && (
                 <tr>
                   <td colSpan={canWrite ? 6 : 5} className="py-12 text-center text-sm text-slate-500">
-                    No supplier catalog links yet. Add at least one supplier price so this item can be purchased on
-                    POs.
+                    No supplier catalog links yet. Add at least one supplier price so this item can be purchased on POs.
                   </td>
                 </tr>
               )}

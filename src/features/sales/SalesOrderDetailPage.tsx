@@ -161,12 +161,7 @@ export function SalesOrderDetailPage() {
                 To challan
               </Button>
             )}
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={toInvoice}
-              disabled={cancelled}
-            >
+            <Button variant="outline" className="cursor-pointer" onClick={toInvoice} disabled={cancelled}>
               To invoice
             </Button>
             {!cancelled && status !== 'FULFILLED' && (
@@ -184,11 +179,7 @@ export function SalesOrderDetailPage() {
             <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
               <Detail
                 label="Customer"
-                value={
-                  customer?.companyName ??
-                  customer?.customerName ??
-                  String(data.customerId ?? '—')
-                }
+                value={customer?.companyName ?? customer?.customerName ?? String(data.customerId ?? '—')}
               />
               <Detail label="Order date" value={data.orderDate} />
               <Detail label="Expected delivery" value={data.expectedDeliveryDate ?? '—'} />
@@ -237,12 +228,8 @@ export function SalesOrderDetailPage() {
                     items.map((item, idx) => (
                       <tr key={item.id ?? idx} className="border-b">
                         <td className="p-3">
-                          <div className="font-medium text-slate-800">
-                            {item.description || '—'}
-                          </div>
-                          {item.hsnSacCode ? (
-                            <div className="text-xs text-slate-400">HSN {item.hsnSacCode}</div>
-                          ) : null}
+                          <div className="font-medium text-slate-800">{item.description || '—'}</div>
+                          {item.hsnSacCode ? <div className="text-xs text-slate-400">HSN {item.hsnSacCode}</div> : null}
                         </td>
                         <td className="p-3 text-right tabular-nums">{formatQty(item.quantity)}</td>
                         <td className="p-3 text-right tabular-nums">{money(item.rate)}</td>

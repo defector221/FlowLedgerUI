@@ -21,12 +21,10 @@ import { toast } from 'sonner'
 import { accountingApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
-import { PageHeader } from '@/components/layout/PageChrome'
+import { PageHeader, ListPageShell, ListTablePanel, ListPanelMessage } from '@/components/layout/PageChrome'
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -41,8 +39,7 @@ import {
 } from '@/components/ui'
 import type { AccountRequest, AccountResponse, AccountStatus, AccountTreeNode, AccountType } from '@/types/api'
 
-const COA_TREE_GRID =
-  'grid grid-cols-[5.5rem_minmax(12rem,1fr)_5.5rem_4.5rem_minmax(7rem,8.5rem)] items-center gap-x-3'
+const COA_TREE_GRID = 'grid grid-cols-[5.5rem_minmax(12rem,1fr)_5.5rem_4.5rem_minmax(7rem,8.5rem)] items-center gap-x-3'
 
 const ACCOUNT_TYPES: AccountType[] = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']
 
@@ -395,83 +392,97 @@ export function ChartOfAccountsPage() {
   const isSystemPartial = Boolean(editing?.systemAccount && editing.editable)
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Chart of accounts"
-        subtitle="Organisation ledger structure with system posting accounts and custom accounts."
-        actions={
-          <>
-            <Button variant={view === 'tree' ? 'default' : 'outline'} size="sm" onClick={() => setView('tree')}>
-              <FolderTree className="mr-1.5 size-4" />
-              Tree
-            </Button>
-            <Button variant={view === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setView('list')}>
-              <List className="mr-1.5 size-4" />
-              List
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                refetchTree()
-                refetchList()
-              }}
-            >
-              <RefreshCw className="mr-1.5 size-4" />
-              Refresh
-            </Button>
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="mr-1.5 size-4" />
-              New account
-            </Button>
-          </>
+    <>
+      <ListPageShell
+        header={
+          <PageHeader
+            title="Chart of accounts"
+            subtitle="Organisation ledger structure with system posting accounts and custom accounts."
+            actions={
+              <>
+                <Button variant={view === 'tree' ? 'default' : 'outline'} size="sm" onClick={() => setView('tree')}>
+                  <FolderTree className="mr-1.5 size-4" />
+                  Tree
+                </Button>
+                <Button variant={view === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setView('list')}>
+                  <List className="mr-1.5 size-4" />
+                  List
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    refetchTree()
+                    refetchList()
+                  }}
+                >
+                  <RefreshCw className="mr-1.5 size-4" />
+                  Refresh
+                </Button>
+                <Button size="sm" onClick={openCreate}>
+                  <Plus className="mr-1.5 size-4" />
+                  New account
+                </Button>
+              </>
+            }
+          />
         }
-      />
-
-      <Card>
-        <CardContent className="p-0">
+      >
+        <ListTablePanel>
           {(view === 'tree' ? loadingTree : loadingList) ? (
-            <p className="px-5 py-10 text-sm text-slate-500">Loading accounts…</p>
+            <ListPanelMessage>
+              <p className="text-sm text-slate-500">Loading accounts…</p>
+            </ListPanelMessage>
           ) : view === 'tree' ? (
             tree.length ? (
-              <div className="coa-tree overflow-x-auto">
-                <div className="coa-tree-toolbar">
-                  <p className="text-xs text-slate-500">
-                    {expandableIds.filter((id) => expandedIds.has(id)).length} of {expandableIds.length} groups expanded
-                  </p>
-                  <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="sm" onClick={expandAll}>
-                      Expand all
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={collapseAll}>
-                      Collapse all
-                    </Button>
+              <div className="scrollbar-panel min-h-0 flex-1 overflow-auto overscroll-contain">
+                <div className="coa-tree">
+                  <div className="coa-tree-toolbar sticky top-0 z-10 bg-white">
+                    <p className="text-xs text-slate-500">
+                      {expandableIds.filter((id) => expandedIds.has(id)).length} of {expandableIds.length} groups
+                      expanded
+                    </p>
+                    <div className="flex gap-1">
+                      <Button type="button" variant="ghost" size="sm" onClick={expandAll}>
+                        Expand all
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={collapseAll}>
+                        Collapse all
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className={cn(COA_TREE_GRID, 'coa-tree-header min-w-[52rem] px-4')}>
-                  <span>Code</span>
-                  <span>Account</span>
-                  <span>Type</span>
-                  <span>Status</span>
-                  <span className="text-right">Actions</span>
-                </div>
-                <div className="min-w-[52rem] divide-y divide-slate-100">
-                  <CoaTreeView
-                    nodes={tree}
-                    expandedIds={expandedIds}
-                    onToggle={toggleExpanded}
-                    onEdit={openEdit}
-                    onDelete={onDelete}
-                  />
+                  <div
+                    className={cn(
+                      COA_TREE_GRID,
+                      'coa-tree-header sticky top-[2.75rem] z-10 min-w-[52rem] bg-slate-50 px-4',
+                    )}
+                  >
+                    <span>Code</span>
+                    <span>Account</span>
+                    <span>Type</span>
+                    <span>Status</span>
+                    <span className="text-right">Actions</span>
+                  </div>
+                  <div className="min-w-[52rem] divide-y divide-slate-100">
+                    <CoaTreeView
+                      nodes={tree}
+                      expandedIds={expandedIds}
+                      onToggle={toggleExpanded}
+                      onEdit={openEdit}
+                      onDelete={onDelete}
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
-              <p className="px-5 py-12 text-center text-sm text-slate-500">
-                No accounts yet. Bootstrap runs automatically when your organisation is created.
-              </p>
+              <ListPanelMessage>
+                <p className="text-center text-sm text-slate-500">
+                  No accounts yet. Bootstrap runs automatically when your organisation is created.
+                </p>
+              </ListPanelMessage>
             )
           ) : list.length ? (
-            <Table>
+            <Table fill stickyHeader>
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-left text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-5 py-3">Code</th>
@@ -524,10 +535,12 @@ export function ChartOfAccountsPage() {
               </tbody>
             </Table>
           ) : (
-            <p className="px-5 py-12 text-center text-sm text-slate-500">No accounts found.</p>
+            <ListPanelMessage>
+              <p className="text-center text-sm text-slate-500">No accounts found.</p>
+            </ListPanelMessage>
           )}
-        </CardContent>
-      </Card>
+        </ListTablePanel>
+      </ListPageShell>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -623,6 +636,6 @@ export function ChartOfAccountsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

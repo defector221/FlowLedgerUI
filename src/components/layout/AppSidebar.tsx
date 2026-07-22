@@ -21,11 +21,17 @@ import {
   Wallet,
   Truck,
   X,
+  Sparkles,
+  MessageSquare,
+  Lightbulb,
+  LineChart,
 } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth'
 import { Button, Separator } from '@/components/ui'
+import { aiApi } from '@/services/api'
 
 function pathMatches(pathname: string, to: string) {
   if (to === '/') return pathname === '/'
@@ -98,6 +104,14 @@ const groups = [
     ],
   },
   {
+    label: 'AI ASSISTANT',
+    items: [
+      { to: '/ai/chat', label: 'Assistant', icon: MessageSquare, module: 'ai' as const },
+      { to: '/ai/recommendations', label: 'Insights', icon: Lightbulb, module: 'aiRecommendations' as const },
+      { to: '/ai/analytics', label: 'Forecasts', icon: LineChart, module: 'ai' as const },
+    ],
+  },
+  {
     label: 'SYSTEM',
     items: [
       { to: '/settings/organization', label: 'Settings', icon: Settings, module: 'settings' as const },
@@ -118,7 +132,22 @@ export function AppSidebar({ mobileOpen, onMobileClose }: { mobileOpen: boolean;
   const { session, activeOrganization, canAccessModule, logout } = useAuth()
   const initials = `${session?.user.firstName?.[0] ?? ''}${session?.user.lastName?.[0] ?? ''}`.trim() || 'FL'
   const roleLabel = activeOrganization?.roles?.[0]?.replace(/_/g, ' ') ?? 'User'
-  const visiblePaths = groups.flatMap((group) =>
+
+  const aiHealth = useQuery({
+    queryKey: ['ai-health'],
+    queryFn: () => aiApi.health(),
+    retry: false,
+    staleTime: 60_000,
+  })
+  const aiAvailable = aiHealth.isSuccess && aiHealth.data?.enabled !== false
+
+  const visibleGroups = groups.map((group) => {
+    if (group.label !== 'AI ASSISTANT') return group
+    if (!aiAvailable) return { ...group, items: [] }
+    return group
+  })
+
+  const visiblePaths = visibleGroups.flatMap((group) =>
     group.items.filter((item) => canAccessModule(item.module)).map((item) => item.to),
   )
   const activePath = resolveActivePath(location.pathname, visiblePaths)
@@ -139,13 +168,22 @@ export function AppSidebar({ mobileOpen, onMobileClose }: { mobileOpen: boolean;
         </Button>
       </div>
       <nav className="flex-1 space-y-5 overflow-auto">
-        {groups.map((group) => {
+        {visibleGroups.map((group) => {
           const items = group.items.filter((item) => canAccessModule(item.module))
           if (!items.length) return null
           return (
-            <div key={group.label}>
+            <div key={group.label || 'root'}>
               {group.label ? (
-                <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.14em] text-slate-500">{group.label}</p>
+                <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.14em] text-slate-500">
+                  {group.label === 'AI ASSISTANT' ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Sparkles className="size-3" />
+                      {group.label}
+                    </span>
+                  ) : (
+                    group.label
+                  )}
+                </p>
               ) : null}
               {items.map((item) => {
                 const isActive = item.to === activePath

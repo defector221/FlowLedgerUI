@@ -59,6 +59,9 @@ import { TransportShipmentsPage } from '@/features/transport/TransportShipmentsP
 import { TransportShipmentDetailPage } from '@/features/transport/TransportShipmentDetailPage'
 import { TransportSearchPage } from '@/features/transport/TransportSearchPage'
 import { TransportReportsPage } from '@/features/transport/TransportReportsPage'
+import { AiChatPage } from '@/features/ai/AiChatPage'
+import { AiRecommendationsPage } from '@/features/ai/AiRecommendationsPage'
+import { AiAnalyticsPage } from '@/features/ai/AiAnalyticsPage'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -302,6 +305,9 @@ export const router = createBrowserRouter([
       { path: 'settings/reminder-rules', element: <ReminderRulesPage /> },
       { path: 'settings/password', element: <ChangePasswordPage /> },
       { path: 'audit', element: <AuditLogsPage /> },
+      { path: 'ai/chat', element: <AiChatPage /> },
+      { path: 'ai/recommendations', element: <AiRecommendationsPage /> },
+      { path: 'ai/analytics', element: <AiAnalyticsPage /> },
     ],
   },
 ])

@@ -62,6 +62,16 @@ import { TransportShipmentsPage } from '@/features/transport/TransportShipmentsP
 import { TransportShipmentDetailPage } from '@/features/transport/TransportShipmentDetailPage'
 import { TransportSearchPage } from '@/features/transport/TransportSearchPage'
 import { TransportReportsPage } from '@/features/transport/TransportReportsPage'
+import { StoresPage } from '@/features/retail/StoresPage'
+import { ShiftDashboardPage } from '@/features/retail/ShiftDashboardPage'
+import { PosPage } from '@/features/retail/PosPage'
+import { RetailCatalogPage } from '@/features/retail/RetailCatalogPage'
+import { RetailPricingPage } from '@/features/retail/RetailPricingPage'
+import { RetailReturnsPage } from '@/features/retail/RetailReturnsPage'
+import { RetailLoyaltyPage } from '@/features/retail/RetailLoyaltyPage'
+import { RetailInventoryPage } from '@/features/retail/RetailInventoryPage'
+import { RetailAnalyticsPage } from '@/features/retail/RetailAnalyticsPage'
+import { RetailLabelsPage } from '@/features/retail/RetailLabelsPage'
 import { AiChatPage } from '@/features/ai/AiChatPage'
 import { AiRecommendationsPage } from '@/features/ai/AiRecommendationsPage'
 import { AiAnalyticsPage } from '@/features/ai/AiAnalyticsPage'
@@ -272,6 +282,16 @@ export const router = createBrowserRouter([
       { path: 'transport/shipments/:id', element: <TransportShipmentDetailPage /> },
       { path: 'transport/search', element: <TransportSearchPage /> },
       { path: 'transport/reports', element: <TransportReportsPage /> },
+      { path: 'retail/pos', element: <PosPage /> },
+      { path: 'retail/stores', element: <StoresPage /> },
+      { path: 'retail/shifts', element: <ShiftDashboardPage /> },
+      { path: 'retail/catalog', element: <RetailCatalogPage /> },
+      { path: 'retail/pricing', element: <RetailPricingPage /> },
+      { path: 'retail/returns', element: <RetailReturnsPage /> },
+      { path: 'retail/loyalty', element: <RetailLoyaltyPage /> },
+      { path: 'retail/inventory', element: <RetailInventoryPage /> },
+      { path: 'retail/analytics', element: <RetailAnalyticsPage /> },
+      { path: 'retail/labels', element: <RetailLabelsPage /> },
       { path: 'leads', element: <LeadsListPage /> },
       { path: 'leads/new', element: <LeadCreatePage /> },
       { path: 'leads/:id', element: <LeadDetailPage /> },

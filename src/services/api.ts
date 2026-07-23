@@ -56,6 +56,39 @@ import type {
   Shipment,
   ShipmentRequest,
   DeliveryChallan,
+  RetailStore,
+  RetailStoreRequest,
+  RetailStoreType,
+  RetailCounter,
+  RetailTerminal,
+  RetailCashier,
+  RetailShift,
+  OpenRetailShiftRequest,
+  CloseRetailShiftRequest,
+  PosSale,
+  PosSaleRequest,
+  PosLineRequest,
+  PosCheckoutRequest,
+  PosSaleStatus,
+  RetailProductLookup,
+  RetailBrand,
+  RetailVariant,
+  RetailBarcode,
+  RetailPriceList,
+  RetailPriceListRequest,
+  RetailResolvePrice,
+  RetailPromotion,
+  RetailPromotionRequest,
+  RetailReturn,
+  RetailReturnRequest,
+  RetailGiftCard,
+  RetailGiftCardBalance,
+  RetailGiftCardIssueRequest,
+  RetailInventoryLocation,
+  RetailDailySales,
+  RetailLabelTemplate,
+  RetailSyncRequest,
+  RetailSyncResponse,
 } from '@/types/api'
 
 export const authApi = {
@@ -806,6 +839,190 @@ export const transportApi = {
       .then((r) => unwrapList<Shipment>(r)),
   timeline: (id: string) =>
     api.get(`/transport/shipments/${id}/timeline`).then((r) => unwrapList<import('@/types/api').ShipmentEvent>(r)),
+}
+
+const retailCrud = <T, P = Partial<T>>(path: string) => ({
+  list: (params?: Record<string, string | number | boolean | undefined>) =>
+    api.get(path, { params }).then((r) => unwrapList<T>(r)),
+  get: (id: string) => api.get(`${path}/${id}`).then((r) => unwrapApi<T>(r)),
+  create: (payload: P) => api.post(path, payload).then((r) => unwrapApi<T>(r)),
+  update: (id: string, payload: Partial<P>) => api.put(`${path}/${id}`, payload).then((r) => unwrapApi<T>(r)),
+  remove: (id: string) => api.delete(`${path}/${id}`),
+})
+
+export const retailApi = {
+  storeTypes: retailCrud<RetailStoreType, { code: string; name: string }>('/retail/store-types'),
+  stores: retailCrud<RetailStore, RetailStoreRequest>('/retail/stores'),
+  counters: {
+    list: (storeId: string) =>
+      api.get('/retail/counters', { params: { storeId } }).then((r) => unwrapList<RetailCounter>(r)),
+    create: (payload: { storeId: string; code: string; name: string; status?: string }) =>
+      api.post('/retail/counters', payload).then((r) => unwrapApi<RetailCounter>(r)),
+    update: (id: string, payload: { storeId: string; code: string; name: string; status?: string }) =>
+      api.put(`/retail/counters/${id}`, payload).then((r) => unwrapApi<RetailCounter>(r)),
+    remove: (id: string) => api.delete(`/retail/counters/${id}`),
+  },
+  terminals: {
+    list: (storeId: string) =>
+      api.get('/retail/terminals', { params: { storeId } }).then((r) => unwrapList<RetailTerminal>(r)),
+    create: (payload: {
+      storeId: string
+      counterId?: string | null
+      code: string
+      name: string
+      status?: string
+    }) => api.post('/retail/terminals', payload).then((r) => unwrapApi<RetailTerminal>(r)),
+    update: (
+      id: string,
+      payload: { storeId: string; counterId?: string | null; code: string; name: string; status?: string },
+    ) => api.put(`/retail/terminals/${id}`, payload).then((r) => unwrapApi<RetailTerminal>(r)),
+    remove: (id: string) => api.delete(`/retail/terminals/${id}`),
+  },
+  cashiers: {
+    list: (storeId: string) =>
+      api.get('/retail/cashiers', { params: { storeId } }).then((r) => unwrapList<RetailCashier>(r)),
+    create: (payload: {
+      storeId: string
+      userId: string
+      employeeCode?: string
+      displayName: string
+      status?: string
+    }) => api.post('/retail/cashiers', payload).then((r) => unwrapApi<RetailCashier>(r)),
+    update: (
+      id: string,
+      payload: {
+        storeId: string
+        userId: string
+        employeeCode?: string
+        displayName: string
+        status?: string
+      },
+    ) => api.put(`/retail/cashiers/${id}`, payload).then((r) => unwrapApi<RetailCashier>(r)),
+    remove: (id: string) => api.delete(`/retail/cashiers/${id}`),
+  },
+  shifts: {
+    list: (storeId?: string) =>
+      api.get('/retail/shifts', { params: storeId ? { storeId } : undefined }).then((r) => unwrapList<RetailShift>(r)),
+    get: (id: string) => api.get(`/retail/shifts/${id}`).then((r) => unwrapApi<RetailShift>(r)),
+    open: (payload: OpenRetailShiftRequest) =>
+      api.post('/retail/shifts', payload).then((r) => unwrapApi<RetailShift>(r)),
+    close: (id: string, payload: CloseRetailShiftRequest) =>
+      api.post(`/retail/shifts/${id}/close`, payload).then((r) => unwrapApi<RetailShift>(r)),
+  },
+  pos: {
+    listSales: (status?: PosSaleStatus) =>
+      api.get('/retail/pos/sales', { params: status ? { status } : undefined }).then((r) => unwrapList<PosSale>(r)),
+    getSale: (id: string) => api.get(`/retail/pos/sales/${id}`).then((r) => unwrapApi<PosSale>(r)),
+    createDraft: (payload: PosSaleRequest) =>
+      api.post('/retail/pos/sales', payload).then((r) => unwrapApi<PosSale>(r)),
+    addLine: (id: string, payload: PosLineRequest) =>
+      api.post(`/retail/pos/sales/${id}/lines`, payload).then((r) => unwrapApi<PosSale>(r)),
+    removeLine: (id: string, lineId: string) =>
+      api.delete(`/retail/pos/sales/${id}/lines/${lineId}`).then((r) => unwrapApi<PosSale>(r)),
+    hold: (id: string, heldLabel?: string) =>
+      api.post(`/retail/pos/sales/${id}/hold`, { heldLabel }).then((r) => unwrapApi<PosSale>(r)),
+    resume: (id: string) => api.post(`/retail/pos/sales/${id}/resume`).then((r) => unwrapApi<PosSale>(r)),
+    void: (id: string) => api.post(`/retail/pos/sales/${id}/void`).then((r) => unwrapApi<PosSale>(r)),
+    checkout: (id: string, payload: PosCheckoutRequest) =>
+      api.post(`/retail/pos/sales/${id}/checkout`, payload).then((r) => unwrapApi<PosSale>(r)),
+    lookupProduct: (params: { barcode?: string; q?: string }) =>
+      api.get('/retail/pos/products', { params }).then((r) => unwrapApi<RetailProductLookup>(r)),
+    sync: (payload: RetailSyncRequest) =>
+      api.post('/retail/pos/sync', payload).then((r) => unwrapApi<RetailSyncResponse>(r)),
+  },
+  catalog: {
+    brands: retailCrud<RetailBrand, { code: string; name: string }>('/retail/catalog/brands'),
+    variants: {
+      list: (parentProductId: string) =>
+        api
+          .get('/retail/catalog/variants', { params: { parentProductId } })
+          .then((r) => unwrapList<RetailVariant>(r)),
+      create: (payload: Record<string, unknown>) =>
+        api.post('/retail/catalog/variants', payload).then((r) => unwrapApi<RetailVariant>(r)),
+      update: (id: string, payload: Record<string, unknown>) =>
+        api.put(`/retail/catalog/variants/${id}`, payload).then((r) => unwrapApi<RetailVariant>(r)),
+      remove: (id: string) => api.delete(`/retail/catalog/variants/${id}`),
+    },
+    barcodes: {
+      list: (productId: string) =>
+        api.get('/retail/catalog/barcodes', { params: { productId } }).then((r) => unwrapList<RetailBarcode>(r)),
+      create: (payload: {
+        productId?: string
+        variantId?: string
+        barcode: string
+        barcodeType?: string
+        primary?: boolean
+      }) => api.post('/retail/catalog/barcodes', payload).then((r) => unwrapApi<RetailBarcode>(r)),
+      remove: (id: string) => api.delete(`/retail/catalog/barcodes/${id}`),
+    },
+  },
+  pricing: {
+    priceLists: retailCrud<RetailPriceList, RetailPriceListRequest>('/retail/pricing/price-lists'),
+    resolve: (params: { storeId: string; productId: string; variantId?: string; qty?: number }) =>
+      api.get('/retail/pricing/resolve', { params }).then((r) => unwrapApi<RetailResolvePrice>(r)),
+    promotions: retailCrud<RetailPromotion, RetailPromotionRequest>('/retail/pricing/promotions'),
+    applyCoupon: (payload: { couponCode: string; billAmount: number }) =>
+      api
+        .post('/retail/pricing/apply-coupon', payload)
+        .then((r) =>
+          unwrapApi<{
+            couponCode: string
+            applied: boolean
+            discountAmount: number
+            netAmount: number
+            message: string | null
+          }>(r),
+        ),
+  },
+  returns: {
+    list: () => api.get('/retail/returns').then((r) => unwrapList<RetailReturn>(r)),
+    get: (id: string) => api.get(`/retail/returns/${id}`).then((r) => unwrapApi<RetailReturn>(r)),
+    create: (payload: RetailReturnRequest) =>
+      api.post('/retail/returns', payload).then((r) => unwrapApi<RetailReturn>(r)),
+  },
+  loyalty: {
+    giftCards: {
+      issue: (payload: RetailGiftCardIssueRequest) =>
+        api.post('/retail/gift-cards', payload).then((r) => unwrapApi<RetailGiftCard>(r)),
+      get: (id: string) => api.get(`/retail/gift-cards/${id}`).then((r) => unwrapApi<RetailGiftCard>(r)),
+      balance: (cardNumber: string) =>
+        api
+          .get('/retail/gift-cards/balance', { params: { cardNumber } })
+          .then((r) => unwrapApi<RetailGiftCardBalance>(r)),
+      activate: (id: string) =>
+        api.post(`/retail/gift-cards/${id}/activate`).then((r) => unwrapApi<RetailGiftCard>(r)),
+    },
+  },
+  inventory: {
+    locations: {
+      list: (storeId: string) =>
+        api
+          .get('/retail/inventory/locations', { params: { storeId } })
+          .then((r) => unwrapList<RetailInventoryLocation>(r)),
+      create: (payload: {
+        storeId: string
+        warehouseId: string
+        code: string
+        name: string
+        locationType?: string
+      }) => api.post('/retail/inventory/locations', payload).then((r) => unwrapApi<RetailInventoryLocation>(r)),
+      update: (
+        id: string,
+        payload: { storeId: string; warehouseId: string; code: string; name: string; locationType?: string },
+      ) => api.put(`/retail/inventory/locations/${id}`, payload).then((r) => unwrapApi<RetailInventoryLocation>(r)),
+      remove: (id: string) => api.delete(`/retail/inventory/locations/${id}`),
+    },
+  },
+  analytics: {
+    dailySales: (params: { storeId: string; date?: string }) =>
+      api.get('/retail/analytics/daily-sales', { params }).then((r) => unwrapApi<RetailDailySales>(r)),
+  },
+  labels: {
+    templates: retailCrud<
+      RetailLabelTemplate,
+      { code: string; name: string; labelType?: string; templateBody: string }
+    >('/retail/labels/templates'),
+  },
 }
 
 export const accountingApi = {

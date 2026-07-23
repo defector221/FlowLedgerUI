@@ -14,12 +14,13 @@ import {
   Input,
 } from '@/components/ui'
 
-export function OrganizationSwitcher() {
+export function OrganizationSwitcher({ variant = 'default' }: { variant?: 'default' | 'sidebar' }) {
   const navigate = useNavigate()
   const { activeOrganization, organizations, switchOrganization, createOrganization } = useAuth()
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const sidebar = variant === 'sidebar'
 
   if (!activeOrganization) return null
 
@@ -30,7 +31,7 @@ export function OrganizationSwitcher() {
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-teal-700 text-xs font-semibold text-white">
         {activeOrganization.organizationName.slice(0, 2).toUpperCase()}
       </span>
-      <div className="hidden min-w-0 text-left md:block">
+      <div className={sidebar ? 'min-w-0 flex-1 text-left' : 'hidden min-w-0 text-left md:block'}>
         <p className="truncate text-sm font-medium text-slate-900">{activeOrganization.organizationName}</p>
         <p className="truncate text-xs text-slate-500">{activeOrganization.roles[0]?.replace(/_/g, ' ') ?? 'Member'}</p>
       </div>
@@ -56,7 +57,11 @@ export function OrganizationSwitcher() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex max-w-full min-w-0 items-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 hover:bg-slate-50 sm:px-3 sm:py-2"
+            className={
+              sidebar
+                ? 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5'
+                : 'flex max-w-full min-w-0 items-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 hover:bg-slate-50 sm:px-3 sm:py-2'
+            }
           >
             {content}
           </button>

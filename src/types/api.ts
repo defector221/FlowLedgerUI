@@ -15,7 +15,16 @@ export interface PageResponse<T> {
 export type UserStatus = 'INVITED' | 'ACTIVE' | 'INACTIVE'
 
 export type RoleCode =
-  'ORGANIZATION_ADMIN' | 'ACCOUNTANT' | 'SALES_MANAGER' | 'PURCHASE_MANAGER' | 'INVENTORY_MANAGER' | 'VIEWER'
+  | 'ORGANIZATION_ADMIN'
+  | 'ACCOUNTANT'
+  | 'SALES_MANAGER'
+  | 'PURCHASE_MANAGER'
+  | 'INVENTORY_MANAGER'
+  | 'VIEWER'
+  | 'RETAIL_CASHIER'
+  | 'RETAIL_STORE_MANAGER'
+  | 'RETAIL_ADMIN'
+  | 'RETAIL_REGIONAL_MANAGER'
 
 export interface UserResponse {
   id: string
@@ -121,6 +130,7 @@ export interface OrganizationSettingsResponse {
   transportApprovalRequired: boolean
   transportDefaultFreightPayer: FreightPayer | null
   transportDelayThresholdHours: number
+  retailEnabled: boolean
   settingsJson: string
 }
 
@@ -135,6 +145,7 @@ export interface UpdateOrganizationSettingsRequest {
   transportApprovalRequired?: boolean
   transportDefaultFreightPayer?: FreightPayer
   transportDelayThresholdHours?: number
+  retailEnabled?: boolean
   settingsJson?: string
 }
 
@@ -1121,4 +1132,401 @@ export interface InitializeAccountingResponse {
   initialized: boolean
   accountCount: number
   fiscalYear?: { id: string; name: string; startDate: string; endDate: string; status: string; current: boolean } | null
+}
+
+// ---------------------------------------------------------------------------
+// Retail / POS
+// ---------------------------------------------------------------------------
+
+export type RetailShiftStatus = 'OPEN' | 'CLOSED'
+export type PosSaleStatus = 'DRAFT' | 'HELD' | 'COMPLETED' | 'VOID'
+export type RetailPaymentMode = 'CASH' | 'CARD' | 'UPI' | 'WALLET' | 'CREDIT'
+export type RetailReturnReason =
+  | 'DAMAGED'
+  | 'DEFECTIVE'
+  | 'WRONG_ITEM'
+  | 'SIZE_ISSUE'
+  | 'NOT_SATISFIED'
+  | 'EXCHANGE'
+  | 'OTHER'
+export type RetailRefundMode = 'REFUND' | 'STORE_CREDIT' | 'EXCHANGE' | 'GIFT_CARD'
+export type RetailGiftCardStatus = 'ISSUED' | 'ACTIVE' | 'REDEEMED' | 'EXPIRED' | 'CANCELLED'
+export type RetailLocationType = 'SHELF' | 'RACK' | 'BIN' | 'BACKROOM' | 'DISPLAY' | 'WAREHOUSE'
+export type RetailPromoType = 'PERCENT_OFF' | 'AMOUNT_OFF' | 'BUY_X_GET_Y' | 'BILL_DISCOUNT' | 'COUPON'
+export type RetailPriceType = 'RETAIL' | 'WHOLESALE' | 'MRP' | 'SPECIAL' | 'CLEARANCE'
+export type RetailSyncStatus = 'PENDING' | 'PROCESSED' | 'FAILED' | 'DUPLICATE'
+
+export interface RetailStoreType {
+  id: string
+  code: string
+  name: string
+  version?: number
+}
+
+export interface RetailStore {
+  id: string
+  code: string
+  name: string
+  storeTypeId: string | null
+  warehouseId: string
+  address: string | null
+  city: string | null
+  state: string | null
+  phone: string | null
+  status: string
+  version?: number
+}
+
+export interface RetailStoreRequest {
+  code: string
+  name: string
+  storeTypeId?: string | null
+  warehouseId: string
+  address?: string
+  city?: string
+  state?: string
+  phone?: string
+  status?: string
+}
+
+export interface RetailCounter {
+  id: string
+  storeId: string
+  code: string
+  name: string
+  status: string
+  version?: number
+}
+
+export interface RetailTerminal {
+  id: string
+  storeId: string
+  counterId: string | null
+  code: string
+  name: string
+  status: string
+  version?: number
+}
+
+export interface RetailCashier {
+  id: string
+  storeId: string
+  userId: string
+  employeeCode: string | null
+  displayName: string
+  status: string
+  version?: number
+}
+
+export interface RetailShift {
+  id: string
+  storeId: string
+  counterId: string
+  terminalId: string | null
+  cashierId: string
+  status: RetailShiftStatus
+  openedAt: string
+  closedAt: string | null
+  openingFloat: number
+  closingCash: number | null
+  expectedCash: number | null
+  variance: number | null
+  notes: string | null
+  version?: number
+}
+
+export interface OpenRetailShiftRequest {
+  storeId: string
+  counterId: string
+  terminalId?: string | null
+  cashierId: string
+  openingFloat?: number
+  notes?: string
+}
+
+export interface CloseRetailShiftRequest {
+  closingCash: number
+  notes?: string
+}
+
+export interface PosSaleLine {
+  id: string
+  productId: string
+  variantId: string | null
+  description: string | null
+  barcode: string | null
+  quantity: number
+  rate: number
+  discountPercent: number | null
+  taxRate: number | null
+  lineTotal: number
+  lineOrder: number
+}
+
+export interface PosSalePayment {
+  id: string
+  paymentMode: RetailPaymentMode
+  amount: number
+  paymentId: string | null
+  reference: string | null
+}
+
+export interface PosSale {
+  id: string
+  storeId: string
+  counterId: string | null
+  terminalId: string | null
+  shiftId: string | null
+  cashierId: string | null
+  customerId: string | null
+  salesInvoiceId: string | null
+  status: PosSaleStatus
+  receiptType: string | null
+  billNumber: string | null
+  subtotal: number
+  discountTotal: number
+  taxTotal: number
+  grandTotal: number
+  heldLabel: string | null
+  notes: string | null
+  completedAt: string | null
+  lines: PosSaleLine[]
+  payments: PosSalePayment[]
+  version?: number
+}
+
+export interface PosSaleRequest {
+  storeId: string
+  counterId?: string | null
+  terminalId?: string | null
+  shiftId?: string | null
+  cashierId?: string | null
+  customerId?: string | null
+  notes?: string
+}
+
+export interface PosLineRequest {
+  productId: string
+  variantId?: string | null
+  description?: string
+  barcode?: string
+  quantity: number
+  rate: number
+  discountPercent?: number
+  taxRate?: number
+}
+
+export interface PosCheckoutRequest {
+  customerId?: string | null
+  receiptType?: string
+  payments: Array<{ paymentMode: RetailPaymentMode; amount: number; reference?: string }>
+}
+
+export interface RetailProductLookup {
+  productId: string
+  variantId: string | null
+  name: string
+  barcode: string | null
+  sellingPrice: number
+  mrp: number | null
+  hsnSacCode: string | null
+  unitId: string | null
+  taxRateId: string | null
+}
+
+export interface RetailBrand {
+  id: string
+  code: string
+  name: string
+  version?: number
+}
+
+export interface RetailVariant {
+  id: string
+  parentProductId: string
+  sku: string | null
+  barcode: string | null
+  color: string | null
+  size: string | null
+  weight: string | null
+  capacity: string | null
+  pattern: string | null
+  material: string | null
+  sellingPrice: number | null
+  mrp: number | null
+  active: boolean
+  version?: number
+}
+
+export interface RetailBarcode {
+  id: string
+  productId: string | null
+  variantId: string | null
+  barcode: string
+  barcodeType: string | null
+  primary: boolean
+}
+
+export interface RetailPriceList {
+  id: string
+  code: string
+  name: string
+  priceType: RetailPriceType
+  currency: string | null
+  active: boolean
+  version?: number
+}
+
+export interface RetailPriceListRequest {
+  code: string
+  name: string
+  priceType?: RetailPriceType
+  currency?: string
+  active?: boolean
+}
+
+export interface RetailResolvePrice {
+  productId: string
+  variantId: string | null
+  unitPrice: number
+  source: string
+}
+
+export interface RetailPromotion {
+  id: string
+  code: string
+  name: string
+  promoType: RetailPromoType
+  discountPercent: number | null
+  discountAmount: number | null
+  buyQty: number | null
+  getQty: number | null
+  minBillAmount: number | null
+  couponCode: string | null
+  startsAt: string | null
+  endsAt: string | null
+  storeId: string | null
+  brandId: string | null
+  categoryId: string | null
+  productId: string | null
+  active: boolean
+  version?: number
+}
+
+export interface RetailPromotionRequest {
+  code: string
+  name: string
+  promoType: RetailPromoType
+  discountPercent?: number
+  discountAmount?: number
+  buyQty?: number
+  getQty?: number
+  minBillAmount?: number
+  couponCode?: string
+  startsAt?: string
+  endsAt?: string
+  storeId?: string
+  brandId?: string
+  categoryId?: string
+  productId?: string
+  active?: boolean
+}
+
+export interface RetailReturnLine {
+  id: string
+  productId: string
+  quantity: number
+  rate: number
+  lineTotal: number
+}
+
+export interface RetailReturn {
+  id: string
+  storeId: string
+  originalPosSaleId: string | null
+  originalInvoiceId: string | null
+  salesReturnId: string | null
+  status: PosSaleStatus
+  reason: RetailReturnReason
+  refundMode: RetailRefundMode | null
+  notes: string | null
+  totalAmount: number
+  lines: RetailReturnLine[]
+  version?: number
+}
+
+export interface RetailReturnRequest {
+  storeId: string
+  originalPosSaleId?: string
+  originalInvoiceId?: string
+  reason: RetailReturnReason
+  refundMode?: RetailRefundMode
+  notes?: string
+  lines: Array<{ productId: string; quantity: number; rate: number }>
+}
+
+export interface RetailGiftCard {
+  id: string
+  cardNumber: string
+  status: RetailGiftCardStatus
+  initialBalance: number
+  balance: number
+  customerId: string | null
+  expiresAt: string | null
+  activatedAt: string | null
+  version?: number
+}
+
+export interface RetailGiftCardBalance {
+  cardNumber: string
+  status: RetailGiftCardStatus
+  balance: number
+}
+
+export interface RetailGiftCardIssueRequest {
+  cardNumber: string
+  initialBalance: number
+  customerId?: string
+  expiresAt?: string
+}
+
+export interface RetailInventoryLocation {
+  id: string
+  storeId: string
+  warehouseId: string
+  code: string
+  name: string
+  locationType: RetailLocationType
+  version?: number
+}
+
+export interface RetailDailySales {
+  date: string
+  saleCount: number
+  subtotal: number
+  discountTotal: number
+  taxTotal: number
+  grandTotal: number
+}
+
+export interface RetailLabelTemplate {
+  id: string
+  code: string
+  name: string
+  labelType: string | null
+  templateBody: string
+  version?: number
+}
+
+export interface RetailSyncRequest {
+  clientId: string
+  clientTxnId: string
+  storeId?: string
+  payloadJson: string
+}
+
+export interface RetailSyncResponse {
+  id: string
+  status: RetailSyncStatus
+  message: string | null
 }

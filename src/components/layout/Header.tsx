@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom'
 import { GlobalAskButton } from '@/features/ai/GlobalAskFab'
 import { GlobalSearch } from '@/components/layout/GlobalSearch'
 import { NotificationBell } from '@/components/layout/NotificationBell'
-import { OrganizationSwitcher } from '@/components/layout/OrganizationSwitcher'
 import { Button } from '@/components/ui'
 
 export function Header({
@@ -33,9 +32,6 @@ export function Header({
       >
         {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
       </Button>
-      <div className="min-w-0 shrink">
-        <OrganizationSwitcher />
-      </div>
       <GlobalSearch />
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
         <span className="hidden max-w-[10rem] truncate rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold capitalize tracking-wide text-teal-800 xl:block">

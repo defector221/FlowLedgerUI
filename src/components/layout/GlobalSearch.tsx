@@ -1,14 +1,20 @@
 import { Building2, Package, ReceiptText, Search, ShoppingCart, Truck, Users } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/auth'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
-import { searchApi } from '@/services/api'
+import { aiApi, organizationApi, searchApi } from '@/services/api'
 import type { GlobalSearchHit, GlobalSearchResponse, SearchEntityType } from '@/types/api'
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Input } from '@/components/ui'
+import { flattenNavLeaves, type NavLeaf } from '@/components/layout/sidebar/nav-config'
 
 const PAGE_SIZE = 15
+
+type PaletteItem =
+  | { kind: 'page'; leaf: NavLeaf }
+  | { kind: 'hit'; hit: GlobalSearchHit; groupIcon: typeof Package }
 
 const GROUP_ORDER: { type: SearchEntityType; label: string; icon: typeof Package }[] = [
   { type: 'PRODUCT', label: 'Products', icon: Package },
@@ -55,10 +61,12 @@ function SearchResults({
   loading,
   loadingMore,
   error,
+  pages,
   groups,
   flat,
   activeIndex,
   setActiveIndex,
+  onSelectPage,
   onSelect,
   hasMore,
   total,
@@ -69,25 +77,64 @@ function SearchResults({
   loading: boolean
   loadingMore: boolean
   error: string | null
+  pages: NavLeaf[]
   groups: Array<(typeof GROUP_ORDER)[number] & { hits: GlobalSearchHit[] }>
-  flat: GlobalSearchHit[]
+  flat: PaletteItem[]
   activeIndex: number
   setActiveIndex: (index: number) => void
+  onSelectPage: (leaf: NavLeaf) => void
   onSelect: (hit: GlobalSearchHit) => void
   hasMore: boolean
   total: number
   onLoadMore: () => void
 }) {
+  const trimmed = query.trim()
+  const entityFlat = flat.filter((item) => item.kind === 'hit')
+  const empty = !loading && !error && trimmed.length > 0 && flat.length === 0
+
   return (
     <div id={listId} role="listbox" className="max-h-[min(28rem,70vh)] overflow-auto p-2">
-      {query.trim().length < 2 ? (
-        <p className="px-3 py-6 text-sm text-slate-500">Type at least 2 characters to search.</p>
+      {trimmed.length === 0 ? (
+        <p className="px-3 py-6 text-sm text-slate-500">Search pages, customers, products, invoices…</p>
+      ) : null}
+
+      {pages.length > 0 ? (
+        <div className="mb-2">
+          <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Pages</p>
+          {pages.map((leaf) => {
+            const index = flat.findIndex((item) => item.kind === 'page' && item.leaf.id === leaf.id)
+            const active = index === activeIndex
+            const Icon = leaf.icon
+            return (
+              <button
+                key={leaf.id}
+                type="button"
+                role="option"
+                aria-selected={active}
+                className={cn(
+                  'flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors',
+                  active ? 'bg-teal-50 text-teal-950' : 'hover:bg-slate-50',
+                )}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => onSelectPage(leaf)}
+              >
+                <Icon className="mt-0.5 size-4 shrink-0 text-slate-500" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{leaf.label}</span>
+                  <span className="block truncate text-xs text-slate-500">{leaf.to}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+
+      {trimmed.length > 0 && trimmed.length < 2 && pages.length === 0 ? (
+        <p className="px-3 py-4 text-sm text-slate-500">Type at least 2 characters to search records.</p>
       ) : null}
       {loading ? <p className="px-3 py-6 text-sm text-slate-500">Searching…</p> : null}
       {!loading && error ? <p className="px-3 py-6 text-sm text-rose-600">{error}</p> : null}
-      {!loading && !error && query.trim().length >= 2 && flat.length === 0 ? (
-        <p className="px-3 py-6 text-sm text-slate-500">No matches for “{query.trim()}”</p>
-      ) : null}
+      {empty ? <p className="px-3 py-6 text-sm text-slate-500">No matches for “{trimmed}”</p> : null}
       {!loading && !error
         ? groups.map((group) => (
             <div key={group.type} className="mb-2">
@@ -96,7 +143,10 @@ function SearchResults({
               </p>
               {group.hits.map((hit) => {
                 const index = flat.findIndex(
-                  (item) => item.entityId === hit.entityId && item.entityType === hit.entityType,
+                  (item) =>
+                    item.kind === 'hit' &&
+                    item.hit.entityId === hit.entityId &&
+                    item.hit.entityType === hit.entityType,
                 )
                 const active = index === activeIndex
                 const Icon = group.icon
@@ -131,10 +181,10 @@ function SearchResults({
             </div>
           ))
         : null}
-      {!loading && !error && flat.length > 0 ? (
+      {!loading && !error && entityFlat.length > 0 ? (
         <div className="border-t border-slate-100 px-2 pt-2">
           <p className="px-1 pb-2 text-[11px] text-slate-400">
-            Showing {flat.length}
+            Showing {entityFlat.length}
             {total > 0 ? ` of ${total}` : ''}
           </p>
           {hasMore ? (
@@ -157,7 +207,7 @@ function SearchResults({
 
 export function GlobalSearch() {
   const navigate = useNavigate()
-  const { activeOrganization } = useAuth()
+  const { activeOrganization, canAccessModule } = useAuth()
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -174,6 +224,20 @@ export function GlobalSearch() {
   const [error, setError] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const searchActive = dropdownOpen || paletteOpen
+
+  const aiHealth = useQuery({
+    queryKey: ['ai-health'],
+    queryFn: () => aiApi.health(),
+    retry: false,
+    staleTime: 60_000,
+  })
+  const orgSettings = useQuery({
+    queryKey: ['organization', 'ops-settings'],
+    queryFn: organizationApi.settings,
+    staleTime: 30_000,
+  })
+  const aiAvailable = aiHealth.isSuccess && aiHealth.data?.enabled !== false
+  const retailEnabled = orgSettings.data?.retailEnabled === true
 
   useEffect(() => {
     setDropdownOpen(false)
@@ -282,6 +346,22 @@ export function GlobalSearch() {
     }
   }
 
+  const pageMatches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q || !searchActive) return []
+    return flattenNavLeaves()
+      .filter((leaf) => {
+        if (!canAccessModule(leaf.module)) return false
+        if (leaf.module === 'retail' || leaf.to.startsWith('/retail')) return retailEnabled
+        if (leaf.module === 'ai' || leaf.module === 'aiRecommendations' || leaf.module === 'aiWorkflow') {
+          return aiAvailable
+        }
+        const hay = [leaf.label, leaf.to, ...(leaf.keywords ?? [])].join(' ').toLowerCase()
+        return hay.includes(q)
+      })
+      .slice(0, 8)
+  }, [query, searchActive, canAccessModule, retailEnabled, aiAvailable])
+
   const groups = useMemo(
     () =>
       GROUP_ORDER.map((group) => ({
@@ -291,7 +371,15 @@ export function GlobalSearch() {
     [results],
   )
 
-  const flat = useMemo(() => groups.flatMap((group) => group.hits), [groups])
+  const flat = useMemo<PaletteItem[]>(
+    () => [
+      ...pageMatches.map((leaf) => ({ kind: 'page' as const, leaf })),
+      ...groups.flatMap((group) =>
+        group.hits.map((hit) => ({ kind: 'hit' as const, hit, groupIcon: group.icon })),
+      ),
+    ],
+    [pageMatches, groups],
+  )
 
   const resetSearch = () => {
     setDropdownOpen(false)
@@ -306,6 +394,11 @@ export function GlobalSearch() {
   const goTo = (hit: GlobalSearchHit) => {
     resetSearch()
     navigate(pathFor(hit))
+  }
+
+  const goToPage = (leaf: NavLeaf) => {
+    resetSearch()
+    navigate(leaf.to)
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -323,22 +416,27 @@ export function GlobalSearch() {
       setActiveIndex((index) => (index - 1 + flat.length) % flat.length)
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      goTo(flat[activeIndex])
+      const item = flat[activeIndex]
+      if (!item) return
+      if (item.kind === 'page') goToPage(item.leaf)
+      else goTo(item.hit)
     }
   }
 
   const shortcut = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
-  const showDropdown = dropdownOpen && !paletteOpen && query.trim().length >= 2
+  const showDropdown = dropdownOpen && !paletteOpen && query.trim().length >= 1
 
   const resultsProps = {
     query,
     loading,
     loadingMore,
     error,
+    pages: pageMatches,
     groups,
     flat,
     activeIndex,
     setActiveIndex,
+    onSelectPage: goToPage,
     onSelect: goTo,
     hasMore,
     total,
@@ -353,7 +451,7 @@ export function GlobalSearch() {
           <Input
             ref={inputRef}
             className="border-slate-200/90 bg-slate-50/80 pl-9 pr-14 shadow-none focus:bg-white"
-            placeholder="Search products, customers, invoices…"
+            placeholder="Search pages, customers, invoices…"
             value={query}
             role="combobox"
             aria-expanded={showDropdown}
@@ -404,14 +502,14 @@ export function GlobalSearch() {
           <div className="border-b border-slate-200 px-4 py-3 pr-12">
             <DialogTitle className="sr-only">Global search</DialogTitle>
             <DialogDescription className="sr-only">
-              Search across your active organization via OpenSearch
+              Search pages and records across your active organization
             </DialogDescription>
             <div className="relative">
               <Search className="absolute left-0 top-2.5 size-4 text-slate-400" />
               <Input
                 ref={dialogInputRef}
                 className="border-0 bg-transparent pl-7 shadow-none focus:ring-0"
-                placeholder="Search products, customers, invoices…"
+                placeholder="Search pages, customers, invoices…"
                 value={query}
                 autoComplete="off"
                 onChange={(event) => setQuery(event.target.value)}

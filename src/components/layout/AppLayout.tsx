@@ -8,7 +8,11 @@ const STORAGE_KEY = 'flowledger.sidebarCollapsed'
 
 function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === '1'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === '1') return true
+    if (stored === '0') return false
+    // No preference yet: tablets / narrow desktops start collapsed
+    return window.matchMedia('(max-width: 1279px)').matches
   } catch {
     return false
   }
@@ -38,7 +42,7 @@ export function AppLayout() {
     <div className="min-h-screen overflow-x-hidden">
       <AppSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} collapsed={collapsed} />
       <div
-        className={cn('min-w-0 transition-[padding] duration-200 ease-out', collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64')}
+        className={cn('min-w-0 transition-[padding] duration-200 ease-out', collapsed ? 'lg:pl-[72px]' : 'lg:pl-[280px]')}
       >
         <Header onMenu={() => setMobileOpen(true)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
         <main className="app-shell-main mx-auto max-w-[1600px] px-3 py-4 sm:px-6 sm:py-6 lg:p-8">

@@ -119,9 +119,7 @@ export function PosSalesPage() {
                   <tbody>
                     {rows.map((sale) => (
                       <tr key={sale.id} className="border-b border-slate-100 last:border-0">
-                        <td className="px-4 py-3 font-mono text-xs">
-                          {sale.billNumber || sale.id.slice(0, 8)}
-                        </td>
+                        <td className="px-4 py-3 font-mono text-xs">{sale.billNumber || sale.id.slice(0, 8)}</td>
                         <td className="px-4 py-3">{storeById.get(sale.storeId)?.name ?? '—'}</td>
                         <td className="px-4 py-3">
                           <span
@@ -139,9 +137,7 @@ export function PosSalesPage() {
                         <td className="px-4 py-3">{sale.lines?.length ?? 0}</td>
                         <td className="px-4 py-3 font-mono">{Number(sale.grandTotal ?? 0).toFixed(2)}</td>
                         <td className="px-4 py-3 text-slate-500">
-                          {sale.completedAt
-                            ? new Date(sale.completedAt).toLocaleString()
-                            : sale.heldLabel || '—'}
+                          {sale.completedAt ? new Date(sale.completedAt).toLocaleString() : sale.heldLabel || '—'}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">

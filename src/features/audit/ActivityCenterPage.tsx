@@ -104,21 +104,18 @@ export function ActivityCenterPage() {
   })
 
   const serverRows = listQuery.data?.content ?? []
-  const rows = useMemo(
-    () => serverRows.filter((row) => matchesClientFilters(row, filters)),
-    [serverRows, filters],
-  )
+  const rows = useMemo(() => serverRows.filter((row) => matchesClientFilters(row, filters)), [serverRows, filters])
   const totalElements = listQuery.data?.totalElements ?? 0
   const totalPages = Math.max(1, listQuery.data?.totalPages ?? 1)
   const hasFilters = Boolean(
     filters.search ||
-      filters.action ||
-      filters.entityType ||
-      filters.module !== 'All' ||
-      filters.from ||
-      filters.to ||
-      filters.severity !== 'all' ||
-      filters.ipAddress,
+    filters.action ||
+    filters.entityType ||
+    filters.module !== 'All' ||
+    filters.from ||
+    filters.to ||
+    filters.severity !== 'all' ||
+    filters.ipAddress,
   )
 
   const activeChips = useMemo(() => {
@@ -274,7 +271,11 @@ export function ActivityCenterPage() {
                 : `${totalElements.toLocaleString()} matching events · ${resolveModuleLabel(filters.module)}`}
             </p>
           </div>
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" role="tablist" aria-label="View mode">
+          <div
+            className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1"
+            role="tablist"
+            aria-label="View mode"
+          >
             <button
               type="button"
               role="tab"
@@ -314,11 +315,7 @@ export function ActivityCenterPage() {
             onOpen={setSelectedId}
           />
         ) : (
-          <AuditTimeline
-            rows={rows}
-            loading={listQuery.isLoading && !listQuery.data}
-            onOpen={setSelectedId}
-          />
+          <AuditTimeline rows={rows} loading={listQuery.isLoading && !listQuery.data} onOpen={setSelectedId} />
         )}
 
         <ActivityPagination

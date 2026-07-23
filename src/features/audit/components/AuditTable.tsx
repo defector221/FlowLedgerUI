@@ -54,17 +54,7 @@ export function AuditTable({
     <Table fill stickyHeader>
       <thead className="hidden lg:table-header-group">
         <tr className="border-b border-slate-200">
-          {[
-            'Status',
-            'Action',
-            'Module',
-            'Entity',
-            'Performed by',
-            'IP',
-            'Device',
-            'Date',
-            'Actions',
-          ].map((label) => (
+          {['Status', 'Action', 'Module', 'Entity', 'Performed by', 'IP', 'Device', 'Date', 'Actions'].map((label) => (
             <th
               key={label}
               className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"

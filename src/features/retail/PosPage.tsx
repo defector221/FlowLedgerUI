@@ -102,9 +102,7 @@ export function PosPage() {
   const customers = useQuery({
     queryKey: ['customers', 'pos', customerQuery],
     queryFn: () => customerApi.list({ search: customerQuery.trim() || undefined, size: 8 }),
-    enabled:
-      customerQuery.trim().length >= 2 ||
-      /^\d{3,}$/.test(customerQuery.trim().replace(/\D/g, '')),
+    enabled: customerQuery.trim().length >= 2 || /^\d{3,}$/.test(customerQuery.trim().replace(/\D/g, '')),
   })
   const loyalty = useQuery({
     queryKey: ['retail', 'loyalty', sale?.customerId],
@@ -117,10 +115,7 @@ export function PosPage() {
     enabled: !!sale?.customerId,
   })
 
-  const openShifts = useMemo(
-    () => (shifts.data ?? []).filter((s) => s.status === 'OPEN'),
-    [shifts.data],
-  )
+  const openShifts = useMemo(() => (shifts.data ?? []).filter((s) => s.status === 'OPEN'), [shifts.data])
 
   const storeList = stores.data ?? []
   const selectedStore = storeList.find((s) => s.id === storeId)
@@ -246,9 +241,7 @@ export function PosPage() {
       setBusy(true)
       setLastError(null)
       try {
-        const product = await retailApi.pos.lookupProduct(
-          /^\d{4,}$/.test(code) ? { barcode: code } : { q: code },
-        )
+        const product = await retailApi.pos.lookupProduct(/^\d{4,}$/.test(code) ? { barcode: code } : { q: code })
         const draft = await ensureDraft()
         const next = await retailApi.pos.addLine(draft.id, {
           productId: product.productId,
@@ -533,9 +526,7 @@ export function PosPage() {
   )
 
   if (settings.isLoading && capabilities.isLoading) {
-    return (
-      <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950 text-slate-300">Loading POS…</div>
-    )
+    return <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950 text-slate-300">Loading POS…</div>
   }
 
   if (
@@ -694,7 +685,9 @@ export function PosPage() {
           </form>
 
           {lastError ? (
-            <div className="border-b border-rose-500/40 bg-rose-950/50 px-4 py-2 text-sm text-rose-100">{lastError}</div>
+            <div className="border-b border-rose-500/40 bg-rose-950/50 px-4 py-2 text-sm text-rose-100">
+              {lastError}
+            </div>
           ) : null}
 
           {productSearch.isFetching ? (
@@ -783,107 +776,101 @@ export function PosPage() {
               </div>
             ) : (
               <>
-              <ul className="space-y-2">
-                {lines.map((line) => (
-                  <li
-                    key={line.id}
-                    className={cn(
-                      'flex items-center gap-3 rounded-xl border px-3 py-3 transition',
-                      selectedLineId === line.id
-                        ? 'border-teal-500/50 bg-teal-500/10'
-                        : 'border-white/10 bg-white/5 hover:border-white/20',
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => selectLine(line.id)}
+                <ul className="space-y-2">
+                  {lines.map((line) => (
+                    <li
+                      key={line.id}
+                      className={cn(
+                        'flex items-center gap-3 rounded-xl border px-3 py-3 transition',
+                        selectedLineId === line.id
+                          ? 'border-teal-500/50 bg-teal-500/10'
+                          : 'border-white/10 bg-white/5 hover:border-white/20',
+                      )}
                     >
-                      <p className="truncate font-medium text-white">{line.description ?? 'Item'}</p>
-                      <p className="text-xs text-slate-400">
-                        {line.quantity} × {Number(line.rate).toFixed(2)}
-                        {line.barcode ? ` · ${line.barcode}` : ''}
-                        {Number(line.discountPercent) > 0 ? ` · −${Number(line.discountPercent)}%` : ''}
+                      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => selectLine(line.id)}>
+                        <p className="truncate font-medium text-white">{line.description ?? 'Item'}</p>
+                        <p className="text-xs text-slate-400">
+                          {line.quantity} × {Number(line.rate).toFixed(2)}
+                          {line.barcode ? ` · ${line.barcode}` : ''}
+                          {Number(line.discountPercent) > 0 ? ` · −${Number(line.discountPercent)}%` : ''}
+                        </p>
+                      </button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-slate-300 hover:bg-white/10"
+                          disabled={busy}
+                          onClick={() => void bumpQty(line.id, -1)}
+                        >
+                          −
+                        </Button>
+                        <span className="w-6 text-center font-mono text-sm">{Number(line.quantity)}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-slate-300 hover:bg-white/10"
+                          disabled={busy}
+                          onClick={() => void bumpQty(line.id, 1)}
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <p className="w-20 text-right font-mono text-sm text-teal-300">
+                        {Number(line.lineTotal).toFixed(2)}
                       </p>
-                    </button>
-                    <div className="flex items-center gap-1">
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="size-8 text-slate-300 hover:bg-white/10"
+                        className="shrink-0 text-slate-400 hover:bg-rose-500/20 hover:text-rose-300"
+                        onClick={() => void removeLine(line.id)}
                         disabled={busy}
-                        onClick={() => void bumpQty(line.id, -1)}
                       >
-                        −
+                        <Trash2 className="size-4" />
                       </Button>
-                      <span className="w-6 text-center font-mono text-sm">{Number(line.quantity)}</span>
+                    </li>
+                  ))}
+                </ul>
+                {selectedLineId ? (
+                  <div className="mt-3 rounded-xl border border-teal-500/30 bg-teal-950/30 p-3">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-teal-200/80">Line discount</p>
+                    <div className="flex flex-wrap gap-2">
+                      {DISCOUNT_PRESETS.map((pct) => (
+                        <Button
+                          key={pct}
+                          size="sm"
+                          variant="outline"
+                          className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                          disabled={busy}
+                          onClick={() => void applyLineDiscount(pct)}
+                        >
+                          {pct}%
+                        </Button>
+                      ))}
+                      <Input
+                        value={lineDiscount}
+                        onChange={(e) => setLineDiscount(e.target.value)}
+                        className="h-8 w-20 border-white/15 bg-white/5 text-white"
+                        inputMode="decimal"
+                        placeholder="%"
+                      />
+                      <Button size="sm" disabled={busy} onClick={() => void applyLineDiscount()}>
+                        Apply
+                      </Button>
                       <Button
-                        size="icon"
+                        size="sm"
                         variant="ghost"
-                        className="size-8 text-slate-300 hover:bg-white/10"
+                        className="text-slate-400"
                         disabled={busy}
-                        onClick={() => void bumpQty(line.id, 1)}
+                        onClick={() => void applyLineDiscount(0)}
                       >
-                        +
+                        Clear
                       </Button>
                     </div>
-                    <p className="w-20 text-right font-mono text-sm text-teal-300">
-                      {Number(line.lineTotal).toFixed(2)}
-                    </p>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="shrink-0 text-slate-400 hover:bg-rose-500/20 hover:text-rose-300"
-                      onClick={() => void removeLine(line.id)}
-                      disabled={busy}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-              {selectedLineId ? (
-                <div className="mt-3 rounded-xl border border-teal-500/30 bg-teal-950/30 p-3">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-teal-200/80">
-                    Line discount
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {DISCOUNT_PRESETS.map((pct) => (
-                      <Button
-                        key={pct}
-                        size="sm"
-                        variant="outline"
-                        className="border-white/15 bg-transparent text-white hover:bg-white/10"
-                        disabled={busy}
-                        onClick={() => void applyLineDiscount(pct)}
-                      >
-                        {pct}%
-                      </Button>
-                    ))}
-                    <Input
-                      value={lineDiscount}
-                      onChange={(e) => setLineDiscount(e.target.value)}
-                      className="h-8 w-20 border-white/15 bg-white/5 text-white"
-                      inputMode="decimal"
-                      placeholder="%"
-                    />
-                    <Button size="sm" disabled={busy} onClick={() => void applyLineDiscount()}>
-                      Apply
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-slate-400"
-                      disabled={busy}
-                      onClick={() => void applyLineDiscount(0)}
-                    >
-                      Clear
-                    </Button>
                   </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-center text-xs text-slate-500">Tap a line to set product discount</p>
-              )}
+                ) : (
+                  <p className="mt-3 text-center text-xs text-slate-500">Tap a line to set product discount</p>
+                )}
               </>
             )}
           </div>
@@ -919,9 +906,7 @@ export function PosPage() {
                           <span className="min-w-0 truncate">{c.customerName}</span>
                           <span className="ml-auto shrink-0 font-mono text-xs text-slate-500">{c.customerCode}</span>
                         </span>
-                        {c.phone ? (
-                          <span className="font-mono text-xs text-teal-300/90">{c.phone}</span>
-                        ) : null}
+                        {c.phone ? <span className="font-mono text-xs text-teal-300/90">{c.phone}</span> : null}
                       </button>
                     ))}
                   </div>
@@ -968,9 +953,7 @@ export function PosPage() {
                     size="sm"
                     className="shrink-0"
                     disabled={busy || !sale?.customerId}
-                    onClick={() =>
-                      void applyBillAdjustments({ loyaltyPointsRedeemed: Number(loyaltyRedeem) || 0 })
-                    }
+                    onClick={() => void applyBillAdjustments({ loyaltyPointsRedeemed: Number(loyaltyRedeem) || 0 })}
                   >
                     Redeem
                   </Button>
@@ -1223,10 +1206,8 @@ export function PosPage() {
                             {held.heldLabel || `Hold ${held.id.slice(0, 8)}`}
                           </p>
                           <p className="mt-0.5 text-xs text-slate-400">
-                            {(held.lines?.length ?? 0)} item{(held.lines?.length ?? 0) === 1 ? '' : 's'}
-                            {sale?.status === 'DRAFT' && sale.lines?.length
-                              ? ' · current cart will be held'
-                              : ''}
+                            {held.lines?.length ?? 0} item{(held.lines?.length ?? 0) === 1 ? '' : 's'}
+                            {sale?.status === 'DRAFT' && sale.lines?.length ? ' · current cart will be held' : ''}
                           </p>
                         </div>
                         <span className="shrink-0 font-mono text-teal-300">
@@ -1389,7 +1370,11 @@ export function PosPage() {
                   inputMode="email"
                 />
               </div>
-              <Button className="w-full" disabled={busy || !newCustomerName.trim()} onClick={() => void createCustomer()}>
+              <Button
+                className="w-full"
+                disabled={busy || !newCustomerName.trim()}
+                onClick={() => void createCustomer()}
+              >
                 Save & attach to bill
               </Button>
             </CardContent>

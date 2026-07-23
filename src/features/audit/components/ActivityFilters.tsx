@@ -2,12 +2,7 @@ import type { ReactNode } from 'react'
 import { Search, X } from 'lucide-react'
 import { Button, Input, Label } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import {
-  MODULE_CHIPS,
-  type ActivityFiltersState,
-  type AuditModule,
-  type AuditSeverity,
-} from '../audit-model'
+import { MODULE_CHIPS, type ActivityFiltersState, type AuditModule, type AuditSeverity } from '../audit-model'
 import { FilterChipBar } from './FilterChipBar'
 
 export function ActivityFilters({

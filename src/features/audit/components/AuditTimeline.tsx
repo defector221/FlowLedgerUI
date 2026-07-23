@@ -1,12 +1,7 @@
 import { EmptyState } from '@/components/layout/PageChrome'
 import { Badge, Skeleton } from '@/components/ui'
 import type { AuditLogResponse } from '@/types/api'
-import {
-  classifyAction,
-  entityDisplayName,
-  formatAbsoluteDate,
-  resolveModule,
-} from '../audit-model'
+import { classifyAction, entityDisplayName, formatAbsoluteDate, resolveModule } from '../audit-model'
 import { AuditActionBadge } from './AuditActionBadge'
 
 export function AuditTimeline({

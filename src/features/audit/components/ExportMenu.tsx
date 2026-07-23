@@ -1,12 +1,6 @@
 import { Download } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui'
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui'
 import type { AuditLogResponse } from '@/types/api'
 import { downloadText, rowsToCsv } from '../audit-model'
 
@@ -49,11 +43,7 @@ export function ExportMenu({ rows }: { rows: AuditLogResponse[] }) {
         <DropdownMenuItem
           onSelect={() => {
             if (!ensureRows()) return
-            downloadText(
-              `activity-center-${Date.now()}.json`,
-              JSON.stringify(rows, null, 2),
-              'application/json',
-            )
+            downloadText(`activity-center-${Date.now()}.json`, JSON.stringify(rows, null, 2), 'application/json')
             toast.success('JSON exported')
           }}
         >
@@ -93,9 +83,5 @@ export function ExportMenu({ rows }: { rows: AuditLogResponse[] }) {
 }
 
 function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }

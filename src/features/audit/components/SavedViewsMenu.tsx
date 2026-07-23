@@ -1,18 +1,8 @@
 import { Bookmark } from 'lucide-react'
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui'
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui'
 import { SAVED_VIEWS, todayIso, type ActivityFiltersState, type SavedViewId } from '../audit-model'
 
-export function SavedViewsMenu({
-  onApply,
-}: {
-  onApply: (viewId: SavedViewId, filters: ActivityFiltersState) => void
-}) {
+export function SavedViewsMenu({ onApply }: { onApply: (viewId: SavedViewId, filters: ActivityFiltersState) => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

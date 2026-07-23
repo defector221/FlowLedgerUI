@@ -21,13 +21,7 @@ const TONE: Record<NonNullable<SummaryMetric['tone']>, string> = {
   slate: 'bg-slate-100 text-slate-700',
 }
 
-export function ActivitySummaryCards({
-  metrics,
-  loading,
-}: {
-  metrics: SummaryMetric[]
-  loading?: boolean
-}) {
+export function ActivitySummaryCards({ metrics, loading }: { metrics: SummaryMetric[]; loading?: boolean }) {
   if (loading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
@@ -55,17 +49,10 @@ export function ActivitySummaryCards({
           >
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-2">
-                <span
-                  className={cn(
-                    'grid size-9 place-items-center rounded-lg',
-                    TONE[metric.tone ?? 'teal'],
-                  )}
-                >
+                <span className={cn('grid size-9 place-items-center rounded-lg', TONE[metric.tone ?? 'teal'])}>
                   <Icon className="size-4" aria-hidden />
                 </span>
-                {metric.trend ? (
-                  <span className="text-[11px] font-semibold text-teal-700">{metric.trend}</span>
-                ) : null}
+                {metric.trend ? <span className="text-[11px] font-semibold text-teal-700">{metric.trend}</span> : null}
               </div>
               <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">{metric.value}</p>
               <p className="mt-1 text-sm font-medium text-slate-800">{metric.label}</p>

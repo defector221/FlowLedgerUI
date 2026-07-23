@@ -18,15 +18,7 @@ export type AuditSeverity = 'information' | 'warning' | 'critical' | 'security'
 
 export type ActivityViewMode = 'table' | 'timeline'
 
-export type SavedViewId =
-  | 'today'
-  | 'security'
-  | 'inventory'
-  | 'retail'
-  | 'finance'
-  | 'ai'
-  | 'failed'
-  | 'configuration'
+export type SavedViewId = 'today' | 'security' | 'inventory' | 'retail' | 'finance' | 'ai' | 'failed' | 'configuration'
 
 export type ActivityFiltersState = {
   search: string
@@ -374,16 +366,7 @@ export function rowsToCsv(rows: AuditLogResponse[]) {
   const lines = [
     header.join(','),
     ...rows.map((row) =>
-      [
-        row.id,
-        row.action,
-        row.entityType,
-        row.entityId,
-        row.userName,
-        row.userEmail,
-        row.ipAddress,
-        row.createdAt,
-      ]
+      [row.id, row.action, row.entityType, row.entityId, row.userName, row.userEmail, row.ipAddress, row.createdAt]
         .map(escape)
         .join(','),
     ),

@@ -199,10 +199,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {highlightMatch(text, query).map((part, index) => (
-        <span
-          key={`${part.text}-${index}`}
-          className={cn(part.match && 'rounded bg-amber-100 px-0.5 text-amber-900')}
-        >
+        <span key={`${part.text}-${index}`} className={cn(part.match && 'rounded bg-amber-100 px-0.5 text-amber-900')}>
           {part.text}
         </span>
       ))}

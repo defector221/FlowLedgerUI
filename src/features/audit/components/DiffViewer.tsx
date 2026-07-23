@@ -62,10 +62,7 @@ export function DiffViewer({ before, after }: { before: unknown; after: unknown 
   )
 }
 
-function buildDiff(
-  before: Record<string, unknown> | null,
-  after: Record<string, unknown> | null,
-): DiffEntry[] {
+function buildDiff(before: Record<string, unknown> | null, after: Record<string, unknown> | null): DiffEntry[] {
   if (!before || !after) return []
   const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)])).sort()
   return keys

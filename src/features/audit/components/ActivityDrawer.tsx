@@ -57,7 +57,12 @@ export function ActivityDrawer({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Activity details">
-      <button type="button" className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" aria-label="Close drawer" onClick={onClose} />
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"
+        aria-label="Close drawer"
+        onClick={onClose}
+      />
       <aside className="relative z-10 flex h-full w-full max-w-[500px] translate-x-0 flex-col border-l border-slate-200 bg-white shadow-[var(--shadow-lift)] transition-transform duration-200">
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
@@ -126,7 +131,9 @@ export function ActivityDrawer({
 
               <DiffViewer before={detail.oldValue} after={asRequestDiff(detail.newValue)} />
               <JsonViewer label="Event payload" value={detail.newValue} />
-              {detail.oldValue ? <JsonViewer label="Previous value" value={detail.oldValue} defaultExpanded={false} /> : null}
+              {detail.oldValue ? (
+                <JsonViewer label="Previous value" value={detail.oldValue} defaultExpanded={false} />
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -79,10 +79,7 @@ function buildPrintHtml(
     )
     .join('')
   const payments = (sale.payments ?? [])
-    .map(
-      (p) =>
-        `<div class="row"><span>${escapeHtml(p.paymentMode)}</span><span>${money(p.amount)}</span></div>`,
-    )
+    .map((p) => `<div class="row"><span>${escapeHtml(p.paymentMode)}</span><span>${money(p.amount)}</span></div>`)
     .join('')
   const addressHtml = opts.addressLines.map((line) => `<div>${escapeHtml(line)}</div>`).join('')
 
@@ -158,16 +155,7 @@ function buildPrintHtml(
 </html>`
 }
 
-export function PosReceiptActions({
-  sale,
-  store,
-  storeName,
-  customerName,
-  gstin,
-  legalName,
-  onClose,
-  compact,
-}: Props) {
+export function PosReceiptActions({ sale, store, storeName, customerName, gstin, legalName, onClose, compact }: Props) {
   const printRef = useRef<HTMLDivElement>(null)
   const bill = sale.billNumber || sale.id.slice(0, 8)
   const when = sale.completedAt ? new Date(sale.completedAt).toLocaleString('en-IN') : null
@@ -245,9 +233,7 @@ export function PosReceiptActions({
         <div className="bg-slate-900 px-5 py-4 text-center text-white">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-teal-300">Retail receipt</p>
           <h3 className="mt-1 font-display text-lg font-semibold tracking-tight">{displayStoreName}</h3>
-          {legal && legal !== displayStoreName ? (
-            <p className="mt-0.5 text-xs text-slate-300">{legal}</p>
-          ) : null}
+          {legal && legal !== displayStoreName ? <p className="mt-0.5 text-xs text-slate-300">{legal}</p> : null}
           {addressLines.length ? (
             <div className="mt-2 space-y-0.5 text-[11px] leading-snug text-slate-400">
               {addressLines.map((line) => (

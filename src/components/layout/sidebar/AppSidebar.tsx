@@ -182,9 +182,7 @@ function CompactSectionFlyout({
       className="fixed z-[80] min-w-[13.5rem] rounded-xl border border-white/10 bg-slate-900 p-2 shadow-2xl"
       style={{ top: pos.top, left: pos.left }}
     >
-      <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-        {section.label}
-      </p>
+      <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{section.label}</p>
       {section.items.map((item) => (
         <NavItemRow key={item.id} item={item} active={item.to === activePath} onNavigate={onNavigate} />
       ))}
@@ -458,295 +456,296 @@ export function AppSidebar({
 
   const renderAside = (opts: { compact: boolean; showClose?: boolean }) => {
     const compact = opts.compact
-    const accountLabel =
-      `${session?.user.firstName ?? ''} ${session?.user.lastName ?? ''}`.trim() || 'Account'
+    const accountLabel = `${session?.user.firstName ?? ''} ${session?.user.lastName ?? ''}`.trim() || 'Account'
     return (
       <TooltipProvider delayDuration={250}>
-      <aside
-        ref={asideRef}
-        className={cn(
-          'flex h-full w-full flex-col overflow-hidden text-slate-300 shadow-[4px_0_24px_rgb(2_6_23/0.28)] transition-[width] duration-200 ease-out [color-scheme:dark]',
-          'bg-[#0F172A]',
-          compact ? 'px-2 py-3' : 'px-3 py-4',
-        )}
-        style={{
-          backgroundImage: 'linear-gradient(180deg, #0F172A 0%, #111827 100%)',
-        }}
-      >
-        {/* Header */}
-        <div className={cn('mb-3 shrink-0', compact ? 'flex flex-col items-center gap-2' : 'space-y-3 px-1')}>
-          <div className={cn('flex items-center', compact ? 'justify-center' : 'justify-between')}>
-            <IconTooltip label="FlowLedger" disabled={!compact}>
-              <Link
-                to="/"
-                onClick={onMobileClose}
-                aria-label="FlowLedger"
-                className={cn(
-                  'font-display font-semibold tracking-tight text-white',
-                  compact ? 'grid size-10 place-items-center rounded-xl bg-white/5 text-sm' : 'text-xl',
-                )}
-              >
-                {compact ? (
-                  'FL'
-                ) : (
-                  <>
-                    Flow
-                    <span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">
-                      Ledger
-                    </span>
-                  </>
-                )}
-              </Link>
-            </IconTooltip>
-            {opts.showClose ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-slate-400 hover:bg-white/5 hover:text-white lg:hidden"
-                onClick={onMobileClose}
-                aria-label="Close menu"
-              >
-                <X className="size-5" />
-              </Button>
+        <aside
+          ref={asideRef}
+          className={cn(
+            'flex h-full w-full flex-col overflow-hidden text-slate-300 shadow-[4px_0_24px_rgb(2_6_23/0.28)] transition-[width] duration-200 ease-out [color-scheme:dark]',
+            'bg-[#0F172A]',
+            compact ? 'px-2 py-3' : 'px-3 py-4',
+          )}
+          style={{
+            backgroundImage: 'linear-gradient(180deg, #0F172A 0%, #111827 100%)',
+          }}
+        >
+          {/* Header */}
+          <div className={cn('mb-3 shrink-0', compact ? 'flex flex-col items-center gap-2' : 'space-y-3 px-1')}>
+            <div className={cn('flex items-center', compact ? 'justify-center' : 'justify-between')}>
+              <IconTooltip label="FlowLedger" disabled={!compact}>
+                <Link
+                  to="/"
+                  onClick={onMobileClose}
+                  aria-label="FlowLedger"
+                  className={cn(
+                    'font-display font-semibold tracking-tight text-white',
+                    compact ? 'grid size-10 place-items-center rounded-xl bg-white/5 text-sm' : 'text-xl',
+                  )}
+                >
+                  {compact ? (
+                    'FL'
+                  ) : (
+                    <>
+                      Flow
+                      <span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">
+                        Ledger
+                      </span>
+                    </>
+                  )}
+                </Link>
+              </IconTooltip>
+              {opts.showClose ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-400 hover:bg-white/5 hover:text-white lg:hidden"
+                  onClick={onMobileClose}
+                  aria-label="Close menu"
+                >
+                  <X className="size-5" />
+                </Button>
+              ) : null}
+            </div>
+            {!compact ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-1 [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-1.5 [&_button]:hover:bg-white/5 [&_p]:text-slate-200 [&_p.text-slate-500]:text-slate-400 [&_p.text-slate-900]:text-white [&_span.bg-teal-700]:bg-teal-600">
+                <OrganizationSwitcher variant="sidebar" />
+              </div>
             ) : null}
           </div>
+
+          {/* Module search */}
           {!compact ? (
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-1 [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-1.5 [&_button]:hover:bg-white/5 [&_p]:text-slate-200 [&_p.text-slate-500]:text-slate-400 [&_p.text-slate-900]:text-white [&_span.bg-teal-700]:bg-teal-600">
-              <OrganizationSwitcher variant="sidebar" />
+            <div className="relative mb-3 shrink-0 px-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+              <input
+                ref={searchInputRef}
+                value={moduleQuery}
+                onChange={(event) => setModuleQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setModuleQuery('')
+                }}
+                placeholder="Search modules..."
+                aria-label="Search modules"
+                className="h-10 w-full rounded-[10px] border border-white/10 bg-white/[0.04] py-2 pl-10 pr-14 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20"
+              />
+              <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-slate-500 sm:inline">
+                {typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}
+              </kbd>
             </div>
           ) : null}
-        </div>
 
-        {/* Module search */}
-        {!compact ? (
-          <div className="relative mb-3 shrink-0 px-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
-            <input
-              ref={searchInputRef}
-              value={moduleQuery}
-              onChange={(event) => setModuleQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') setModuleQuery('')
-              }}
-              placeholder="Search modules..."
-              aria-label="Search modules"
-              className="h-10 w-full rounded-[10px] border border-white/10 bg-white/[0.04] py-2 pl-10 pr-14 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20"
-            />
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-slate-500 sm:inline">
-              {typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}
-            </kbd>
-          </div>
-        ) : null}
-
-        <nav className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-2">
-          {showSearchResults ? (
-            <div className="space-y-0.5">
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Modules</p>
-              {searchableLeaves.length ? (
-                searchableLeaves.map((item) => (
-                  <NavItemRow
-                    key={item.id}
-                    item={item}
-                    active={item.to === activePath}
-                    compact={compact}
-                    favorite={isFavorite(item.id)}
-                    onToggleFavorite={() => toggleFavorite(item.id)}
-                    onNavigate={() => {
-                      setModuleQuery('')
-                      onMobileClose()
-                    }}
-                  />
-                ))
-              ) : (
-                <p className="px-3 py-6 text-center text-xs text-slate-500">No modules match “{moduleQuery}”</p>
-              )}
-            </div>
-          ) : (
-            <>
-              {!compact && pinnedFavorites.length ? (
-                <div>
-                  <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Favorites
-                  </p>
-                  <div className="space-y-0.5">
-                    {pinnedFavorites.map((item) => (
-                      <NavItemRow
-                        key={`fav-${item.id}`}
-                        item={item}
-                        active={item.to === activePath}
-                        favorite
-                        onToggleFavorite={() => toggleFavorite(item.id)}
-                        onNavigate={onMobileClose}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {!compact && pinnedRecents.length ? (
-                <div>
-                  <p className="mb-2 mt-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Recent
-                  </p>
-                  <div className="space-y-0.5">
-                    {pinnedRecents.map((item) => (
-                      <NavItemRow
-                        key={`recent-${item.id}`}
-                        item={item}
-                        active={item.to === activePath}
-                        favorite={isFavorite(item.id)}
-                        onToggleFavorite={() => toggleFavorite(item.id)}
-                        onNavigate={onMobileClose}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
+          <nav className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-2">
+            {showSearchResults ? (
               <div className="space-y-0.5">
-                {!compact ? (
-                  <p className="mb-2 mt-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Modules
-                  </p>
-                ) : null}
-                {visibleEntries.map((entry) => {
-                  if (entry.type === 'link') {
-                    return (
-                      <NavItemRow
-                        key={entry.item.id}
-                        item={entry.item}
-                        active={entry.item.to === activePath}
-                        compact={compact}
-                        favorite={isFavorite(entry.item.id)}
-                        onToggleFavorite={() => toggleFavorite(entry.item.id)}
-                        onNavigate={onMobileClose}
-                      />
-                    )
-                  }
-                  return (
-                    <NavSectionBlock
-                      key={entry.section.id}
-                      section={entry.section}
-                      expanded={expandedId === entry.section.id}
-                      onToggle={() => toggle(entry.section.id)}
+                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Modules
+                </p>
+                {searchableLeaves.length ? (
+                  searchableLeaves.map((item) => (
+                    <NavItemRow
+                      key={item.id}
+                      item={item}
+                      active={item.to === activePath}
                       compact={compact}
-                      activePath={activePath}
-                      favoriteIds={favoriteIds}
-                      onToggleFavorite={toggleFavorite}
+                      favorite={isFavorite(item.id)}
+                      onToggleFavorite={() => toggleFavorite(item.id)}
                       onNavigate={() => {
-                        // Icon-rail flyout should close after navigation; keep desktop accordion open.
-                        if (compact) setExpandedId(null)
+                        setModuleQuery('')
                         onMobileClose()
                       }}
                     />
-                  )
-                })}
+                  ))
+                ) : (
+                  <p className="px-3 py-6 text-center text-xs text-slate-500">No modules match “{moduleQuery}”</p>
+                )}
               </div>
-            </>
-          )}
-        </nav>
+            ) : (
+              <>
+                {!compact && pinnedFavorites.length ? (
+                  <div>
+                    <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      Favorites
+                    </p>
+                    <div className="space-y-0.5">
+                      {pinnedFavorites.map((item) => (
+                        <NavItemRow
+                          key={`fav-${item.id}`}
+                          item={item}
+                          active={item.to === activePath}
+                          favorite
+                          onToggleFavorite={() => toggleFavorite(item.id)}
+                          onNavigate={onMobileClose}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
-        {/* Sticky footer */}
-        <div className="mt-auto shrink-0 border-t border-white/10 pt-3">
-          {!compact ? (
-            <div className="mb-2 space-y-0.5">
-              {canAccessModule('settings') ? (
+                {!compact && pinnedRecents.length ? (
+                  <div>
+                    <p className="mb-2 mt-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      Recent
+                    </p>
+                    <div className="space-y-0.5">
+                      {pinnedRecents.map((item) => (
+                        <NavItemRow
+                          key={`recent-${item.id}`}
+                          item={item}
+                          active={item.to === activePath}
+                          favorite={isFavorite(item.id)}
+                          onToggleFavorite={() => toggleFavorite(item.id)}
+                          onNavigate={onMobileClose}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="space-y-0.5">
+                  {!compact ? (
+                    <p className="mb-2 mt-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      Modules
+                    </p>
+                  ) : null}
+                  {visibleEntries.map((entry) => {
+                    if (entry.type === 'link') {
+                      return (
+                        <NavItemRow
+                          key={entry.item.id}
+                          item={entry.item}
+                          active={entry.item.to === activePath}
+                          compact={compact}
+                          favorite={isFavorite(entry.item.id)}
+                          onToggleFavorite={() => toggleFavorite(entry.item.id)}
+                          onNavigate={onMobileClose}
+                        />
+                      )
+                    }
+                    return (
+                      <NavSectionBlock
+                        key={entry.section.id}
+                        section={entry.section}
+                        expanded={expandedId === entry.section.id}
+                        onToggle={() => toggle(entry.section.id)}
+                        compact={compact}
+                        activePath={activePath}
+                        favoriteIds={favoriteIds}
+                        onToggleFavorite={toggleFavorite}
+                        onNavigate={() => {
+                          // Icon-rail flyout should close after navigation; keep desktop accordion open.
+                          if (compact) setExpandedId(null)
+                          onMobileClose()
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </nav>
+
+          {/* Sticky footer */}
+          <div className="mt-auto shrink-0 border-t border-white/10 pt-3">
+            {!compact ? (
+              <div className="mb-2 space-y-0.5">
+                {canAccessModule('settings') ? (
+                  <button
+                    type="button"
+                    onClick={() => go('/settings/organization')}
+                    className="flex h-10 w-full items-center gap-3 rounded-[10px] px-4 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
+                  >
+                    <Settings className="size-[18px]" />
+                    Settings
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  onClick={() => go('/settings/organization')}
+                  onClick={() => go('/settings/profile')}
                   className="flex h-10 w-full items-center gap-3 rounded-[10px] px-4 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 >
-                  <Settings className="size-[18px]" />
-                  Settings
+                  <UserRound className="size-[18px]" />
+                  Profile
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => go('/settings/profile')}
-                className="flex h-10 w-full items-center gap-3 rounded-[10px] px-4 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
-              >
-                <UserRound className="size-[18px]" />
-                Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => go('/settings/profile')}
-                className="flex h-10 w-full items-center gap-3 rounded-[10px] px-4 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
-              >
-                <HelpCircle className="size-[18px]" />
-                Help
-              </button>
-            </div>
-          ) : null}
-
-          <DropdownMenu>
-            <IconTooltip label={accountLabel} side="top" disabled={!compact}>
-              <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label={accountLabel}
-                  className={cn(
-                    'flex w-full cursor-pointer items-center rounded-[10px] text-left text-sm transition-colors hover:bg-white/[0.05] data-[state=open]:bg-white/[0.05]',
-                    compact ? 'justify-center px-0 py-2' : 'gap-2 px-3 py-2',
-                  )}
+                  onClick={() => go('/settings/profile')}
+                  className="flex h-10 w-full items-center gap-3 rounded-[10px] px-4 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 >
-                  <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-teal-400 to-teal-700 text-xs font-semibold text-white shadow-md">
-                    {initials}
-                  </span>
-                  {!compact ? (
-                    <>
-                      <span className="min-w-0 flex-1 overflow-hidden">
-                        <b className="block truncate text-xs font-semibold text-white">
-                          {session?.user.firstName} {session?.user.lastName}
-                        </b>
-                        <small className="block truncate text-[10px] capitalize text-slate-500">{roleLabel}</small>
-                      </span>
-                      <ChevronRight className="size-4 shrink-0 rotate-[-90deg] text-slate-500" />
-                    </>
-                  ) : null}
+                  <HelpCircle className="size-[18px]" />
+                  Help
                 </button>
-              </DropdownMenuTrigger>
-            </IconTooltip>
-            <DropdownMenuContent side="top" align={compact ? 'center' : 'start'} sideOffset={8} className="w-56">
-              <div className="px-3 py-2">
-                <p className="truncate text-sm font-semibold text-slate-900">
-                  {session?.user.firstName} {session?.user.lastName}
-                </p>
-                {email ? <p className="truncate text-xs text-slate-500">{email}</p> : null}
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => go('/settings/profile')}>
-                <UserRound className="size-4 text-slate-500" />
-                Profile settings
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => go('/settings/password')}>
-                <KeyRound className="size-4 text-slate-500" />
-                Change password
-              </DropdownMenuItem>
-              {canAccessModule('settings') ? (
-                <DropdownMenuItem onSelect={() => go('/settings/organization')}>
-                  <Building2 className="size-4 text-slate-500" />
-                  Organization
+            ) : null}
+
+            <DropdownMenu>
+              <IconTooltip label={accountLabel} side="top" disabled={!compact}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={accountLabel}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center rounded-[10px] text-left text-sm transition-colors hover:bg-white/[0.05] data-[state=open]:bg-white/[0.05]',
+                      compact ? 'justify-center px-0 py-2' : 'gap-2 px-3 py-2',
+                    )}
+                  >
+                    <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-teal-400 to-teal-700 text-xs font-semibold text-white shadow-md">
+                      {initials}
+                    </span>
+                    {!compact ? (
+                      <>
+                        <span className="min-w-0 flex-1 overflow-hidden">
+                          <b className="block truncate text-xs font-semibold text-white">
+                            {session?.user.firstName} {session?.user.lastName}
+                          </b>
+                          <small className="block truncate text-[10px] capitalize text-slate-500">{roleLabel}</small>
+                        </span>
+                        <ChevronRight className="size-4 shrink-0 rotate-[-90deg] text-slate-500" />
+                      </>
+                    ) : null}
+                  </button>
+                </DropdownMenuTrigger>
+              </IconTooltip>
+              <DropdownMenuContent side="top" align={compact ? 'center' : 'start'} sideOffset={8} className="w-56">
+                <div className="px-3 py-2">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {session?.user.firstName} {session?.user.lastName}
+                  </p>
+                  {email ? <p className="truncate text-xs text-slate-500">{email}</p> : null}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => go('/settings/profile')}>
+                  <UserRound className="size-4 text-slate-500" />
+                  Profile settings
                 </DropdownMenuItem>
-              ) : null}
-              {canAccessModule('billing') ? (
-                <DropdownMenuItem onSelect={() => go('/settings/billing')}>
-                  <CreditCard className="size-4 text-slate-500" />
-                  Subscription
+                <DropdownMenuItem onSelect={() => go('/settings/password')}>
+                  <KeyRound className="size-4 text-slate-500" />
+                  Change password
                 </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-rose-700 data-[highlighted]:bg-rose-50 data-[highlighted]:text-rose-800"
-                onSelect={() => void handleLogout()}
-              >
-                <LogOut className="size-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </aside>
+                {canAccessModule('settings') ? (
+                  <DropdownMenuItem onSelect={() => go('/settings/organization')}>
+                    <Building2 className="size-4 text-slate-500" />
+                    Organization
+                  </DropdownMenuItem>
+                ) : null}
+                {canAccessModule('billing') ? (
+                  <DropdownMenuItem onSelect={() => go('/settings/billing')}>
+                    <CreditCard className="size-4 text-slate-500" />
+                    Subscription
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-rose-700 data-[highlighted]:bg-rose-50 data-[highlighted]:text-rose-800"
+                  onSelect={() => void handleLogout()}
+                >
+                  <LogOut className="size-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </aside>
       </TooltipProvider>
     )
   }

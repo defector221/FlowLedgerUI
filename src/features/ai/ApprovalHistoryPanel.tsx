@@ -57,9 +57,7 @@ export function ApprovalHistoryPanel({
           >
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={rejected ? 'danger' : approved ? 'success' : 'warning'}>{request.status}</Badge>
-              <span className="text-sm font-medium text-slate-800">
-                {request.workflowName ?? 'Workflow approval'}
-              </span>
+              <span className="text-sm font-medium text-slate-800">{request.workflowName ?? 'Workflow approval'}</span>
               <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200/80">
                 {contextLabel}
               </span>
@@ -73,9 +71,7 @@ export function ApprovalHistoryPanel({
             {pending ? (
               <p className="mt-2 text-sm text-amber-900">
                 Waiting for{' '}
-                {request.currentStepRole
-                  ? humanizeWorkflowToken(request.currentStepRole).toLowerCase()
-                  : 'approver'}{' '}
+                {request.currentStepRole ? humanizeWorkflowToken(request.currentStepRole).toLowerCase() : 'approver'}{' '}
                 (step {request.currentStep ?? 1}/{request.totalSteps ?? 1}).
               </p>
             ) : null}
@@ -121,7 +117,10 @@ export function ApprovalHistoryPanel({
                 </Link>
               ) : null}
               {pending ? (
-                <Link to={`/ai/workflows?focus=${request.id}`} className="text-xs font-medium text-teal-700 hover:underline">
+                <Link
+                  to={`/ai/workflows?focus=${request.id}`}
+                  className="text-xs font-medium text-teal-700 hover:underline"
+                >
                   Open workflows inbox
                 </Link>
               ) : null}

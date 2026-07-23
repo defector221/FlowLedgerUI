@@ -54,8 +54,8 @@ export function ModulesConsole({
               <div>
                 <p className="font-semibold text-slate-900">Switch to Custom to manage modules freely</p>
                 <p className="mt-0.5 text-sm text-slate-600">
-                  You can still toggle modules now — they apply immediately to the sidebar and app. Custom
-                  keeps your selection if you change edition presets later.
+                  You can still toggle modules now — they apply immediately to the sidebar and app. Custom keeps your
+                  selection if you change edition presets later.
                 </p>
               </div>
             </div>

@@ -55,10 +55,7 @@ export function AppLayout() {
       style={{ ['--app-sidebar-width' as string]: isDesktop ? `${sidebarWidth}px` : '0px' } as CSSProperties}
     >
       <AppSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} collapsed={collapsed} />
-      <div
-        className="min-w-0 transition-[padding] duration-200 ease-out"
-        style={{ paddingLeft: contentPaddingLeft }}
-      >
+      <div className="min-w-0 transition-[padding] duration-200 ease-out" style={{ paddingLeft: contentPaddingLeft }}>
         <Header onMenu={() => setMobileOpen(true)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
         <main className="app-shell-main mx-auto max-w-[1600px] px-3 py-4 sm:px-5 sm:py-5 lg:py-6 lg:pl-5 lg:pr-8">
           <Outlet />

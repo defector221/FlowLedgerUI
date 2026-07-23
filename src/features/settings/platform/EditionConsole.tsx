@@ -1,22 +1,10 @@
-import {
-  Building2,
-  Check,
-  Crown,
-  Layers3,
-  Shield,
-  Sparkles,
-  SlidersHorizontal,
-  Zap,
-} from 'lucide-react'
+import { Building2, Check, Crown, Layers3, Shield, Sparkles, SlidersHorizontal, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Badge, Button, Card, CardContent, Skeleton } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import type { EditionResponse } from '@/platform'
 
-const EDITION_META: Record<
-  string,
-  { icon: LucideIcon; accent: string; blurb: string; highlights: string[] }
-> = {
+const EDITION_META: Record<string, { icon: LucideIcon; accent: string; blurb: string; highlights: string[] }> = {
   LITE: {
     icon: Zap,
     accent: 'from-slate-700 to-slate-900',
@@ -178,9 +166,7 @@ export function EditionConsole({
                     </span>
                     <div className="min-w-0 pr-16">
                       <h4 className="text-lg font-semibold tracking-tight text-slate-900">{edition.displayName}</h4>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-500">
-                        {edition.description || meta.blurb}
-                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-500">{edition.description || meta.blurb}</p>
                     </div>
                   </div>
 

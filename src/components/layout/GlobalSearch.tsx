@@ -13,9 +13,7 @@ import { isPlatformFeatureEnabled, isPlatformModuleEnabled, platformCodeForRbac,
 
 const PAGE_SIZE = 15
 
-type PaletteItem =
-  | { kind: 'page'; leaf: NavLeaf }
-  | { kind: 'hit'; hit: GlobalSearchHit; groupIcon: typeof Package }
+type PaletteItem = { kind: 'page'; leaf: NavLeaf } | { kind: 'hit'; hit: GlobalSearchHit; groupIcon: typeof Package }
 
 const GROUP_ORDER: { type: SearchEntityType; label: string; icon: typeof Package }[] = [
   { type: 'PRODUCT', label: 'Products', icon: Package },
@@ -145,9 +143,7 @@ function SearchResults({
               {group.hits.map((hit) => {
                 const index = flat.findIndex(
                   (item) =>
-                    item.kind === 'hit' &&
-                    item.hit.entityId === hit.entityId &&
-                    item.hit.entityType === hit.entityType,
+                    item.kind === 'hit' && item.hit.entityId === hit.entityId && item.hit.entityType === hit.entityType,
                 )
                 const active = index === activeIndex
                 const Icon = group.icon
@@ -375,9 +371,7 @@ export function GlobalSearch() {
   const flat = useMemo<PaletteItem[]>(
     () => [
       ...pageMatches.map((leaf) => ({ kind: 'page' as const, leaf })),
-      ...groups.flatMap((group) =>
-        group.hits.map((hit) => ({ kind: 'hit' as const, hit, groupIcon: group.icon })),
-      ),
+      ...groups.flatMap((group) => group.hits.map((hit) => ({ kind: 'hit' as const, hit, groupIcon: group.icon }))),
     ],
     [pageMatches, groups],
   )

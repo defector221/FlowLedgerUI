@@ -128,12 +128,8 @@ export function TransportShipmentDetailPage() {
         transportType: header.transportType || undefined,
         transportCompanyId: header.transportCompanyId || null,
         shipToAddress: header.shipToAddress || null,
-        expectedDispatchDate: header.expectedDispatchDate
-          ? new Date(header.expectedDispatchDate).toISOString()
-          : null,
-        expectedDeliveryDate: header.expectedDeliveryDate
-          ? new Date(header.expectedDeliveryDate).toISOString()
-          : null,
+        expectedDispatchDate: header.expectedDispatchDate ? new Date(header.expectedDispatchDate).toISOString() : null,
+        expectedDeliveryDate: header.expectedDeliveryDate ? new Date(header.expectedDeliveryDate).toISOString() : null,
         freightCharges: Number(header.freightCharges) || 0,
         ewayBillNumber: header.ewayBillNumber || null,
         remarks: header.remarks || null,
@@ -175,7 +171,8 @@ export function TransportShipmentDetailPage() {
         })
       } else if (action === 'startLoading') await transportApi.shipments.startLoading(id)
       else if (action === 'loaded') await transportApi.shipments.loaded(id)
-      else if (action === 'checkpoint') await transportApi.shipments.checkpoint(id, { remarks: timelineNote || undefined })
+      else if (action === 'checkpoint')
+        await transportApi.shipments.checkpoint(id, { remarks: timelineNote || undefined })
       else if (action === 'approve') await transportApi.shipments.approve(id)
       else if (action === 'cancel') await transportApi.shipments.cancel(id)
       else await transportApi.shipments[action](id)
@@ -376,9 +373,7 @@ export function TransportShipmentDetailPage() {
                       <Label>Transport company</Label>
                       <Select
                         value={header.transportCompanyId || '__none'}
-                        onValueChange={(v) =>
-                          setHeader((h) => ({ ...h, transportCompanyId: v === '__none' ? '' : v }))
-                        }
+                        onValueChange={(v) => setHeader((h) => ({ ...h, transportCompanyId: v === '__none' ? '' : v }))}
                       >
                         <SelectTrigger>
                           {companies.find((c) => c.id === header.transportCompanyId)?.name ?? 'Optional'}
@@ -396,10 +391,7 @@ export function TransportShipmentDetailPage() {
                   ) : (
                     <Detail label="Transport company" value="Customer arranged" />
                   )}
-                  <Detail
-                    label="From warehouse"
-                    value={shipment.fromWarehouseName ?? '—'}
-                  />
+                  <Detail label="From warehouse" value={shipment.fromWarehouseName ?? '—'} />
                   <div className="sm:col-span-2">
                     <Label>Ship-to / destination</Label>
                     <Input
@@ -450,11 +442,7 @@ export function TransportShipmentDetailPage() {
                   />
                   <Detail
                     label="Transport company"
-                    value={
-                      customerArranged
-                        ? 'Customer arranged'
-                        : (shipment.transportCompanyName ?? '—')
-                    }
+                    value={customerArranged ? 'Customer arranged' : (shipment.transportCompanyName ?? '—')}
                   />
                   <Detail label="From warehouse" value={shipment.fromWarehouseName ?? '—'} />
                   <Detail label="Customer" value={shipment.shipToPartyName ?? '—'} />

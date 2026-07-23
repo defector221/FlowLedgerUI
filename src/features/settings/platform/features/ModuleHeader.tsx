@@ -47,9 +47,7 @@ export function ModuleHeader({
               {module.displayName}
             </h3>
             {editionLabel ? <Badge variant="outline">{editionLabel}</Badge> : null}
-            <Badge variant={moduleEnabled ? 'success' : 'neutral'}>
-              {moduleEnabled ? 'Module on' : 'Module off'}
-            </Badge>
+            <Badge variant={moduleEnabled ? 'success' : 'neutral'}>{moduleEnabled ? 'Module on' : 'Module off'}</Badge>
           </div>
           <p className="mt-1 text-sm leading-relaxed text-slate-500">
             {module.description || `${module.category} module`}

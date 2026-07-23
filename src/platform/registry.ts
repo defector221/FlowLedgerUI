@@ -27,20 +27,9 @@ export function platformCodeForRbac(moduleKey: string): PlatformModuleCode | und
   return RBAC_TO_PLATFORM[moduleKey]
 }
 
-const CORE_FALLBACK_ON = new Set([
-  'DASHBOARD',
-  'SALES',
-  'PURCHASE',
-  'INVENTORY',
-  'PAYMENTS',
-  'SETTINGS',
-  'AUDIT',
-])
+const CORE_FALLBACK_ON = new Set(['DASHBOARD', 'SALES', 'PURCHASE', 'INVENTORY', 'PAYMENTS', 'SETTINGS', 'AUDIT'])
 
-function readModuleFlag(
-  capabilities: CapabilitiesResponse,
-  platformCode: string,
-): boolean | undefined {
+function readModuleFlag(capabilities: CapabilitiesResponse, platformCode: string): boolean | undefined {
   if (Object.prototype.hasOwnProperty.call(capabilities.modules, platformCode)) {
     return capabilities.modules[platformCode] === true
   }
@@ -78,9 +67,7 @@ export function isPlatformFeatureEnabled(
     return capabilities.features[key] === true
   }
 
-  const detail = capabilities.featureDetails?.find(
-    (f) => f.moduleCode === moduleCode && f.featureCode === featureCode,
-  )
+  const detail = capabilities.featureDetails?.find((f) => f.moduleCode === moduleCode && f.featureCode === featureCode)
   if (detail) return detail.effectivelyEnabled === true
 
   // No org feature row yet — only treat as on when the parent module is on

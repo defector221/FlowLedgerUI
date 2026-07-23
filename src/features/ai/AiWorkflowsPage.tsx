@@ -81,7 +81,7 @@ function parseApprovalContext(remarks: string | undefined): { action?: string; a
   const amountMatch = remarks.match(/amount=([0-9.]+)/i)
   const action = actionMatch?.[1]?.trim()
   const amountRaw = amountMatch?.[1]?.trim()
-  const amount = amountRaw ? formatInr(amountRaw) ?? undefined : undefined
+  const amount = amountRaw ? (formatInr(amountRaw) ?? undefined) : undefined
   return {
     action: action ? action.charAt(0).toUpperCase() + action.slice(1) : undefined,
     amount: amount ?? undefined,
@@ -735,9 +735,7 @@ export function AiWorkflowsPage() {
   const pending: AiWorkflowApproval[] = approvals.data ?? []
   const decidedHistory = useMemo(
     () =>
-      (approvalHistory.data ?? [])
-        .filter((row) => row.status === 'APPROVED' || row.status === 'REJECTED')
-        .slice(0, 40),
+      (approvalHistory.data ?? []).filter((row) => row.status === 'APPROVED' || row.status === 'REJECTED').slice(0, 40),
     [approvalHistory.data],
   )
   const visible = (drafts.data ?? []).filter((d) => (d.status ?? '').toUpperCase() !== 'DELETED')
@@ -797,9 +795,7 @@ export function AiWorkflowsPage() {
           <h2 className="font-[family-name:var(--font-display)] text-base font-semibold text-slate-900">
             Pending approvals
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Review requests before convert or confirm can continue.
-          </p>
+          <p className="mt-1 text-sm text-slate-500">Review requests before convert or confirm can continue.</p>
         </div>
         <div className="max-h-[28rem] divide-y divide-slate-100 overflow-y-auto">
           {approvals.isLoading ? (

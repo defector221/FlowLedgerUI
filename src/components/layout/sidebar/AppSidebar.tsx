@@ -18,12 +18,7 @@ import {
 import { useAuth } from '@/features/auth/auth'
 import { aiApi } from '@/services/api'
 import { cn } from '@/lib/utils'
-import {
-  isPlatformFeatureEnabled,
-  isPlatformModuleEnabled,
-  platformCodeForRbac,
-  useCapabilities,
-} from '@/platform'
+import { isPlatformFeatureEnabled, isPlatformModuleEnabled, platformCodeForRbac, useCapabilities } from '@/platform'
 import {
   Button,
   DropdownMenu,
@@ -52,9 +47,7 @@ function MenuBadge({ badge }: { badge?: NavLeaf['badge'] }) {
       : badge === 'NEW'
         ? 'bg-sky-500/15 text-sky-300'
         : 'bg-violet-500/15 text-violet-300'
-  return (
-    <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wide', styles)}>{badge}</span>
-  )
+  return <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wide', styles)}>{badge}</span>
 }
 
 function NavItemRow({
@@ -86,14 +79,10 @@ function NavItemRow({
           'relative flex h-10 items-center rounded-[10px] text-sm font-medium transition-colors duration-150',
           compact ? 'justify-center px-0' : 'gap-3 px-4',
           nested && !compact && 'pl-10',
-          active
-            ? 'bg-white/[0.08] font-semibold text-white'
-            : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
+          active ? 'bg-white/[0.08] font-semibold text-white' : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
         )}
       >
-        {active ? (
-          <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-teal-400" aria-hidden />
-        ) : null}
+        {active ? <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-teal-400" aria-hidden /> : null}
         <Icon className={cn('size-[18px] shrink-0', active ? 'text-teal-300' : 'opacity-90')} />
         {!compact ? (
           <>
@@ -155,7 +144,9 @@ function NavSectionBlock({
           onClick={onToggle}
           className={cn(
             'relative flex h-10 w-full items-center justify-center rounded-[10px] transition-colors duration-150',
-            childActive || expanded ? 'bg-white/[0.08] text-white' : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
+            childActive || expanded
+              ? 'bg-white/[0.08] text-white'
+              : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
           )}
         >
           {(childActive || expanded) && (
@@ -169,12 +160,7 @@ function NavSectionBlock({
               {section.label}
             </p>
             {section.items.map((item) => (
-              <NavItemRow
-                key={item.id}
-                item={item}
-                active={item.to === activePath}
-                onNavigate={onNavigate}
-              />
+              <NavItemRow key={item.id} item={item} active={item.to === activePath} onNavigate={onNavigate} />
             ))}
           </div>
         ) : null}
@@ -190,7 +176,9 @@ function NavSectionBlock({
         onClick={onToggle}
         className={cn(
           'flex h-10 w-full items-center gap-3 rounded-[10px] px-4 text-sm font-medium transition-colors duration-150',
-          childActive || expanded ? 'bg-white/[0.06] text-white' : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
+          childActive || expanded
+            ? 'bg-white/[0.06] text-white'
+            : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
         )}
       >
         <Icon className={cn('size-[18px] shrink-0', childActive && 'text-teal-300')} />
@@ -429,9 +417,7 @@ export function AppSidebar({
         <nav className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-2">
           {showSearchResults ? (
             <div className="space-y-0.5">
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Modules
-              </p>
+              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Modules</p>
               {searchableLeaves.length ? (
                 searchableLeaves.map((item) => (
                   <NavItemRow

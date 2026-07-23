@@ -183,7 +183,8 @@ export function PlatformSettingsPage() {
           <Card>
             <CardContent className="space-y-2 p-5 text-sm text-slate-600">
               <p>
-                Licensed modules: {(orgModulesQuery.data ?? []).filter((m) => m.licensed && m.effectivelyEnabled).length}
+                Licensed modules:{' '}
+                {(orgModulesQuery.data ?? []).filter((m) => m.licensed && m.effectivelyEnabled).length}
               </p>
               <p>Trial modules: {(orgModulesQuery.data ?? []).filter((m) => m.trial && m.effectivelyEnabled).length}</p>
               <p className="text-xs text-slate-400">

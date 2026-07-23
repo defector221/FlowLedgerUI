@@ -1,12 +1,6 @@
 import type { ShipmentEvent } from '@/types/api'
 
-export function ShipmentTimeline({
-  events = [],
-  className = '',
-}: {
-  events?: ShipmentEvent[]
-  className?: string
-}) {
+export function ShipmentTimeline({ events = [], className = '' }: { events?: ShipmentEvent[]; className?: string }) {
   if (!events.length) {
     return <p className="py-8 text-center text-sm text-slate-500">No shipment events recorded yet.</p>
   }

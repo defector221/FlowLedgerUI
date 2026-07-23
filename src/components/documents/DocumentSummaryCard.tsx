@@ -78,9 +78,7 @@ export function DocumentSummaryCard({
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900">{title}</p>
-              {documentNumber ? (
-                <p className="truncate text-xs font-medium text-slate-500">{documentNumber}</p>
-              ) : null}
+              {documentNumber ? <p className="truncate text-xs font-medium text-slate-500">{documentNumber}</p> : null}
             </div>
           </div>
           {createdLabel ? <p className="mt-2 text-xs text-slate-400">Created: {createdLabel}</p> : null}

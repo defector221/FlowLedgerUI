@@ -9,8 +9,7 @@ import type { InAppNotificationResponse } from '@/types/api'
 
 function isShipmentNotification(type: string | undefined) {
   return (
-    !!type &&
-    (type === 'SHIPMENT_ACTIVITY' || type.startsWith('SHIPMENT_') || type === 'TRANSPORT_COMPLIANCE_EXPIRY')
+    !!type && (type === 'SHIPMENT_ACTIVITY' || type.startsWith('SHIPMENT_') || type === 'TRANSPORT_COMPLIANCE_EXPIRY')
   )
 }
 

@@ -84,7 +84,19 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'reports:read',
     'AI_CHAT',
   ],
-  RETAIL_ADMIN: ['retail:read', 'retail:write', 'products:read', 'products:write', 'customers:read', 'sales:read', 'sales:write', 'inventory:read', 'payments:read', 'reports:read', 'AI_CHAT'],
+  RETAIL_ADMIN: [
+    'retail:read',
+    'retail:write',
+    'products:read',
+    'products:write',
+    'customers:read',
+    'sales:read',
+    'sales:write',
+    'inventory:read',
+    'payments:read',
+    'reports:read',
+    'AI_CHAT',
+  ],
   RETAIL_REGIONAL_MANAGER: ['retail:read', 'reports:read', 'sales:read', 'AI_CHAT'],
 }
 

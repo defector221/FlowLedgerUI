@@ -33,9 +33,7 @@ export function FeatureFilters({
             onClick={() => onChange(filter.id)}
             className={cn(
               'h-9 cursor-pointer rounded-lg px-3 text-sm font-medium transition-colors duration-150',
-              active
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:bg-white/60 hover:text-slate-900',
+              active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60 hover:text-slate-900',
             )}
           >
             {filter.label}

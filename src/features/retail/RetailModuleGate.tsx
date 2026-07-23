@@ -9,9 +9,7 @@ export function useRetailEnabled() {
   const query = useCapabilities()
   return {
     ...query,
-    data: query.data
-      ? { retailEnabled: query.data.modules.RETAIL === true }
-      : undefined,
+    data: query.data ? { retailEnabled: query.data.modules.RETAIL === true } : undefined,
   }
 }
 

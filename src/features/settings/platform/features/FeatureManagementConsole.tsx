@@ -83,11 +83,8 @@ export function FeatureManagementConsole({
     Object.keys(moduleDraft).some((code) => moduleDraft[code] !== (serverModules[code] ?? false)) ||
     Object.keys(featureDraft).some((key) => {
       const [moduleCode, featureCode] = key.split('.')
-      const catalogFeature = catalogFeatures.find(
-        (f) => f.moduleCode === moduleCode && f.featureCode === featureCode,
-      )
-      const baseline =
-        key in serverFeatures ? serverFeatures[key] : (catalogFeature?.enabledByDefault ?? false)
+      const catalogFeature = catalogFeatures.find((f) => f.moduleCode === moduleCode && f.featureCode === featureCode)
+      const baseline = key in serverFeatures ? serverFeatures[key] : (catalogFeature?.enabledByDefault ?? false)
       return featureDraft[key] !== baseline
     })
 
@@ -119,15 +116,15 @@ export function FeatureManagementConsole({
         const enabledCount = catalogFeatures
           .filter((f) => f.moduleCode === module.code)
           .filter((f) =>
-            resolveFeatureEnabled(
-              f.moduleCode,
-              f.featureCode,
-              f.enabledByDefault,
-              featureDraft,
-              serverFeatures,
-            ),
+            resolveFeatureEnabled(f.moduleCode, f.featureCode, f.enabledByDefault, featureDraft, serverFeatures),
           ).length
-        return { module, features, enabledCount, moduleEnabled, totalFeatures: catalogFeatures.filter((f) => f.moduleCode === module.code).length }
+        return {
+          module,
+          features,
+          enabledCount,
+          moduleEnabled,
+          totalFeatures: catalogFeatures.filter((f) => f.moduleCode === module.code).length,
+        }
       })
       .filter((group) => {
         if (filter === 'active_modules' && !group.moduleEnabled) return false
@@ -136,16 +133,7 @@ export function FeatureManagementConsole({
         }
         return group.features.length > 0
       })
-  }, [
-    modulesWithFeatures,
-    catalogFeatures,
-    moduleDraft,
-    featureDraft,
-    serverModules,
-    serverFeatures,
-    query,
-    filter,
-  ])
+  }, [modulesWithFeatures, catalogFeatures, moduleDraft, featureDraft, serverModules, serverFeatures, query, filter])
 
   const stats = useMemo(() => {
     let features = 0
@@ -154,9 +142,7 @@ export function FeatureManagementConsole({
       const moduleFeatures = catalogFeatures.filter((f) => f.moduleCode === module.code)
       features += moduleFeatures.length
       for (const f of moduleFeatures) {
-        if (
-          resolveFeatureEnabled(f.moduleCode, f.featureCode, f.enabledByDefault, featureDraft, serverFeatures)
-        ) {
+        if (resolveFeatureEnabled(f.moduleCode, f.featureCode, f.enabledByDefault, featureDraft, serverFeatures)) {
           enabled += 1
         }
       }
@@ -185,8 +171,7 @@ export function FeatureManagementConsole({
           const catalogFeature = catalogFeatures.find(
             (f) => f.moduleCode === moduleCode && f.featureCode === featureCode,
           )
-          const baseline =
-            key in serverFeatures ? serverFeatures[key] : (catalogFeature?.enabledByDefault ?? false)
+          const baseline = key in serverFeatures ? serverFeatures[key] : (catalogFeature?.enabledByDefault ?? false)
           return enabled !== baseline
         })
         .map(([key, enabled]) => {
@@ -227,16 +212,16 @@ export function FeatureManagementConsole({
       {(editionCode ?? '').toUpperCase() === 'CUSTOM' ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
           Custom edition keeps whatever modules you already had. Turn modules off on the{' '}
-          <span className="font-semibold text-slate-800">Modules</span> tab — the sidebar and this list only
-          reflect modules that are On. Use <span className="font-semibold text-slate-800">Save</span> after
-          changing feature switches.
+          <span className="font-semibold text-slate-800">Modules</span> tab — the sidebar and this list only reflect
+          modules that are On. Use <span className="font-semibold text-slate-800">Save</span> after changing feature
+          switches.
         </div>
       ) : null}
 
       {dirty ? (
         <div className="rounded-xl border border-teal-200 bg-teal-50/80 px-4 py-3 text-sm text-teal-900">
-          You have unsaved feature changes. Click <span className="font-semibold">Save</span> at the bottom to
-          apply them to the app and sidebar.
+          You have unsaved feature changes. Click <span className="font-semibold">Save</span> at the bottom to apply
+          them to the app and sidebar.
         </div>
       ) : null}
 
@@ -264,7 +249,11 @@ export function FeatureManagementConsole({
           {groups.map((group) => {
             const isOpen = expanded[group.module.code] !== false
             return (
-              <section key={group.module.code} className="space-y-3" aria-labelledby={`module-title-${group.module.code}`}>
+              <section
+                key={group.module.code}
+                className="space-y-3"
+                aria-labelledby={`module-title-${group.module.code}`}
+              >
                 <ModuleHeader
                   module={group.module}
                   editionLabel={editionLabel ?? editionCode}
@@ -273,12 +262,8 @@ export function FeatureManagementConsole({
                   moduleEnabled={group.moduleEnabled}
                   expanded={isOpen}
                   coreLocked={group.module.core}
-                  onToggleExpanded={() =>
-                    setExpanded((prev) => ({ ...prev, [group.module.code]: !isOpen }))
-                  }
-                  onModuleToggle={(enabled) =>
-                    setModuleDraft((prev) => ({ ...prev, [group.module.code]: enabled }))
-                  }
+                  onToggleExpanded={() => setExpanded((prev) => ({ ...prev, [group.module.code]: !isOpen }))}
+                  onModuleToggle={(enabled) => setModuleDraft((prev) => ({ ...prev, [group.module.code]: enabled }))}
                 />
                 <div
                   id={`module-panel-${group.module.code}`}

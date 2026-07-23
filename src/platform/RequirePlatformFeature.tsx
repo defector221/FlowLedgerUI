@@ -39,9 +39,7 @@ export function RequirePlatformFeature({
             <p className="text-base font-semibold text-slate-900">
               {!moduleOn ? `${module} module is disabled` : `${module}.${feature} is disabled`}
             </p>
-            <p className="text-sm text-slate-600">
-              Enable it in Platform Settings to use this screen.
-            </p>
+            <p className="text-sm text-slate-600">Enable it in Platform Settings to use this screen.</p>
             {canManageOrganization() ? (
               <Button asChild>
                 <Link to="/settings/platform">Open Platform Settings</Link>

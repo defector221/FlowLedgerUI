@@ -60,10 +60,7 @@ export function resolveModuleEnabled(
   return fallback
 }
 
-export function statusForFeature(
-  enabled: boolean,
-  catalogStatus: string,
-): FeatureStatus {
+export function statusForFeature(enabled: boolean, catalogStatus: string): FeatureStatus {
   if (catalogStatus === 'COMING_SOON' || catalogStatus === 'PREVIEW') return 'preview'
   if (catalogStatus === 'BETA' || catalogStatus === 'DEPRECATED') return 'beta'
   return enabled ? 'enabled' : 'disabled'

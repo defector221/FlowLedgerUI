@@ -57,9 +57,7 @@ export type NavSection = {
   items: NavLeaf[]
 }
 
-export type NavEntry =
-  | { type: 'link'; item: NavLeaf }
-  | { type: 'section'; section: NavSection }
+export type NavEntry = { type: 'link'; item: NavLeaf } | { type: 'section'; section: NavSection }
 
 /** Hierarchical navigation — routes and modules must match existing app routes / RBAC. */
 export const NAV_ENTRIES: NavEntry[] = [
@@ -164,7 +162,13 @@ export const NAV_ENTRIES: NavEntry[] = [
         { id: 'tr-drivers', to: '/transport/drivers', label: 'Drivers', icon: Users, module: 'transport' },
         { id: 'tr-shipments', to: '/transport/shipments', label: 'Shipments', icon: Package, module: 'transport' },
         { id: 'tr-search', to: '/transport/search', label: 'Shipment Search', icon: Search, module: 'transport' },
-        { id: 'tr-reports', to: '/transport/reports', label: 'Transport Reports', icon: BarChart3, module: 'transport' },
+        {
+          id: 'tr-reports',
+          to: '/transport/reports',
+          label: 'Transport Reports',
+          icon: BarChart3,
+          module: 'transport',
+        },
       ],
     },
   },
@@ -176,15 +180,79 @@ export const NAV_ENTRIES: NavEntry[] = [
       icon: Store,
       featureFlag: 'retail',
       items: [
-        { id: 'retail-pos', to: '/retail/pos', label: 'POS', icon: ScanBarcode, module: 'retail', badge: 'LIVE', feature: 'POS' },
-        { id: 'retail-stores', to: '/retail/stores', label: 'Stores', icon: Store, module: 'retail', feature: 'STORES' },
-        { id: 'retail-shifts', to: '/retail/shifts', label: 'Shifts', icon: Clock3, module: 'retail', feature: 'STORES' },
-        { id: 'retail-catalog', to: '/retail/catalog', label: 'Catalog', icon: Tag, module: 'retail', feature: 'CATALOG' },
-        { id: 'retail-pricing', to: '/retail/pricing', label: 'Pricing', icon: Percent, module: 'retail', feature: 'PRICING' },
-        { id: 'retail-returns', to: '/retail/returns', label: 'Returns', icon: RotateCcw, module: 'retail', feature: 'RETURNS' },
-        { id: 'retail-loyalty', to: '/retail/loyalty', label: 'Loyalty', icon: Gift, module: 'retail', feature: 'LOYALTY' },
-        { id: 'retail-inventory', to: '/retail/inventory', label: 'Retail Inventory', icon: Boxes, module: 'retail', feature: 'INVENTORY_SYNC' },
-        { id: 'retail-labels', to: '/retail/labels', label: 'Labels', icon: FileText, module: 'retail', feature: 'BARCODE' },
+        {
+          id: 'retail-pos',
+          to: '/retail/pos',
+          label: 'POS',
+          icon: ScanBarcode,
+          module: 'retail',
+          badge: 'LIVE',
+          feature: 'POS',
+        },
+        {
+          id: 'retail-stores',
+          to: '/retail/stores',
+          label: 'Stores',
+          icon: Store,
+          module: 'retail',
+          feature: 'STORES',
+        },
+        {
+          id: 'retail-shifts',
+          to: '/retail/shifts',
+          label: 'Shifts',
+          icon: Clock3,
+          module: 'retail',
+          feature: 'STORES',
+        },
+        {
+          id: 'retail-catalog',
+          to: '/retail/catalog',
+          label: 'Catalog',
+          icon: Tag,
+          module: 'retail',
+          feature: 'CATALOG',
+        },
+        {
+          id: 'retail-pricing',
+          to: '/retail/pricing',
+          label: 'Pricing',
+          icon: Percent,
+          module: 'retail',
+          feature: 'PRICING',
+        },
+        {
+          id: 'retail-returns',
+          to: '/retail/returns',
+          label: 'Returns',
+          icon: RotateCcw,
+          module: 'retail',
+          feature: 'RETURNS',
+        },
+        {
+          id: 'retail-loyalty',
+          to: '/retail/loyalty',
+          label: 'Loyalty',
+          icon: Gift,
+          module: 'retail',
+          feature: 'LOYALTY',
+        },
+        {
+          id: 'retail-inventory',
+          to: '/retail/inventory',
+          label: 'Retail Inventory',
+          icon: Boxes,
+          module: 'retail',
+          feature: 'INVENTORY_SYNC',
+        },
+        {
+          id: 'retail-labels',
+          to: '/retail/labels',
+          label: 'Labels',
+          icon: FileText,
+          module: 'retail',
+          feature: 'BARCODE',
+        },
         {
           id: 'retail-analytics',
           to: '/retail/analytics',

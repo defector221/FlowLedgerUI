@@ -12,9 +12,7 @@ export function RetailLabelsPage() {
 
   return (
     <RetailModuleGate title="Labels">
-      <ListPageShell
-        header={<PageHeader title="Label templates" subtitle="Shelf and barcode label templates." />}
-      >
+      <ListPageShell header={<PageHeader title="Label templates" subtitle="Shelf and barcode label templates." />}>
         <ListTablePanel>
           {templates.isLoading ? (
             <ListPanelMessage>

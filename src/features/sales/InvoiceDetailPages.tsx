@@ -1,17 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import {
-  Building2,
-  CalendarDays,
-  CreditCard,
-  Download,
-  MapPin,
-  Package,
-  Truck,
-  UserRound,
-  Wallet,
-} from 'lucide-react'
+import { Building2, CalendarDays, CreditCard, Download, MapPin, Package, Truck, UserRound, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Badge,
@@ -212,9 +202,7 @@ export function SalesInvoiceDetailPage() {
         title="Invoice Summary"
         documentNumber={data.invoiceNumber || 'Draft invoice'}
         status={data.status}
-        statusVariant={
-          isCancelled ? 'danger' : data.status === 'PAID' ? 'success' : isDraft ? 'warning' : 'default'
-        }
+        statusVariant={isCancelled ? 'danger' : data.status === 'PAID' ? 'success' : isDraft ? 'warning' : 'default'}
         createdAt={data.createdAt}
         notes={data.notes}
         fields={[
@@ -259,11 +247,7 @@ export function SalesInvoiceDetailPage() {
             label: 'Warehouse',
             icon: Building2,
             iconTone: 'blue',
-            value: data.warehouseName
-              ? data.warehouseName
-              : hasStockedLines
-                ? '—'
-                : 'Not applicable (services only)',
+            value: data.warehouseName ? data.warehouseName : hasStockedLines ? '—' : 'Not applicable (services only)',
           },
           {
             key: 'placeOfSupply',

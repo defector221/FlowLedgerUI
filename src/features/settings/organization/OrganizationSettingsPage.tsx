@@ -24,13 +24,7 @@ import {
   Textarea,
 } from '@/components/ui'
 import type { UpdateOrganizationRequest } from '@/types/api'
-import {
-  SectionCard,
-  SettingSwitch,
-  SettingsField,
-  StickyActionBar,
-  previewInvoiceNumber,
-} from './settings-ui'
+import { SectionCard, SettingSwitch, SettingsField, StickyActionBar, previewInvoiceNumber } from './settings-ui'
 
 const orgSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -201,7 +195,10 @@ export function OrganizationSettingsPage() {
   const dirty = profileDirty || opsDirty || logoDirty
   const saving = savingProfile || savingOps || savingLogo
 
-  const invoicePreview = previewInvoiceNumber(form.watch('invoicePrefix') || 'INV', form.watch('invoiceNumberFormat') || '')
+  const invoicePreview = previewInvoiceNumber(
+    form.watch('invoicePrefix') || 'INV',
+    form.watch('invoiceNumberFormat') || '',
+  )
 
   const updatedHint = useMemo(() => {
     const who =
@@ -333,7 +330,12 @@ export function OrganizationSettingsPage() {
           <TabsContent value="general" className="mt-0 focus-visible:outline-none data-[state=inactive]:hidden">
             <SectionCard title="Business Information" description="Basic details used across invoices and reports.">
               <div className="grid gap-4 sm:grid-cols-2">
-                <SettingsField label="Organization Name" htmlFor="org-name" hint="Displayed on invoices." error={form.formState.errors.name?.message}>
+                <SettingsField
+                  label="Organization Name"
+                  htmlFor="org-name"
+                  hint="Displayed on invoices."
+                  error={form.formState.errors.name?.message}
+                >
                   <Input id="org-name" className={inputClass} {...form.register('name')} />
                 </SettingsField>
                 <SettingsField label="Legal Name" htmlFor="org-legal" hint="Registered legal entity name.">
@@ -393,15 +395,15 @@ export function OrganizationSettingsPage() {
                   Supported formats: PNG, JPG, SVG, WebP · Maximum size 2 MB
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button type="button" disabled={!logoFile || savingLogo} loading={savingLogo} onClick={() => void saveLogo()}>
-                    Replace Logo
-                  </Button>
                   <Button
                     type="button"
-                    variant="outline"
-                    disabled={!logoFile}
-                    onClick={() => setLogoFile(null)}
+                    disabled={!logoFile || savingLogo}
+                    loading={savingLogo}
+                    onClick={() => void saveLogo()}
                   >
+                    Replace Logo
+                  </Button>
+                  <Button type="button" variant="outline" disabled={!logoFile} onClick={() => setLogoFile(null)}>
                     Remove Logo
                   </Button>
                 </div>
@@ -483,7 +485,12 @@ export function OrganizationSettingsPage() {
                 <SettingsField label="UPI ID" htmlFor="org-upi">
                   <Input id="org-upi" className={inputClass} {...form.register('upiId')} />
                 </SettingsField>
-                <SettingsField label="Payment Terms" htmlFor="org-terms" className="sm:col-span-2" hint="e.g. Net 15, Due on receipt.">
+                <SettingsField
+                  label="Payment Terms"
+                  htmlFor="org-terms"
+                  className="sm:col-span-2"
+                  hint="e.g. Net 15, Due on receipt."
+                >
                   <Input id="org-terms" className={inputClass} {...form.register('paymentTerms')} />
                 </SettingsField>
               </div>

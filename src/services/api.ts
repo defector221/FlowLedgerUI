@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client'
-import { unwrapApi, unwrapList, unwrapPage } from '@/lib/api-response'
+import { unwrapApi, unwrapList, unwrapPage, unwrapPageResponse } from '@/lib/api-response'
 import type {
   AcceptInvitationRequest,
   CreateCategoryRequest,
@@ -141,6 +141,62 @@ export const organizationApi = {
   settings: () => api.get('/organizations/current/settings').then((r) => unwrapApi<OrganizationSettingsResponse>(r)),
   updateSettings: (payload: UpdateOrganizationSettingsRequest) =>
     api.put('/organizations/current/settings', payload).then((r) => unwrapApi<OrganizationSettingsResponse>(r)),
+}
+
+export const platformApi = {
+  modules: () => api.get('/platform/modules').then((r) => unwrapApi<import('@/platform').ModuleCatalogItem[]>(r)),
+  moduleFeatures: (code: string) =>
+    api
+      .get(`/platform/modules/${code}/features`)
+      .then((r) => unwrapApi<import('@/platform').ModuleFeatureCatalogItem[]>(r)),
+  allFeatures: () =>
+    api.get('/platform/modules/features').then((r) => unwrapApi<import('@/platform').ModuleFeatureCatalogItem[]>(r)),
+  editions: () => api.get('/platform/editions').then((r) => unwrapApi<import('@/platform').EditionResponse[]>(r)),
+  edition: () =>
+    api
+      .get('/platform/organization/edition')
+      .then((r) => unwrapApi<import('@/platform').OrganizationEditionResponse>(r)),
+  updateEdition: (editionCode: string) =>
+    api
+      .patch('/platform/organization/edition', { editionCode })
+      .then((r) => unwrapApi<import('@/platform').OrganizationEditionResponse>(r)),
+  organizationModules: () =>
+    api
+      .get('/platform/organization/modules')
+      .then((r) => unwrapApi<import('@/platform').OrganizationModuleResponse[]>(r)),
+  updateOrganizationModules: (
+    modules: {
+      moduleCode: string
+      enabled?: boolean
+      licensed?: boolean
+      trial?: boolean
+      expiresAt?: string | null
+      configuration?: string
+    }[],
+  ) =>
+    api
+      .put('/platform/organization/modules', { modules })
+      .then((r) => unwrapApi<import('@/platform').OrganizationModuleResponse[]>(r)),
+  organizationFeatures: () =>
+    api
+      .get('/platform/organization/features')
+      .then((r) => unwrapApi<import('@/platform').OrganizationFeatureResponse[]>(r)),
+  updateOrganizationFeatures: (
+    features: {
+      moduleCode: string
+      featureCode: string
+      enabled?: boolean
+      licensed?: boolean
+      trial?: boolean
+      expiresAt?: string | null
+      configuration?: string
+    }[],
+  ) =>
+    api
+      .put('/platform/organization/features', { features })
+      .then((r) => unwrapApi<import('@/platform').OrganizationFeatureResponse[]>(r)),
+  capabilities: () =>
+    api.get('/platform/organization/capabilities').then((r) => unwrapApi<import('@/platform').CapabilitiesResponse>(r)),
 }
 
 export const userApi = {
@@ -460,8 +516,16 @@ export const templateApi = {
 }
 
 export const auditApi = {
-  list: (params?: { page?: number; size?: number }) =>
-    api.get('/audit-logs', { params }).then((r) => unwrapPage<AuditLogResponse>(r)),
+  list: (params?: {
+    page?: number
+    size?: number
+    search?: string
+    action?: string
+    entityType?: string
+    userId?: string
+    from?: string
+    to?: string
+  }) => api.get('/audit-logs', { params }).then((r) => unwrapPageResponse<AuditLogResponse>(r)),
   get: (id: string) => api.get(`/audit-logs/${id}`).then((r) => unwrapApi<AuditLogResponse>(r)),
 }
 
@@ -781,9 +845,7 @@ export const transportApi = {
   shipments: {
     ...transportCrud<Shipment, ShipmentRequest>('/transport/shipments'),
     fromChallan: (challanId: string, payload: Record<string, unknown> = {}) =>
-      api
-        .post(`/transport/shipments/from-challan/${challanId}`, payload)
-        .then((r) => unwrapApi<Shipment>(r)),
+      api.post(`/transport/shipments/from-challan/${challanId}`, payload).then((r) => unwrapApi<Shipment>(r)),
     submit: (id: string) => api.post(`/transport/shipments/${id}/submit`).then((r) => unwrapApi<Shipment>(r)),
     approve: (id: string, remarks?: string) =>
       api.post(`/transport/shipments/${id}/approve`, { remarks }).then((r) => unwrapApi<Shipment>(r)),
@@ -798,8 +860,10 @@ export const transportApi = {
       api.post(`/transport/shipments/${id}/cancel`, { remarks }).then((r) => unwrapApi<Shipment>(r)),
     checkpoint: (id: string, payload?: { remarks?: string; locationJson?: string; payloadJson?: string }) =>
       api.post(`/transport/shipments/${id}/checkpoint`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
-    addEvent: (id: string, payload?: { eventType?: string; remarks?: string; locationJson?: string; payloadJson?: string }) =>
-      api.post(`/transport/shipments/${id}/events`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
+    addEvent: (
+      id: string,
+      payload?: { eventType?: string; remarks?: string; locationJson?: string; payloadJson?: string },
+    ) => api.post(`/transport/shipments/${id}/events`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
     updateHeader: (id: string, payload: Record<string, unknown>) =>
       api.patch(`/transport/shipments/${id}/header`, payload).then((r) => unwrapApi<Shipment>(r)),
     startLoading: (id: string) =>
@@ -817,11 +881,17 @@ export const transportApi = {
       api.put(`/transport/legs/${id}`, payload).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
     remove: (id: string) => api.delete(`/transport/legs/${id}`),
     dispatch: (id: string, payload?: Record<string, unknown>) =>
-      api.patch(`/transport/legs/${id}/dispatch`, payload ?? {}).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+      api
+        .patch(`/transport/legs/${id}/dispatch`, payload ?? {})
+        .then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
     arrive: (id: string, payload?: Record<string, unknown>) =>
-      api.patch(`/transport/legs/${id}/arrive`, payload ?? {}).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+      api
+        .patch(`/transport/legs/${id}/arrive`, payload ?? {})
+        .then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
     complete: (id: string, payload?: Record<string, unknown>) =>
-      api.patch(`/transport/legs/${id}/complete`, payload ?? {}).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+      api
+        .patch(`/transport/legs/${id}/complete`, payload ?? {})
+        .then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
     location: (id: string, payload: Record<string, unknown>) =>
       api.patch(`/transport/legs/${id}/location`, payload).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
     documents: (id: string) =>
@@ -865,13 +935,8 @@ export const retailApi = {
   terminals: {
     list: (storeId: string) =>
       api.get('/retail/terminals', { params: { storeId } }).then((r) => unwrapList<RetailTerminal>(r)),
-    create: (payload: {
-      storeId: string
-      counterId?: string | null
-      code: string
-      name: string
-      status?: string
-    }) => api.post('/retail/terminals', payload).then((r) => unwrapApi<RetailTerminal>(r)),
+    create: (payload: { storeId: string; counterId?: string | null; code: string; name: string; status?: string }) =>
+      api.post('/retail/terminals', payload).then((r) => unwrapApi<RetailTerminal>(r)),
     update: (
       id: string,
       payload: { storeId: string; counterId?: string | null; code: string; name: string; status?: string },
@@ -913,12 +978,15 @@ export const retailApi = {
     listSales: (status?: PosSaleStatus) =>
       api.get('/retail/pos/sales', { params: status ? { status } : undefined }).then((r) => unwrapList<PosSale>(r)),
     getSale: (id: string) => api.get(`/retail/pos/sales/${id}`).then((r) => unwrapApi<PosSale>(r)),
-    createDraft: (payload: PosSaleRequest) =>
-      api.post('/retail/pos/sales', payload).then((r) => unwrapApi<PosSale>(r)),
+    createDraft: (payload: PosSaleRequest) => api.post('/retail/pos/sales', payload).then((r) => unwrapApi<PosSale>(r)),
     addLine: (id: string, payload: PosLineRequest) =>
       api.post(`/retail/pos/sales/${id}/lines`, payload).then((r) => unwrapApi<PosSale>(r)),
+    updateLine: (id: string, lineId: string, payload: import('@/types/api').PosLineUpdateRequest) =>
+      api.put(`/retail/pos/sales/${id}/lines/${lineId}`, payload).then((r) => unwrapApi<PosSale>(r)),
     removeLine: (id: string, lineId: string) =>
       api.delete(`/retail/pos/sales/${id}/lines/${lineId}`).then((r) => unwrapApi<PosSale>(r)),
+    applyAdjustments: (id: string, payload: import('@/types/api').PosAdjustmentsRequest) =>
+      api.put(`/retail/pos/sales/${id}/adjustments`, payload).then((r) => unwrapApi<PosSale>(r)),
     hold: (id: string, heldLabel?: string) =>
       api.post(`/retail/pos/sales/${id}/hold`, { heldLabel }).then((r) => unwrapApi<PosSale>(r)),
     resume: (id: string) => api.post(`/retail/pos/sales/${id}/resume`).then((r) => unwrapApi<PosSale>(r)),
@@ -934,9 +1002,7 @@ export const retailApi = {
     brands: retailCrud<RetailBrand, { code: string; name: string }>('/retail/catalog/brands'),
     variants: {
       list: (parentProductId: string) =>
-        api
-          .get('/retail/catalog/variants', { params: { parentProductId } })
-          .then((r) => unwrapList<RetailVariant>(r)),
+        api.get('/retail/catalog/variants', { params: { parentProductId } }).then((r) => unwrapList<RetailVariant>(r)),
       create: (payload: Record<string, unknown>) =>
         api.post('/retail/catalog/variants', payload).then((r) => unwrapApi<RetailVariant>(r)),
       update: (id: string, payload: Record<string, unknown>) =>
@@ -962,17 +1028,15 @@ export const retailApi = {
       api.get('/retail/pricing/resolve', { params }).then((r) => unwrapApi<RetailResolvePrice>(r)),
     promotions: retailCrud<RetailPromotion, RetailPromotionRequest>('/retail/pricing/promotions'),
     applyCoupon: (payload: { couponCode: string; billAmount: number }) =>
-      api
-        .post('/retail/pricing/apply-coupon', payload)
-        .then((r) =>
-          unwrapApi<{
-            couponCode: string
-            applied: boolean
-            discountAmount: number
-            netAmount: number
-            message: string | null
-          }>(r),
-        ),
+      api.post('/retail/pricing/apply-coupon', payload).then((r) =>
+        unwrapApi<{
+          couponCode: string
+          applied: boolean
+          discountAmount: number
+          netAmount: number
+          message: string | null
+        }>(r),
+      ),
   },
   returns: {
     list: () => api.get('/retail/returns').then((r) => unwrapList<RetailReturn>(r)),
@@ -981,6 +1045,14 @@ export const retailApi = {
       api.post('/retail/returns', payload).then((r) => unwrapApi<RetailReturn>(r)),
   },
   loyalty: {
+    getAccount: (customerId: string) =>
+      api
+        .get(`/retail/loyalty/accounts/${customerId}`)
+        .then((r) => unwrapApi<import('@/types/api').RetailLoyaltyAccount>(r)),
+    getOrCreateAccount: (payload: { customerId: string; tierId?: string | null }) =>
+      api
+        .post('/retail/loyalty/accounts', payload)
+        .then((r) => unwrapApi<import('@/types/api').RetailLoyaltyAccount>(r)),
     giftCards: {
       issue: (payload: RetailGiftCardIssueRequest) =>
         api.post('/retail/gift-cards', payload).then((r) => unwrapApi<RetailGiftCard>(r)),
@@ -989,8 +1061,7 @@ export const retailApi = {
         api
           .get('/retail/gift-cards/balance', { params: { cardNumber } })
           .then((r) => unwrapApi<RetailGiftCardBalance>(r)),
-      activate: (id: string) =>
-        api.post(`/retail/gift-cards/${id}/activate`).then((r) => unwrapApi<RetailGiftCard>(r)),
+      activate: (id: string) => api.post(`/retail/gift-cards/${id}/activate`).then((r) => unwrapApi<RetailGiftCard>(r)),
     },
   },
   inventory: {
@@ -999,13 +1070,8 @@ export const retailApi = {
         api
           .get('/retail/inventory/locations', { params: { storeId } })
           .then((r) => unwrapList<RetailInventoryLocation>(r)),
-      create: (payload: {
-        storeId: string
-        warehouseId: string
-        code: string
-        name: string
-        locationType?: string
-      }) => api.post('/retail/inventory/locations', payload).then((r) => unwrapApi<RetailInventoryLocation>(r)),
+      create: (payload: { storeId: string; warehouseId: string; code: string; name: string; locationType?: string }) =>
+        api.post('/retail/inventory/locations', payload).then((r) => unwrapApi<RetailInventoryLocation>(r)),
       update: (
         id: string,
         payload: { storeId: string; warehouseId: string; code: string; name: string; locationType?: string },

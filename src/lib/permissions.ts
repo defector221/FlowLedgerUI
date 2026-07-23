@@ -84,7 +84,19 @@ const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
     'reports:read',
     'AI_CHAT',
   ],
-  RETAIL_ADMIN: ['retail:read', 'retail:write', 'products:read', 'products:write', 'customers:read', 'sales:read', 'sales:write', 'inventory:read', 'payments:read', 'reports:read', 'AI_CHAT'],
+  RETAIL_ADMIN: [
+    'retail:read',
+    'retail:write',
+    'products:read',
+    'products:write',
+    'customers:read',
+    'sales:read',
+    'sales:write',
+    'inventory:read',
+    'payments:read',
+    'reports:read',
+    'AI_CHAT',
+  ],
   RETAIL_REGIONAL_MANAGER: ['retail:read', 'reports:read', 'sales:read', 'AI_CHAT'],
 }
 
@@ -144,4 +156,13 @@ export function canAccessModule(roles: RoleCode[] | undefined, module: keyof typ
   const permission = MODULE_PERMISSIONS[module]
   if (permission === 'org:read' || permission === 'users:read') return hasRole(roles, 'ORGANIZATION_ADMIN')
   return canAccess(roles, permission)
+}
+
+/** RBAC permission check combined with platform module entitlement (caller supplies module flag). */
+export function canAccessCapability(
+  roles: RoleCode[] | undefined,
+  module: keyof typeof MODULE_PERMISSIONS,
+  moduleEnabled: boolean,
+): boolean {
+  return moduleEnabled && canAccessModule(roles, module)
 }

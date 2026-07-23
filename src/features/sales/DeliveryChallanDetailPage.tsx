@@ -29,22 +29,9 @@ import { ShipmentTimeline } from '@/features/transport/ShipmentTimeline'
 import { ApprovalHistoryPanel } from '@/features/ai/ApprovalHistoryPanel'
 import type { DeliveryChallan, Shipment } from '@/types/api'
 
-const PRE_DISPATCH_STATUSES = new Set([
-  'DRAFT',
-  'SUBMITTED',
-  'APPROVED',
-  'ASSIGNED',
-  'LOADING',
-  'LOADED',
-])
+const PRE_DISPATCH_STATUSES = new Set(['DRAFT', 'SUBMITTED', 'APPROVED', 'ASSIGNED', 'LOADING', 'LOADED'])
 
-const DISPATCHED_OR_LATER = new Set([
-  'PARTIALLY_DISPATCHED',
-  'DISPATCHED',
-  'IN_TRANSIT',
-  'DELIVERED',
-  'CLOSED',
-])
+const DISPATCHED_OR_LATER = new Set(['PARTIALLY_DISPATCHED', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'CLOSED'])
 
 function shipmentCreateAvailability(challan: DeliveryChallan | undefined, shipments: Shipment[]) {
   const openShipments = shipments.filter((shipment) => PRE_DISPATCH_STATUSES.has(String(shipment.status)))
@@ -58,9 +45,7 @@ function shipmentCreateAvailability(challan: DeliveryChallan | undefined, shipme
     }
   }
   // Open shipments without line payloads are treated as fully covering the challan.
-  const transportLockedAfterDispatch = shipments.some((shipment) =>
-    DISPATCHED_OR_LATER.has(String(shipment.status)),
-  )
+  const transportLockedAfterDispatch = shipments.some((shipment) => DISPATCHED_OR_LATER.has(String(shipment.status)))
   if (openShipments.length > 0 && !sawLineData) {
     return { openShipments, canCreateShipment: false, transportLockedAfterDispatch }
   }
@@ -256,9 +241,7 @@ export function DeliveryChallanDetailPage() {
         ? 'success'
         : 'default'
   const convertLocked = cancelled || latestPending || !!linkedInvoiceId
-  const allEvents = challanTimeline.length
-    ? challanTimeline
-    : shipments.flatMap((shipment) => shipment.events ?? [])
+  const allEvents = challanTimeline.length ? challanTimeline : shipments.flatMap((shipment) => shipment.events ?? [])
   return (
     <div className="space-y-6">
       <PageHeader
@@ -584,7 +567,10 @@ export function DeliveryChallanDetailPage() {
             ) : (
               <div>
                 <Label>Transport company</Label>
-                <Select value={transportCompanyId || '__none'} onValueChange={(v) => setTransportCompanyId(v === '__none' ? '' : v)}>
+                <Select
+                  value={transportCompanyId || '__none'}
+                  onValueChange={(v) => setTransportCompanyId(v === '__none' ? '' : v)}
+                >
                   <SelectTrigger>
                     {companies.find((c) => c.id === transportCompanyId)?.name ?? 'Optional'}
                   </SelectTrigger>
@@ -601,7 +587,11 @@ export function DeliveryChallanDetailPage() {
             )}
             <div>
               <Label>Ship-to address</Label>
-              <Input value={shipToAddress} onChange={(e) => setShipToAddress(e.target.value)} placeholder="Delivery address" />
+              <Input
+                value={shipToAddress}
+                onChange={(e) => setShipToAddress(e.target.value)}
+                placeholder="Delivery address"
+              />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -628,7 +618,11 @@ export function DeliveryChallanDetailPage() {
               </div>
               <div>
                 <Label>E-way bill</Label>
-                <Input value={ewayBillNumber} onChange={(e) => setEwayBillNumber(e.target.value)} placeholder="Optional" />
+                <Input
+                  value={ewayBillNumber}
+                  onChange={(e) => setEwayBillNumber(e.target.value)}
+                  placeholder="Optional"
+                />
               </div>
             </div>
             <Button className="w-full" onClick={createShipment}>

@@ -5,16 +5,15 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/auth'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
-import { aiApi, organizationApi, searchApi } from '@/services/api'
+import { aiApi, searchApi } from '@/services/api'
 import type { GlobalSearchHit, GlobalSearchResponse, SearchEntityType } from '@/types/api'
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Input } from '@/components/ui'
 import { flattenNavLeaves, type NavLeaf } from '@/components/layout/sidebar/nav-config'
+import { isPlatformFeatureEnabled, isPlatformModuleEnabled, platformCodeForRbac, useCapabilities } from '@/platform'
 
 const PAGE_SIZE = 15
 
-type PaletteItem =
-  | { kind: 'page'; leaf: NavLeaf }
-  | { kind: 'hit'; hit: GlobalSearchHit; groupIcon: typeof Package }
+type PaletteItem = { kind: 'page'; leaf: NavLeaf } | { kind: 'hit'; hit: GlobalSearchHit; groupIcon: typeof Package }
 
 const GROUP_ORDER: { type: SearchEntityType; label: string; icon: typeof Package }[] = [
   { type: 'PRODUCT', label: 'Products', icon: Package },
@@ -144,9 +143,7 @@ function SearchResults({
               {group.hits.map((hit) => {
                 const index = flat.findIndex(
                   (item) =>
-                    item.kind === 'hit' &&
-                    item.hit.entityId === hit.entityId &&
-                    item.hit.entityType === hit.entityType,
+                    item.kind === 'hit' && item.hit.entityId === hit.entityId && item.hit.entityType === hit.entityType,
                 )
                 const active = index === activeIndex
                 const Icon = group.icon
@@ -231,13 +228,8 @@ export function GlobalSearch() {
     retry: false,
     staleTime: 60_000,
   })
-  const orgSettings = useQuery({
-    queryKey: ['organization', 'ops-settings'],
-    queryFn: organizationApi.settings,
-    staleTime: 30_000,
-  })
+  const { data: capabilities } = useCapabilities()
   const aiAvailable = aiHealth.isSuccess && aiHealth.data?.enabled !== false
-  const retailEnabled = orgSettings.data?.retailEnabled === true
 
   useEffect(() => {
     setDropdownOpen(false)
@@ -352,15 +344,20 @@ export function GlobalSearch() {
     return flattenNavLeaves()
       .filter((leaf) => {
         if (!canAccessModule(leaf.module)) return false
-        if (leaf.module === 'retail' || leaf.to.startsWith('/retail')) return retailEnabled
-        if (leaf.module === 'ai' || leaf.module === 'aiRecommendations' || leaf.module === 'aiWorkflow') {
-          return aiAvailable
+        const code = platformCodeForRbac(leaf.module)
+        if (!isPlatformModuleEnabled(capabilities, code)) return false
+        if (leaf.module === 'retail' || leaf.to.startsWith('/retail')) {
+          if (!isPlatformModuleEnabled(capabilities, 'RETAIL')) return false
         }
+        if (leaf.module === 'ai' || leaf.module === 'aiRecommendations' || leaf.module === 'aiWorkflow') {
+          if (!aiAvailable || !isPlatformModuleEnabled(capabilities, 'AI')) return false
+        }
+        if (leaf.feature && code && !isPlatformFeatureEnabled(capabilities, code, leaf.feature)) return false
         const hay = [leaf.label, leaf.to, ...(leaf.keywords ?? [])].join(' ').toLowerCase()
         return hay.includes(q)
       })
       .slice(0, 8)
-  }, [query, searchActive, canAccessModule, retailEnabled, aiAvailable])
+  }, [query, searchActive, canAccessModule, capabilities, aiAvailable])
 
   const groups = useMemo(
     () =>
@@ -374,9 +371,7 @@ export function GlobalSearch() {
   const flat = useMemo<PaletteItem[]>(
     () => [
       ...pageMatches.map((leaf) => ({ kind: 'page' as const, leaf })),
-      ...groups.flatMap((group) =>
-        group.hits.map((hit) => ({ kind: 'hit' as const, hit, groupIcon: group.icon })),
-      ),
+      ...groups.flatMap((group) => group.hits.map((hit) => ({ kind: 'hit' as const, hit, groupIcon: group.icon }))),
     ],
     [pageMatches, groups],
   )

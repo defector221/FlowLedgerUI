@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Outlet } from 'react-router-dom'
 import { AppSidebar } from './AppSidebar'
 import { Header } from './Header'
-import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'flowledger.sidebarCollapsed'
+const LG_QUERY = '(min-width: 1024px)'
 
 function readCollapsed(): boolean {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === '1') return true
     if (stored === '0') return false
-    // No preference yet: tablets / narrow desktops start collapsed
     return window.matchMedia('(max-width: 1279px)').matches
   } catch {
     return false
@@ -21,9 +20,18 @@ function readCollapsed(): boolean {
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
 
   useEffect(() => {
     setCollapsed(readCollapsed())
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia(LG_QUERY)
+    const sync = () => setIsDesktop(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
   }, [])
 
   const toggleCollapsed = () => {
@@ -38,14 +46,18 @@ export function AppLayout() {
     })
   }
 
+  const sidebarWidth = collapsed ? 72 : 280
+  const contentPaddingLeft = isDesktop ? sidebarWidth : 0
+
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div
+      className="min-h-screen overflow-x-hidden bg-[var(--background)]"
+      style={{ ['--app-sidebar-width' as string]: isDesktop ? `${sidebarWidth}px` : '0px' } as CSSProperties}
+    >
       <AppSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} collapsed={collapsed} />
-      <div
-        className={cn('min-w-0 transition-[padding] duration-200 ease-out', collapsed ? 'lg:pl-[72px]' : 'lg:pl-[280px]')}
-      >
+      <div className="min-w-0 transition-[padding] duration-200 ease-out" style={{ paddingLeft: contentPaddingLeft }}>
         <Header onMenu={() => setMobileOpen(true)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
-        <main className="app-shell-main mx-auto max-w-[1600px] px-3 py-4 sm:px-6 sm:py-6 lg:p-8">
+        <main className="app-shell-main mx-auto max-w-[1600px] px-3 py-4 sm:px-5 sm:py-5 lg:py-6 lg:pl-5 lg:pr-8">
           <Outlet />
         </main>
       </div>

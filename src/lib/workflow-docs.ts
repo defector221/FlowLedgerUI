@@ -1,5 +1,8 @@
 /** Maps workflow approval entity types to in-app document routes. */
-export function workflowDocumentPath(entityType: string | null | undefined, entityId: string | null | undefined): string | null {
+export function workflowDocumentPath(
+  entityType: string | null | undefined,
+  entityId: string | null | undefined,
+): string | null {
   if (!entityType || !entityId) return null
   switch (entityType.toUpperCase()) {
     case 'QUOTATION':

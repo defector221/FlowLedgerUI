@@ -89,7 +89,13 @@ export function SettingSwitch({
         </label>
         <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{description}</p>
       </div>
-      <Switch id={switchId} checked={checked} onCheckedChange={onCheckedChange} aria-label={title} className="mt-0.5 shrink-0" />
+      <Switch
+        id={switchId}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        aria-label={title}
+        className="mt-0.5 shrink-0"
+      />
     </div>
   )
 }
@@ -140,7 +146,10 @@ export function StickyActionBar({
           >
             {saving ? (
               <>
-                <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+                <span
+                  className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                  aria-hidden
+                />
                 Saving…
               </>
             ) : (

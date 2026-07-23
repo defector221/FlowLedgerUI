@@ -1142,13 +1142,7 @@ export type RetailShiftStatus = 'OPEN' | 'CLOSED'
 export type PosSaleStatus = 'DRAFT' | 'HELD' | 'COMPLETED' | 'VOID'
 export type RetailPaymentMode = 'CASH' | 'CARD' | 'UPI' | 'WALLET' | 'CREDIT'
 export type RetailReturnReason =
-  | 'DAMAGED'
-  | 'DEFECTIVE'
-  | 'WRONG_ITEM'
-  | 'SIZE_ISSUE'
-  | 'NOT_SATISFIED'
-  | 'EXCHANGE'
-  | 'OTHER'
+  'DAMAGED' | 'DEFECTIVE' | 'WRONG_ITEM' | 'SIZE_ISSUE' | 'NOT_SATISFIED' | 'EXCHANGE' | 'OTHER'
 export type RetailRefundMode = 'REFUND' | 'STORE_CREDIT' | 'EXCHANGE' | 'GIFT_CARD'
 export type RetailGiftCardStatus = 'ISSUED' | 'ACTIVE' | 'REDEEMED' | 'EXPIRED' | 'CANCELLED'
 export type RetailLocationType = 'SHELF' | 'RACK' | 'BIN' | 'BACKROOM' | 'DISPLAY' | 'WAREHOUSE'
@@ -1285,6 +1279,10 @@ export interface PosSale {
   billNumber: string | null
   subtotal: number
   discountTotal: number
+  billDiscountPercent: number
+  billDiscountAmount: number
+  loyaltyPointsRedeemed: number
+  couponCode: string | null
   taxTotal: number
   grandTotal: number
   heldLabel: string | null
@@ -1320,6 +1318,30 @@ export interface PosCheckoutRequest {
   customerId?: string | null
   receiptType?: string
   payments: Array<{ paymentMode: RetailPaymentMode; amount: number; reference?: string }>
+}
+
+export interface PosLineUpdateRequest {
+  quantity?: number
+  discountPercent?: number
+  rate?: number
+  taxRate?: number
+}
+
+export interface PosAdjustmentsRequest {
+  customerId?: string | null
+  clearCustomer?: boolean
+  billDiscountPercent?: number
+  billDiscountAmount?: number
+  loyaltyPointsRedeemed?: number
+  couponCode?: string | null
+}
+
+export interface RetailLoyaltyAccount {
+  id: string
+  customerId: string
+  tierId: string | null
+  pointsBalance: number
+  lifetimePoints: number
 }
 
 export interface RetailProductLookup {

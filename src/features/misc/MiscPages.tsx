@@ -3,14 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Eye, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  auditApi,
-  reportApi,
-  salesApi,
-  taxRateApi,
-  templateApi,
-  unitApi,
-} from '@/services/api'
+import { reportApi, salesApi, taxRateApi, templateApi, unitApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { currency, date, quantity } from '@/lib/utils'
 import { PageHeader } from '@/components/layout/PageChrome'
@@ -20,9 +13,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  Dialog,
-  DialogContent,
-  DialogTitle,
   Input,
   NumberInput,
   Label,
@@ -1126,135 +1116,6 @@ export function UnitsPage() {
           </Table>
         </CardContent>
       </Card>
-    </div>
-  )
-}
-
-export function AuditLogsPage() {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['audit-logs'],
-    queryFn: () => auditApi.list({ size: 50 }),
-  })
-  const detailQuery = useQuery({
-    queryKey: ['audit-logs', selectedId],
-    queryFn: () => auditApi.get(selectedId!),
-    enabled: !!selectedId,
-  })
-  const detail = detailQuery.data
-
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Audit log" subtitle="Track important activity across your organization." />
-      <Card>
-        <CardContent className="p-4">
-          {isLoading ? (
-            <p className="py-20 text-center text-sm text-slate-500">Loading audit events…</p>
-          ) : data.length ? (
-            <Table>
-              <thead>
-                <tr className="border-b">
-                  <th className="p-3 text-left text-xs text-slate-500">ACTION</th>
-                  <th className="p-3 text-left text-xs text-slate-500">ENTITY</th>
-                  <th className="p-3 text-left text-xs text-slate-500">PERFORMED BY</th>
-                  <th className="p-3 text-left text-xs text-slate-500">DATE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="cursor-pointer border-b transition-colors hover:bg-slate-50"
-                    onClick={() => setSelectedId(row.id)}
-                  >
-                    <td className="p-3 font-medium text-slate-900">{formatAuditAction(row.action)}</td>
-                    <td className="p-3 text-slate-700">{row.entityType}</td>
-                    <td className="p-3 text-slate-700">
-                      <div className="font-medium text-slate-900">{row.userName ?? 'System / unknown'}</div>
-                      {row.userEmail ? <div className="text-xs text-slate-500">{row.userEmail}</div> : null}
-                    </td>
-                    <td className="p-3 text-slate-600">{new Date(row.createdAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <p className="py-20 text-center text-sm text-slate-500">
-              No audit events to display. Creating invoices, payments, and other changes will appear here.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-          <DialogTitle className="text-lg font-semibold text-slate-900">Audit event details</DialogTitle>
-          {detailQuery.isLoading ? (
-            <p className="mt-4 text-sm text-slate-500">Loading details…</p>
-          ) : detailQuery.isError ? (
-            <p className="mt-4 text-sm text-rose-600">{getApiErrorMessage(detailQuery.error)}</p>
-          ) : detail ? (
-            <div className="mt-4 space-y-5">
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <DetailField label="Action" value={formatAuditAction(detail.action)} />
-                <DetailField label="Entity" value={detail.entityType} />
-                <DetailField label="Entity ID" value={detail.entityId ?? '—'} mono />
-                <DetailField label="When" value={new Date(detail.createdAt).toLocaleString()} />
-                <DetailField
-                  label="Performed by"
-                  value={
-                    detail.userName
-                      ? `${detail.userName}${detail.userEmail ? ` (${detail.userEmail})` : ''}`
-                      : 'System / unknown'
-                  }
-                />
-                <DetailField label="IP address" value={detail.ipAddress ?? '—'} mono />
-              </dl>
-              {detail.userAgent ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">User agent</p>
-                  <p className="mt-1 break-all text-sm text-slate-700">{detail.userAgent}</p>
-                </div>
-              ) : null}
-              <JsonBlock label="Request details" value={detail.newValue} />
-              <JsonBlock label="Previous value" value={detail.oldValue} />
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-
-function formatAuditAction(action: string) {
-  return action.replaceAll('_', ' ')
-}
-
-function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className={`mt-1 text-sm text-slate-900 ${mono ? 'font-mono text-xs break-all' : ''}`}>{value}</dd>
-    </div>
-  )
-}
-
-function JsonBlock({ label, value }: { label: string; value: unknown }) {
-  if (value == null || (typeof value === 'object' && value !== null && Object.keys(value as object).length === 0)) {
-    return null
-  }
-  let text: string
-  try {
-    text = JSON.stringify(value, null, 2)
-  } catch {
-    text = String(value)
-  }
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <pre className="mt-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-800">
-        {text}
-      </pre>
     </div>
   )
 }

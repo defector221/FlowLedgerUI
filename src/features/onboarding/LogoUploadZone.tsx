@@ -88,7 +88,11 @@ export function LogoUploadZone({
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
             <div className="relative mx-auto grid size-28 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-[linear-gradient(45deg,#f1f5f9_25%,transparent_25%),linear-gradient(-45deg,#f1f5f9_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f1f5f9_75%),linear-gradient(-45deg,transparent_75%,#f1f5f9_75%)] bg-[length:16px_16px] bg-[position:0_0,0_8px,8px_-8px,-8px_0] sm:mx-0">
-              <img src={previewUrl} alt="Organization logo preview" className="max-h-full max-w-full object-contain p-2" />
+              <img
+                src={previewUrl}
+                alt="Organization logo preview"
+                className="max-h-full max-w-full object-contain p-2"
+              />
             </div>
             <div className="min-w-0 flex-1 space-y-3 text-center sm:text-left">
               <div>

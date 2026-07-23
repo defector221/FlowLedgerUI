@@ -1,22 +1,21 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { PageHeader, PageShell } from '@/components/layout/PageChrome'
 import { Button, Card, CardContent } from '@/components/ui'
-import { organizationApi } from '@/services/api'
 import { useAuth } from '@/features/auth/auth'
+import { useCapabilities } from '@/platform'
 
 export function useRetailEnabled() {
-  return useQuery({
-    queryKey: ['organization', 'ops-settings'],
-    queryFn: organizationApi.settings,
-    staleTime: 30_000,
-  })
+  const query = useCapabilities()
+  return {
+    ...query,
+    data: query.data ? { retailEnabled: query.data.modules.RETAIL === true } : undefined,
+  }
 }
 
 export function RetailModuleGate({ children, title }: { children: ReactNode; title?: string }) {
   const { canManageOrganization } = useAuth()
-  const { data: settings, isLoading } = useRetailEnabled()
+  const { data: capabilities, isLoading } = useCapabilities()
 
   if (isLoading) {
     return (
@@ -27,7 +26,7 @@ export function RetailModuleGate({ children, title }: { children: ReactNode; tit
     )
   }
 
-  if (settings && settings.retailEnabled === false) {
+  if (capabilities && capabilities.modules.RETAIL !== true) {
     return (
       <PageShell>
         {title ? <PageHeader title={title} /> : null}
@@ -35,11 +34,12 @@ export function RetailModuleGate({ children, title }: { children: ReactNode; tit
           <CardContent className="space-y-3 p-6">
             <p className="text-base font-semibold text-slate-900">Retail module is disabled</p>
             <p className="text-sm text-slate-600">
-              Enable Retail in organization settings to use stores, shifts, POS, and related features.
+              Enable Retail in Platform Settings (or Organization Settings) to use stores, shifts, POS, and related
+              features.
             </p>
             {canManageOrganization() ? (
               <Button asChild>
-                <Link to="/settings/organization">Open organization settings</Link>
+                <Link to="/settings/platform">Open Platform Settings</Link>
               </Button>
             ) : null}
           </CardContent>

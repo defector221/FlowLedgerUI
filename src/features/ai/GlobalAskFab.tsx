@@ -7,12 +7,15 @@ import { aiApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuth } from '@/features/auth/auth'
 import { cn } from '@/lib/utils'
+import { useHasFeature, useHasModule } from '@/platform'
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Textarea } from '@/components/ui'
 
 /** Header-mounted Ask control (no floating FAB — avoids sidebar/composer overlap). */
 export function GlobalAskButton() {
   const location = useLocation()
   const { canAccessModule } = useAuth()
+  const aiModuleOn = useHasModule('AI')
+  const assistantOn = useHasFeature('AI', 'ASSISTANT')
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [answer, setAnswer] = useState<{
@@ -25,26 +28,27 @@ export function GlobalAskButton() {
 
   // Full Assistant page already has a composer — skip header Ask there.
   const onAiChat = location.pathname === '/ai/chat' || location.pathname.startsWith('/ai/chat/')
+  const canAsk = canAccessModule('ai') && aiModuleOn && assistantOn
 
   useEffect(() => {
-    if (!canAccessModule('ai')) return
+    if (!canAsk) return
     void aiApi
       .health()
       .then((h) => setAiOn(h.enabled !== false))
       .catch(() => setAiOn(false))
-  }, [canAccessModule])
+  }, [canAsk])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
-        if (!canAccessModule('ai') || !aiOn || onAiChat) return
+        if (!canAsk || !aiOn || onAiChat) return
         e.preventDefault()
         setOpen(true)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [aiOn, canAccessModule, onAiChat])
+  }, [aiOn, canAsk, onAiChat])
 
   const ask = useMutation({
     mutationFn: (message: string) => aiApi.ask({ message }),
@@ -59,7 +63,7 @@ export function GlobalAskButton() {
     onError: (err) => toast.error(getApiErrorMessage(err)),
   })
 
-  if (!canAccessModule('ai') || !aiOn || onAiChat) return null
+  if (!canAsk || !aiOn || onAiChat) return null
 
   const shortcut = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘J' : 'Ctrl J'
 

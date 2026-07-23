@@ -71,15 +71,18 @@ export function useNavRecents() {
   return { recentLeaves }
 }
 
-export function useExpandedModule(activeSectionId: string | null) {
+export function useExpandedModule(activeSectionId: string | null, options?: { autoExpand?: boolean }) {
+  const autoExpand = options?.autoExpand ?? true
   const [expandedId, setExpandedId] = useState<string | null>(() => readJson<string | null>(EXPANDED_KEY, null))
 
   useEffect(() => {
+    // Icon-rail uses click-to-open flyouts; don't force a panel open on every route change.
+    if (!autoExpand) return
     if (activeSectionId) {
       setExpandedId(activeSectionId)
       writeJson(EXPANDED_KEY, activeSectionId)
     }
-  }, [activeSectionId])
+  }, [activeSectionId, autoExpand])
 
   const toggle = useCallback((id: string) => {
     setExpandedId((prev) => {

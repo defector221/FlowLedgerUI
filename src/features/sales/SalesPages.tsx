@@ -140,8 +140,7 @@ export function DocumentListPage({
     queryFn: salesApi.listChallans,
     enabled: endpoint === 'orders' && canWrite,
   })
-  const workflowEntityType =
-    endpoint === 'orders' ? 'SALES_ORDER' : endpoint === 'quotations' ? 'QUOTATION' : null
+  const workflowEntityType = endpoint === 'orders' ? 'SALES_ORDER' : endpoint === 'quotations' ? 'QUOTATION' : null
   const { data: workflowApprovals = [] } = useQuery({
     queryKey: ['ai-workflow-approvals', 'all'],
     queryFn: async () => {
@@ -465,11 +464,7 @@ export function DocumentListPage({
                   const approval = approvalByEntityId[String(row.id)]
                   const approvalPending = approval?.status === 'PENDING'
                   const approvalRejected = approval?.status === 'REJECTED'
-                  const displayStatus = approvalPending
-                    ? 'IN APPROVAL'
-                    : approvalRejected
-                      ? 'REJECTED'
-                      : status
+                  const displayStatus = approvalPending ? 'IN APPROVAL' : approvalRejected ? 'REJECTED' : status
                   const statusVariant = approvalPending
                     ? 'warning'
                     : approvalRejected || cancelled
@@ -538,10 +533,7 @@ export function DocumentListPage({
                           {approvalPending ? (
                             <div className="space-y-1">
                               <p className="text-xs text-amber-800">Awaiting approval</p>
-                              <Link
-                                className="text-xs font-medium text-teal-700 hover:underline"
-                                to="/ai/workflows"
-                              >
+                              <Link className="text-xs font-medium text-teal-700 hover:underline" to="/ai/workflows">
                                 Open workflows
                               </Link>
                             </div>
@@ -721,18 +713,11 @@ export function DocumentListPage({
                               <Download className="size-3.5" />
                               PDF
                             </Button>
-                            {canWrite &&
-                              !cancelled &&
-                              status !== 'PAID' &&
-                              status !== 'PARTIALLY_PAID' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => cancelInvoice(String(row.id))}
-                                >
-                                  Cancel
-                                </Button>
-                              )}
+                            {canWrite && !cancelled && status !== 'PAID' && status !== 'PARTIALLY_PAID' && (
+                              <Button variant="outline" size="sm" onClick={() => cancelInvoice(String(row.id))}>
+                                Cancel
+                              </Button>
+                            )}
                           </div>
                         </td>
                       )}

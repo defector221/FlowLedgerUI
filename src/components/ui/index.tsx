@@ -6,6 +6,7 @@ import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
 import * as SwitchPrimitive from '@radix-ui/react-switch'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import * as LabelPrimitive from '@radix-ui/react-label'
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { Check, ChevronDown, Loader2, X } from 'lucide-react'
 import {
   forwardRef,
@@ -349,7 +350,7 @@ export const SelectContent = ({
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       className={cn(
-        'z-[70] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg',
+        'z-[200] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg',
         position === 'popper' && 'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
         className,
       )}
@@ -431,4 +432,29 @@ export const DropdownMenuSeparator = ({
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>) => (
   <DropdownMenuPrimitive.Separator className={cn('my-1 h-px bg-slate-200', className)} {...props} />
+)
+
+export const TooltipProvider = ({
+  delayDuration = 280,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Provider>) => (
+  <TooltipPrimitive.Provider delayDuration={delayDuration} {...props} />
+)
+export const Tooltip = TooltipPrimitive.Root
+export const TooltipTrigger = TooltipPrimitive.Trigger
+export const TooltipContent = ({
+  className,
+  sideOffset = 8,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>) => (
+  <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Content
+      sideOffset={sideOffset}
+      className={cn(
+        'z-[90] max-w-[14rem] rounded-md border border-white/10 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg',
+        className,
+      )}
+      {...props}
+    />
+  </TooltipPrimitive.Portal>
 )

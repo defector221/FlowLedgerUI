@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client'
-import { unwrapApi, unwrapList, unwrapPage } from '@/lib/api-response'
+import { unwrapApi, unwrapList, unwrapPage, unwrapPageResponse } from '@/lib/api-response'
 import type {
   AcceptInvitationRequest,
   CreateCategoryRequest,
@@ -516,8 +516,16 @@ export const templateApi = {
 }
 
 export const auditApi = {
-  list: (params?: { page?: number; size?: number }) =>
-    api.get('/audit-logs', { params }).then((r) => unwrapPage<AuditLogResponse>(r)),
+  list: (params?: {
+    page?: number
+    size?: number
+    search?: string
+    action?: string
+    entityType?: string
+    userId?: string
+    from?: string
+    to?: string
+  }) => api.get('/audit-logs', { params }).then((r) => unwrapPageResponse<AuditLogResponse>(r)),
   get: (id: string) => api.get(`/audit-logs/${id}`).then((r) => unwrapApi<AuditLogResponse>(r)),
 }
 

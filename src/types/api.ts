@@ -1329,6 +1329,7 @@ export interface PosLineUpdateRequest {
 
 export interface PosAdjustmentsRequest {
   customerId?: string | null
+  clearCustomer?: boolean
   billDiscountPercent?: number
   billDiscountAmount?: number
   loyaltyPointsRedeemed?: number

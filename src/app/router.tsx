@@ -33,13 +33,13 @@ import {
   MarketingCampaignsPage,
 } from '@/features/marketing/CampaignPages'
 import {
-  AuditLogsPage,
   OrganizationSettingsPage,
   ReportsPage,
   TaxRatesPage,
   TemplateDesignerPage,
   UnitsPage,
 } from '@/features/misc/MiscPages'
+import { AuditLogsPage } from '@/features/audit/AuditLogsPage'
 import { PlatformSettingsPage } from '@/features/settings/platform/PlatformSettingsPage'
 import { TeamManagementPage } from '@/features/settings/TeamManagementPage'
 import { BillingPage } from '@/features/settings/BillingPage'
@@ -66,6 +66,7 @@ import { TransportReportsPage } from '@/features/transport/TransportReportsPage'
 import { StoresPage } from '@/features/retail/StoresPage'
 import { ShiftDashboardPage } from '@/features/retail/ShiftDashboardPage'
 import { PosPage } from '@/features/retail/PosPage'
+import { PosSalesPage } from '@/features/retail/PosSalesPage'
 import { RetailCatalogPage } from '@/features/retail/RetailCatalogPage'
 import { RetailPricingPage } from '@/features/retail/RetailPricingPage'
 import { RetailReturnsPage } from '@/features/retail/RetailReturnsPage'
@@ -285,6 +286,7 @@ export const router = createBrowserRouter([
       { path: 'transport/search', element: <TransportSearchPage /> },
       { path: 'transport/reports', element: <TransportReportsPage /> },
       { path: 'retail/pos', element: <PosPage /> },
+      { path: 'retail/pos-sales', element: <PosSalesPage /> },
       { path: 'retail/stores', element: <StoresPage /> },
       { path: 'retail/shifts', element: <ShiftDashboardPage /> },
       { path: 'retail/catalog', element: <RetailCatalogPage /> },

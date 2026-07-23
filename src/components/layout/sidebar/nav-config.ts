@@ -190,6 +190,14 @@ export const NAV_ENTRIES: NavEntry[] = [
           feature: 'POS',
         },
         {
+          id: 'retail-pos-sales',
+          to: '/retail/pos-sales',
+          label: 'POS Sales',
+          icon: ReceiptText,
+          module: 'retail',
+          feature: 'POS',
+        },
+        {
           id: 'retail-stores',
           to: '/retail/stores',
           label: 'Stores',

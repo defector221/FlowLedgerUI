@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CreditCard, Pause, Search, Trash2, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CreditCard, Pause, Search, Trash2, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { Button, Card, CardContent, Input, Label } from '@/components/ui'
@@ -10,6 +10,7 @@ import { organizationApi, productApi, retailApi, customerApi } from '@/services/
 import type { PosSale, RetailPaymentMode } from '@/types/api'
 import { useAuth } from '@/features/auth/auth'
 import { useCapabilities } from '@/platform'
+import { PosReceiptActions } from './PosReceipt'
 
 const TENDERS: RetailPaymentMode[] = ['CASH', 'CARD', 'UPI']
 const DISCOUNT_PRESETS = [5, 10, 15, 20]
@@ -18,7 +19,7 @@ const selectClass =
   'h-9 max-w-[12rem] cursor-pointer rounded-lg border border-white/15 bg-slate-900 px-2 text-sm text-white outline-none focus:border-teal-500/50'
 
 export function PosPage() {
-  const { canManageOrganization } = useAuth()
+  const { canManageOrganization, organization } = useAuth()
   const queryClient = useQueryClient()
   const searchRef = useRef<HTMLInputElement>(null)
   const [storeId, setStoreId] = useState(() => localStorage.getItem('retail.pos.storeId') ?? '')
@@ -27,10 +28,13 @@ export function PosPage() {
   const [cashierId, setCashierId] = useState(() => localStorage.getItem('retail.pos.cashierId') ?? '')
   const [lastError, setLastError] = useState<string | null>(null)
   const [sale, setSale] = useState<PosSale | null>(null)
+  const [lastCompleted, setLastCompleted] = useState<PosSale | null>(null)
+  const [lastCompletedCustomer, setLastCompletedCustomer] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [heldOpen, setHeldOpen] = useState(false)
+  const [customerOpen, setCustomerOpen] = useState(false)
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
   const [lineDiscount, setLineDiscount] = useState('')
   const [billDiscPct, setBillDiscPct] = useState('')
@@ -38,6 +42,10 @@ export function PosPage() {
   const [couponCode, setCouponCode] = useState('')
   const [customerQuery, setCustomerQuery] = useState('')
   const [loyaltyRedeem, setLoyaltyRedeem] = useState('')
+  const [newCustomerOpen, setNewCustomerOpen] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerPhone, setNewCustomerPhone] = useState('')
+  const [newCustomerEmail, setNewCustomerEmail] = useState('')
   const [tender, setTender] = useState<RetailPaymentMode>('CASH')
   const [tenderAmount, setTenderAmount] = useState('')
   const [tenderRef, setTenderRef] = useState('')
@@ -94,11 +102,18 @@ export function PosPage() {
   const customers = useQuery({
     queryKey: ['customers', 'pos', customerQuery],
     queryFn: () => customerApi.list({ search: customerQuery.trim() || undefined, size: 8 }),
-    enabled: customerQuery.trim().length >= 2,
+    enabled:
+      customerQuery.trim().length >= 2 ||
+      /^\d{3,}$/.test(customerQuery.trim().replace(/\D/g, '')),
   })
   const loyalty = useQuery({
     queryKey: ['retail', 'loyalty', sale?.customerId],
     queryFn: () => retailApi.loyalty.getOrCreateAccount({ customerId: sale!.customerId! }),
+    enabled: !!sale?.customerId,
+  })
+  const selectedCustomer = useQuery({
+    queryKey: ['customers', 'pos-selected', sale?.customerId],
+    queryFn: () => customerApi.get(sale!.customerId!),
     enabled: !!sale?.customerId,
   })
 
@@ -333,6 +348,7 @@ export function PosPage() {
 
   const applyBillAdjustments = async (patch: {
     customerId?: string | null
+    clearCustomer?: boolean
     billDiscountPercent?: number
     billDiscountAmount?: number
     loyaltyPointsRedeemed?: number
@@ -351,6 +367,43 @@ export function PosPage() {
       if (patch.loyaltyPointsRedeemed != null) setLoyaltyRedeem(String(patch.loyaltyPointsRedeemed))
       if (patch.couponCode !== undefined) setCouponCode(patch.couponCode ?? '')
       await queryClient.invalidateQueries({ queryKey: ['retail', 'loyalty'] })
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const openNewCustomer = () => {
+    const q = customerQuery.trim()
+    const digits = q.replace(/\D/g, '')
+    const looksPhone = digits.length >= 8 && digits.length >= q.replace(/\s+/g, '').length * 0.7
+    setNewCustomerPhone(looksPhone ? digits : '')
+    setNewCustomerName(looksPhone ? '' : q)
+    setNewCustomerEmail('')
+    setNewCustomerOpen(true)
+  }
+
+  const createCustomer = async () => {
+    const name = newCustomerName.trim()
+    const phone = newCustomerPhone.trim().replace(/\s+/g, '')
+    if (!name) return toast.error('Customer name is required')
+    if (!storeId) return toast.error('Select a store first')
+    setBusy(true)
+    try {
+      const draft = await ensureDraft()
+      const created = await customerApi.create({
+        customerName: name,
+        phone: phone || undefined,
+        email: newCustomerEmail.trim() || undefined,
+      })
+      const next = await retailApi.pos.applyAdjustments(draft.id, { customerId: created.id })
+      setSale(next)
+      setCustomerQuery(created.customerName)
+      setNewCustomerOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ['customers'] })
+      await queryClient.invalidateQueries({ queryKey: ['retail', 'loyalty'] })
+      toast.success(`Customer ${created.customerName} added`)
     } catch (error) {
       toast.error(getApiErrorMessage(error))
     } finally {
@@ -438,12 +491,16 @@ export function PosPage() {
     if (!amount || amount <= 0) return toast.error('Enter tender amount')
     setBusy(true)
     try {
+      const customerLabel = selectedCustomer.data?.customerName ?? null
       const completed = await retailApi.pos.checkout(sale.id, {
         customerId: sale.customerId,
         payments: [{ paymentMode: tender, amount, reference: tenderRef || undefined }],
       })
       setSale(null)
       setPayOpen(false)
+      setLastCompleted(completed)
+      setLastCompletedCustomer(customerLabel)
+      setCustomerQuery('')
       toast.success(`Sale completed${completed.billNumber ? ` · ${completed.billNumber}` : ''}`)
       await queryClient.invalidateQueries({ queryKey: ['retail'] })
       searchRef.current?.focus()
@@ -840,9 +897,10 @@ export function PosPage() {
                 <Input
                   value={customerQuery}
                   onChange={(e) => setCustomerQuery(e.target.value)}
-                  placeholder="Search customer…"
+                  placeholder="Name or mobile number…"
                   className="h-9 border-white/15 bg-white/5 text-white"
                   disabled={busy || !sale}
+                  inputMode="search"
                 />
                 {customers.data?.length ? (
                   <div className="max-h-28 space-y-1 overflow-auto rounded-lg border border-white/10 bg-slate-950/60 p-1">
@@ -850,19 +908,47 @@ export function PosPage() {
                       <button
                         key={c.id}
                         type="button"
-                        className="flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/5"
+                        className="flex w-full flex-col rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/5"
                         disabled={busy}
                         onClick={() => {
                           setCustomerQuery(c.customerName)
                           void applyBillAdjustments({ customerId: c.id })
                         }}
                       >
-                        <span className="truncate">{c.customerName}</span>
-                        <span className="ml-auto font-mono text-xs text-slate-500">{c.customerCode}</span>
+                        <span className="flex w-full gap-2">
+                          <span className="min-w-0 truncate">{c.customerName}</span>
+                          <span className="ml-auto shrink-0 font-mono text-xs text-slate-500">{c.customerCode}</span>
+                        </span>
+                        {c.phone ? (
+                          <span className="font-mono text-xs text-teal-300/90">{c.phone}</span>
+                        ) : null}
                       </button>
                     ))}
                   </div>
-                ) : null}
+                ) : customerQuery.trim().length >= 2 && !customers.isFetching ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500">No customer matched name or mobile.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full border-teal-500/40 bg-transparent text-teal-200 hover:bg-teal-500/15"
+                      disabled={busy || !ready}
+                      onClick={openNewCustomer}
+                    >
+                      Add new customer
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-auto px-0 text-xs text-teal-300/90 hover:bg-transparent hover:text-teal-200"
+                    disabled={busy || !ready}
+                    onClick={openNewCustomer}
+                  >
+                    + Onboard customer
+                  </Button>
+                )}
                 {sale?.customerId && loyalty.data ? (
                   <p className="text-xs text-teal-200/90">
                     Points balance: <span className="font-mono">{Number(loyalty.data.pointsBalance).toFixed(0)}</span>
@@ -958,6 +1044,22 @@ export function PosPage() {
           </Card>
 
           <div className="mt-auto flex flex-col gap-2">
+            <Button
+              variant="outline"
+              className="h-11 justify-start gap-2 border-white/15 bg-transparent text-left text-white hover:bg-white/10"
+              disabled={busy || !ready}
+              onClick={() => {
+                setCustomerQuery('')
+                setCustomerOpen(true)
+              }}
+            >
+              <UserPlus className="size-4 shrink-0 text-teal-300" />
+              <span className="min-w-0 flex-1 truncate">
+                {selectedCustomer.data
+                  ? `${selectedCustomer.data.customerName}${selectedCustomer.data.phone ? ` · ${selectedCustomer.data.phone}` : ''}`
+                  : 'Customer / mobile'}
+              </span>
+            </Button>
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="outline"
@@ -997,6 +1099,92 @@ export function PosPage() {
           </div>
         </aside>
       </div>
+
+      {customerOpen ? (
+        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-4 sm:items-center">
+          <Card className="w-full max-w-md border-white/10 bg-slate-900 text-white shadow-2xl">
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Find customer</h2>
+                  <p className="text-xs text-slate-400">Search by name or mobile number</p>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-slate-400 hover:bg-white/10 hover:text-white"
+                  onClick={() => setCustomerOpen(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <Input
+                value={customerQuery}
+                onChange={(e) => setCustomerQuery(e.target.value)}
+                placeholder="Name or mobile…"
+                className="h-11 border-white/15 bg-white/5 text-white"
+                inputMode="search"
+                autoFocus
+              />
+              {customers.isFetching ? (
+                <p className="text-sm text-slate-400">Searching…</p>
+              ) : customers.data?.length ? (
+                <ul className="max-h-56 space-y-1 overflow-auto">
+                  {customers.data.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="flex w-full flex-col rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left hover:border-teal-500/40 hover:bg-teal-500/10 disabled:opacity-50"
+                        onClick={() => {
+                          setCustomerQuery(c.customerName)
+                          void applyBillAdjustments({ customerId: c.id }).then(() => setCustomerOpen(false))
+                        }}
+                      >
+                        <span className="font-medium text-white">{c.customerName}</span>
+                        <span className="text-xs text-slate-400">
+                          {c.customerCode}
+                          {c.phone ? ` · ${c.phone}` : ''}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : customerQuery.trim().length >= 2 ? (
+                <p className="text-sm text-slate-400">No match for “{customerQuery.trim()}”.</p>
+              ) : (
+                <p className="text-sm text-slate-500">Type at least 2 characters, or a mobile number.</p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="border-white/15 bg-transparent text-white hover:bg-white/10"
+                  disabled={busy || !sale?.customerId}
+                  onClick={() => {
+                    void applyBillAdjustments({ clearCustomer: true }).then(() => {
+                      setCustomerQuery('')
+                      setCustomerOpen(false)
+                    })
+                  }}
+                >
+                  Clear
+                </Button>
+                <Button
+                  className="bg-teal-600 text-white hover:bg-teal-500"
+                  disabled={busy || !ready}
+                  onClick={() => {
+                    setCustomerOpen(false)
+                    openNewCustomer()
+                  }}
+                >
+                  <UserPlus className="size-4" />
+                  Onboard new
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {heldOpen ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-4 sm:items-center">
@@ -1071,6 +1259,46 @@ export function PosPage() {
               </div>
               <p className="font-mono text-2xl text-teal-300">{total.toFixed(2)}</p>
               <div className="space-y-2">
+                <Label className="text-slate-300">Customer (name or mobile)</Label>
+                <Input
+                  value={customerQuery}
+                  onChange={(e) => setCustomerQuery(e.target.value)}
+                  placeholder="Search by name or mobile…"
+                  className="border-white/15 bg-white/5 text-white"
+                  inputMode="search"
+                />
+                {customers.data?.length ? (
+                  <div className="max-h-28 space-y-1 overflow-auto rounded-lg border border-white/10 bg-slate-950/60 p-1">
+                    {customers.data.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="flex w-full flex-col rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/5"
+                        disabled={busy}
+                        onClick={() => {
+                          setCustomerQuery(c.customerName)
+                          void applyBillAdjustments({ customerId: c.id })
+                        }}
+                      >
+                        <span className="truncate">{c.customerName}</span>
+                        {c.phone ? <span className="font-mono text-xs text-teal-300/90">{c.phone}</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-teal-500/40 bg-transparent text-teal-200 hover:bg-teal-500/15"
+                    disabled={busy || !ready}
+                    onClick={openNewCustomer}
+                  >
+                    Add new customer
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label className="text-slate-300">Tender</Label>
                 <div className="flex gap-2">
                   {TENDERS.map((mode) => (
@@ -1107,6 +1335,113 @@ export function PosPage() {
               </div>
               <Button className="w-full" disabled={busy} onClick={() => void checkout()}>
                 Complete sale
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {newCustomerOpen ? (
+        <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 p-4 sm:items-center">
+          <Card className="w-full max-w-md border-white/10 bg-slate-900 text-white shadow-2xl">
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Onboard customer</h2>
+                  <p className="text-xs text-slate-400">Quick add for POS — code is generated automatically</p>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-slate-400 hover:bg-white/10 hover:text-white"
+                  onClick={() => setNewCustomerOpen(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Name</Label>
+                <Input
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  className="border-white/15 bg-white/5 text-white"
+                  placeholder="Customer name"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Mobile</Label>
+                <Input
+                  value={newCustomerPhone}
+                  onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  className="border-white/15 bg-white/5 text-white"
+                  placeholder="10-digit mobile"
+                  inputMode="tel"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Email (optional)</Label>
+                <Input
+                  value={newCustomerEmail}
+                  onChange={(e) => setNewCustomerEmail(e.target.value)}
+                  className="border-white/15 bg-white/5 text-white"
+                  placeholder="email@example.com"
+                  inputMode="email"
+                />
+              </div>
+              <Button className="w-full" disabled={busy || !newCustomerName.trim()} onClick={() => void createCustomer()}>
+                Save & attach to bill
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {lastCompleted ? (
+        <div className="fixed inset-0 z-[96] flex items-end justify-center bg-slate-950/80 p-4 backdrop-blur-sm sm:items-center">
+          <Card className="w-full max-w-md overflow-hidden border-white/10 bg-slate-900 text-white shadow-2xl">
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-start gap-3">
+                <div className="grid size-10 place-items-center rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30">
+                  <CheckCircle2 className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold tracking-tight">Payment successful</h2>
+                  <p className="mt-0.5 text-sm text-slate-400">
+                    {lastCompleted.billNumber
+                      ? `Bill ${lastCompleted.billNumber} is ready to print`
+                      : 'Receipt is ready to print'}
+                  </p>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-slate-400 hover:bg-white/10 hover:text-white"
+                  onClick={() => {
+                    setLastCompleted(null)
+                    setLastCompletedCustomer(null)
+                  }}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <PosReceiptActions
+                sale={lastCompleted}
+                store={selectedStore}
+                customerName={lastCompletedCustomer}
+                gstin={organization?.gstin}
+                legalName={organization?.legalName || organization?.name}
+                onClose={() => {
+                  setLastCompleted(null)
+                  setLastCompletedCustomer(null)
+                }}
+              />
+              <Button
+                variant="outline"
+                className="w-full border-white/15 bg-transparent text-white hover:bg-white/5"
+                asChild
+              >
+                <Link to="/retail/pos-sales">View all POS sales</Link>
               </Button>
             </CardContent>
           </Card>

@@ -238,9 +238,21 @@ export const salesApi = {
     api.post('/sales/challans', payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
   updateChallan: (id: string, payload: Partial<DeliveryChallan>) =>
     api.put(`/sales/challans/${id}`, payload).then((r) => unwrapApi<DeliveryChallan>(r)),
+  updateChallanTransportRequired: (id: string, transportRequired: boolean) =>
+    api
+      .patch(`/sales/challans/${id}/transport-required`, { transportRequired })
+      .then((r) => unwrapApi<DeliveryChallan>(r)),
   cancelChallan: (id: string) => api.post(`/sales/challans/${id}/cancel`).then((r) => unwrapApi<DeliveryChallan>(r)),
   convertChallanToInvoice: (id: string) =>
     api.post(`/sales/challans/${id}/convert-to-invoice`).then((r) => unwrapApi<Record<string, unknown>>(r)),
+  getChallanInvoice: (id: string) =>
+    api
+      .get(`/sales/challans/${id}/invoice`)
+      .then((r) => unwrapApi<import('@/types/api').SalesInvoiceResponse>(r))
+      .catch((err) => {
+        if (err?.response?.status === 404) return null
+        throw err
+      }),
 
   listReturns: () => api.get('/sales/returns').then((r) => unwrapList<Record<string, unknown>>(r)),
   createReturn: (payload: Record<string, unknown>) =>
@@ -735,6 +747,10 @@ export const transportApi = {
   drivers: transportCrud<TransportDriver, TransportDriverRequest>('/transport/drivers'),
   shipments: {
     ...transportCrud<Shipment, ShipmentRequest>('/transport/shipments'),
+    fromChallan: (challanId: string, payload: Record<string, unknown> = {}) =>
+      api
+        .post(`/transport/shipments/from-challan/${challanId}`, payload)
+        .then((r) => unwrapApi<Shipment>(r)),
     submit: (id: string) => api.post(`/transport/shipments/${id}/submit`).then((r) => unwrapApi<Shipment>(r)),
     approve: (id: string, remarks?: string) =>
       api.post(`/transport/shipments/${id}/approve`, { remarks }).then((r) => unwrapApi<Shipment>(r)),
@@ -747,8 +763,38 @@ export const transportApi = {
     close: (id: string) => api.post(`/transport/shipments/${id}/close`).then((r) => unwrapApi<Shipment>(r)),
     cancel: (id: string, remarks?: string) =>
       api.post(`/transport/shipments/${id}/cancel`, { remarks }).then((r) => unwrapApi<Shipment>(r)),
-    checkpoint: (id: string, payload: { eventType: string; remarks?: string; locationJson?: unknown }) =>
-      api.post(`/transport/shipments/${id}/checkpoint`, payload).then((r) => unwrapApi<Shipment>(r)),
+    checkpoint: (id: string, payload?: { remarks?: string; locationJson?: string; payloadJson?: string }) =>
+      api.post(`/transport/shipments/${id}/checkpoint`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
+    addEvent: (id: string, payload?: { eventType?: string; remarks?: string; locationJson?: string; payloadJson?: string }) =>
+      api.post(`/transport/shipments/${id}/events`, payload ?? {}).then((r) => unwrapApi<Shipment>(r)),
+    updateHeader: (id: string, payload: Record<string, unknown>) =>
+      api.patch(`/transport/shipments/${id}/header`, payload).then((r) => unwrapApi<Shipment>(r)),
+    startLoading: (id: string) =>
+      api.post(`/transport/shipments/${id}/start-loading`).then((r) => unwrapApi<Shipment>(r)),
+    loaded: (id: string) => api.post(`/transport/shipments/${id}/loaded`).then((r) => unwrapApi<Shipment>(r)),
+  },
+  legs: {
+    list: (shipmentId: string) =>
+      api.get(`/transport/shipments/${shipmentId}/legs`).then((r) => unwrapList<import('@/types/api').ShipmentLeg>(r)),
+    add: (shipmentId: string, payload: Record<string, unknown>) =>
+      api
+        .post(`/transport/shipments/${shipmentId}/legs`, payload)
+        .then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+    update: (id: string, payload: Record<string, unknown>) =>
+      api.put(`/transport/legs/${id}`, payload).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+    remove: (id: string) => api.delete(`/transport/legs/${id}`),
+    dispatch: (id: string, payload?: Record<string, unknown>) =>
+      api.patch(`/transport/legs/${id}/dispatch`, payload ?? {}).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+    arrive: (id: string, payload?: Record<string, unknown>) =>
+      api.patch(`/transport/legs/${id}/arrive`, payload ?? {}).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+    complete: (id: string, payload?: Record<string, unknown>) =>
+      api.patch(`/transport/legs/${id}/complete`, payload ?? {}).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+    location: (id: string, payload: Record<string, unknown>) =>
+      api.patch(`/transport/legs/${id}/location`, payload).then((r) => unwrapApi<import('@/types/api').ShipmentLeg>(r)),
+    documents: (id: string) =>
+      api.get(`/transport/legs/${id}/documents`).then((r) => unwrapList<Record<string, unknown>>(r)),
+    addDocument: (id: string, payload: Record<string, unknown>) =>
+      api.post(`/transport/legs/${id}/documents`, payload).then((r) => unwrapApi<Record<string, unknown>>(r)),
   },
   search: (params: Record<string, string | number | undefined>) =>
     api.get('/transport/shipments/search', { params }).then((r) => unwrapList<Shipment>(r)),
@@ -919,8 +965,10 @@ export type AiWorkflowApproval = {
   entityId: string
   status: string
   requestedBy: string
+  requestedByName?: string | null
   requestedAt: string
   decidedBy?: string
+  decidedByName?: string | null
   decidedAt?: string
   remarks?: string
   workflowDraftId?: string
@@ -931,6 +979,16 @@ export type AiWorkflowApproval = {
   currentStepAction?: string
   canApprove?: boolean
   stepsSnapshotJson?: string
+  actions?: AiWorkflowApprovalAction[]
+}
+
+export type AiWorkflowApprovalAction = {
+  id: string
+  action: string
+  actorId: string
+  actorName?: string | null
+  actedAt: string
+  remarks?: string | null
 }
 
 export const aiApi = {
@@ -986,12 +1044,16 @@ export const aiApi = {
     api.post(`/ai/workflow/drafts/${id}/deactivate`).then((r) => unwrapApi<AiWorkflowDraft>(r)),
   workflowApprovals: (status: 'pending' | 'all' = 'pending') =>
     api.get('/ai/workflow/approvals', { params: { status } }).then((r) => unwrapList<AiWorkflowApproval>(r)),
+  workflowApprovalsForEntity: (entityType: string, entityId: string) =>
+    api
+      .get('/ai/workflow/approvals', { params: { entityType, entityId } })
+      .then((r) => unwrapList<AiWorkflowApproval>(r)),
   approveWorkflow: (id: string, remarks?: string) =>
     api
-      .post(`/ai/workflow/approvals/${id}/approve`, remarks ? { remarks } : {})
+      .post(`/ai/workflow/approvals/${id}/approve`, remarks?.trim() ? { remarks: remarks.trim() } : {})
       .then((r) => unwrapApi<AiWorkflowApproval>(r)),
   rejectWorkflow: (id: string, remarks?: string) =>
     api
-      .post(`/ai/workflow/approvals/${id}/reject`, remarks ? { remarks } : {})
+      .post(`/ai/workflow/approvals/${id}/reject`, remarks?.trim() ? { remarks: remarks.trim() } : {})
       .then((r) => unwrapApi<AiWorkflowApproval>(r)),
 }

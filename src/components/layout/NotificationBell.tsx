@@ -1,23 +1,54 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import { Bell, CheckCircle2, ClipboardCheck, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { notificationApi } from '@/services/api'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui'
+import type { InAppNotificationResponse } from '@/types/api'
+
+function isShipmentNotification(type: string | undefined) {
+  return (
+    !!type &&
+    (type === 'SHIPMENT_ACTIVITY' || type.startsWith('SHIPMENT_') || type === 'TRANSPORT_COMPLIANCE_EXPIRY')
+  )
+}
+
+function notificationIcon(type: string | undefined) {
+  if (type === 'WORKFLOW_APPROVAL') return <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-teal-700" />
+  if (isShipmentNotification(type)) return <Truck className="mt-0.5 size-4 shrink-0 text-teal-700" />
+  return <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-slate-400" />
+}
+
+function notificationMeta(item: InAppNotificationResponse) {
+  const link = item.link ?? ''
+  if (item.notificationType === 'WORKFLOW_APPROVAL') {
+    if (link.includes('/sales/orders/')) return 'Open sales order'
+    if (link.includes('/sales/quotations/')) return 'Open quotation'
+    if (link.includes('/sales/invoices/')) return 'Open invoice'
+    if (link.includes('/sales/challans/')) return 'Open delivery challan'
+    if (link.includes('/purchases/')) return 'Open document'
+    if (link.includes('/ai/workflows')) return 'Open approvals'
+    return item.link ? 'Open' : 'Workflow'
+  }
+  if (isShipmentNotification(item.notificationType) || link.includes('/transport/shipments/')) {
+    return 'Open shipment'
+  }
+  return item.link ? 'Open' : null
+}
 
 export function NotificationBell() {
   const queryClient = useQueryClient()
   const unreadQuery = useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: notificationApi.unreadCount,
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   })
   const listQuery = useQuery({
     queryKey: ['notifications', 'list'],
     queryFn: () => notificationApi.list({ size: 12 }),
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   })
 
@@ -58,7 +89,10 @@ export function NotificationBell() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0 sm:w-96">
         <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5">
-          <p className="text-sm font-semibold text-slate-900">Notifications</p>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Notifications</p>
+            <p className="text-[11px] text-slate-400">Approvals, shipments, and org updates</p>
+          </div>
           {unread > 0 ? (
             <button
               type="button"
@@ -76,16 +110,31 @@ export function NotificationBell() {
           {listQuery.isLoading ? (
             <p className="px-3 py-8 text-center text-sm text-slate-500">Loading…</p>
           ) : items.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-slate-500">No notifications yet.</p>
+            <p className="px-3 py-8 text-center text-sm text-slate-500">
+              No notifications yet.
+              <span className="mt-1 block text-xs text-slate-400">
+                Approvals, shipment activity, and important updates will show up here.
+              </span>
+            </p>
           ) : (
             items.map((item) => {
+              const meta = notificationMeta(item)
               const content = (
-                <div className="min-w-0">
-                  <p className={`text-sm ${item.read ? 'font-medium text-slate-700' : 'font-semibold text-slate-900'}`}>
-                    {item.title}
-                  </p>
-                  {item.body ? <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{item.body}</p> : null}
-                  <p className="mt-1 text-[11px] text-slate-400">{new Date(item.createdAt).toLocaleString()}</p>
+                <div className="flex gap-2.5">
+                  {notificationIcon(item.notificationType)}
+                  <div className="min-w-0">
+                    <p
+                      className={`text-sm ${item.read ? 'font-medium text-slate-700' : 'font-semibold text-slate-900'}`}
+                    >
+                      {item.title}
+                    </p>
+                    {item.body ? <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{item.body}</p> : null}
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {meta ? <span className="font-medium text-teal-700">{meta}</span> : null}
+                      {meta ? ' · ' : null}
+                      {new Date(item.createdAt).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               )
               return (
@@ -118,6 +167,11 @@ export function NotificationBell() {
               )
             })
           )}
+        </div>
+        <div className="border-t border-slate-100 px-3 py-2">
+          <Link to="/ai/workflows" className="text-xs font-medium text-teal-700 hover:underline">
+            Open workflows inbox
+          </Link>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

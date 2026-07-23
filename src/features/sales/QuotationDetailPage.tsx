@@ -4,7 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageChrome'
 import { customerApi, salesApi } from '@/services/api'
-import { getApiErrorMessage } from '@/lib/api-error'
+import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { Badge, Button, Card, CardContent, CardHeader, Table } from '@/components/ui'
 
@@ -71,6 +71,7 @@ export function QuotationDetailPage() {
       toast.success('Quotation converted to sales order')
       if (order?.id) navigate(`/sales/orders/${String(order.id)}`)
     } catch (err) {
+      if (notifyWorkflowApproval(err)) return
       toast.error(getApiErrorMessage(err))
     }
   }

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
@@ -17,9 +17,11 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { aiApi, type AiWorkflowApproval, type AiWorkflowDraft } from '@/services/api'
+import { workflowDocumentPath } from '@/lib/workflow-docs'
+import { ApprovalHistoryPanel } from '@/features/ai/ApprovalHistoryPanel'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { EmptyState, PageHeader } from '@/components/layout/PageChrome'
-import { Badge, Button, Input, Skeleton, Textarea } from '@/components/ui'
+import { Badge, Button, Dialog, DialogContent, DialogTitle, Input, Skeleton, Textarea } from '@/components/ui'
 
 type WorkflowStep = { order?: number; role?: string; action?: string }
 type WorkflowConditions = { minAmount?: number | string; documentTypes?: string[]; [key: string]: unknown }
@@ -70,16 +72,26 @@ function humanize(value: string | undefined): string {
 }
 
 function docPath(entityType: string, entityId: string): string | null {
-  switch (entityType) {
-    case 'QUOTATION':
-      return `/sales/quotations/${entityId}`
-    case 'SALES_ORDER':
-      return `/sales/orders/${entityId}`
-    case 'SALES_INVOICE':
-      return `/sales/invoices/${entityId}`
-    default:
-      return null
+  return workflowDocumentPath(entityType, entityId)
+}
+
+function parseApprovalContext(remarks: string | undefined): { action?: string; amount?: string } {
+  if (!remarks) return {}
+  const actionMatch = remarks.match(/action=([^·]+)/i)
+  const amountMatch = remarks.match(/amount=([0-9.]+)/i)
+  const action = actionMatch?.[1]?.trim()
+  const amountRaw = amountMatch?.[1]?.trim()
+  const amount = amountRaw ? formatInr(amountRaw) ?? undefined : undefined
+  return {
+    action: action ? action.charAt(0).toUpperCase() + action.slice(1) : undefined,
+    amount: amount ?? undefined,
   }
+}
+
+function approvalHeadline(entityType: string, action?: string): string {
+  const doc = humanize(entityType)
+  if (!action) return doc
+  return `${doc} · ${action}`
 }
 
 function sortedSteps(raw: WorkflowStep[]): WorkflowStep[] {
@@ -170,7 +182,7 @@ function WorkflowCard({
   const steps = sortedSteps(parseJson<WorkflowStep[]>(draft.stepsJson, []))
   const minAmount = formatInr(conditions.minAmount)
   const docTypes = conditions.documentTypes ?? []
-  const isActive = draft.status === 'ACTIVE'
+  const isActive = (draft.status ?? '').toUpperCase() === 'ACTIVE'
   const staleAdvisoryCopy = /stores config only|advisory workflow|does not auto-approve/i.test(draft.description ?? '')
 
   const startEdit = () => {
@@ -541,9 +553,15 @@ function WorkflowCard({
 
 export function AiWorkflowsPage() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const focusRef = useRef<HTMLElement | null>(null)
   const [prompt, setPrompt] = useState('')
   const [name, setName] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  const [decision, setDecision] = useState<{ id: string; mode: 'approve' | 'reject' } | null>(null)
+  const [decisionComment, setDecisionComment] = useState('')
 
   const drafts = useQuery({
     queryKey: ['ai-workflow-drafts'],
@@ -554,6 +572,27 @@ export function AiWorkflowsPage() {
     queryKey: ['ai-workflow-approvals'],
     queryFn: () => aiApi.workflowApprovals('pending'),
   })
+
+  const approvalHistory = useQuery({
+    queryKey: ['ai-workflow-approvals', 'history'],
+    queryFn: () => aiApi.workflowApprovals('all'),
+  })
+
+  useEffect(() => {
+    if (focusId) setHighlightId(focusId)
+  }, [focusId])
+
+  useEffect(() => {
+    if (!highlightId || !approvals.data?.length) return
+    const el = focusRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (searchParams.has('focus')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('focus')
+      setSearchParams(next, { replace: true })
+    }
+  }, [highlightId, approvals.data, searchParams, setSearchParams])
 
   const suggest = useMutation({
     mutationFn: (text: string) => aiApi.suggestWorkflow(text),
@@ -586,8 +625,11 @@ export function AiWorkflowsPage() {
 
   const activate = useMutation({
     mutationFn: (id: string) => aiApi.activateWorkflow(id),
-    onSuccess: () => {
+    onSuccess: (updated) => {
       toast.success('Workflow active — matching sales actions now need approval')
+      queryClient.setQueryData<AiWorkflowDraft[]>(['ai-workflow-drafts'], (current) =>
+        (current ?? []).map((d) => (d.id === updated.id ? { ...d, ...updated } : d)),
+      )
       void queryClient.invalidateQueries({ queryKey: ['ai-workflow-drafts'] })
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
@@ -595,8 +637,11 @@ export function AiWorkflowsPage() {
 
   const deactivate = useMutation({
     mutationFn: (id: string) => aiApi.deactivateWorkflow(id),
-    onSuccess: () => {
+    onSuccess: (updated) => {
       toast.success('Workflow deactivated — sales actions proceed without this gate')
+      queryClient.setQueryData<AiWorkflowDraft[]>(['ai-workflow-drafts'], (current) =>
+        (current ?? []).map((d) => (d.id === updated.id ? { ...d, ...updated } : d)),
+      )
       void queryClient.invalidateQueries({ queryKey: ['ai-workflow-drafts'] })
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
@@ -622,7 +667,7 @@ export function AiWorkflowsPage() {
   })
 
   const approve = useMutation({
-    mutationFn: (id: string) => aiApi.approveWorkflow(id),
+    mutationFn: ({ id, remarks }: { id: string; remarks?: string }) => aiApi.approveWorkflow(id, remarks),
     onSuccess: (result) => {
       if (result.status === 'APPROVED') {
         toast.success('Fully approved — retry the original convert/confirm action')
@@ -632,30 +677,71 @@ export function AiWorkflowsPage() {
           `Step approved · waiting for ${nextRole} (${result.currentStep ?? '?'}/${result.totalSteps ?? '?'})`,
         )
       }
+      setDecision(null)
+      setDecisionComment('')
+      queryClient.setQueryData<AiWorkflowApproval[]>(['ai-workflow-approvals'], (current) => {
+        const rows = current ?? []
+        if (result.status === 'APPROVED' || result.status === 'REJECTED') {
+          return rows.filter((row) => row.id !== result.id)
+        }
+        return rows.map((row) => (row.id === result.id ? { ...row, ...result } : row))
+      })
       void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      if (result.entityType && result.entityId) {
+        void queryClient.invalidateQueries({ queryKey: ['workflow-approvals', result.entityType, result.entityId] })
+        if (result.entityType === 'SALES_ORDER') {
+          void queryClient.invalidateQueries({ queryKey: ['sales-order', result.entityId] })
+        }
+        if (result.entityType === 'DELIVERY_CHALLAN') {
+          void queryClient.invalidateQueries({ queryKey: ['challan', result.entityId] })
+        }
+      }
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   })
 
   const reject = useMutation({
-    mutationFn: (id: string) => aiApi.rejectWorkflow(id),
-    onSuccess: () => {
-      toast.success('Rejected')
+    mutationFn: ({ id, remarks }: { id: string; remarks?: string }) => aiApi.rejectWorkflow(id, remarks),
+    onSuccess: (result) => {
+      toast.success('Rejected — the requester can review comments on the document')
+      setDecision(null)
+      setDecisionComment('')
+      queryClient.setQueryData<AiWorkflowApproval[]>(['ai-workflow-approvals'], (current) =>
+        (current ?? []).filter((row) => row.id !== result.id),
+      )
       void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      if (result.entityType && result.entityId) {
+        void queryClient.invalidateQueries({ queryKey: ['workflow-approvals', result.entityType, result.entityId] })
+        if (result.entityType === 'SALES_ORDER') {
+          void queryClient.invalidateQueries({ queryKey: ['sales-order', result.entityId] })
+        }
+        if (result.entityType === 'DELIVERY_CHALLAN') {
+          void queryClient.invalidateQueries({ queryKey: ['challan', result.entityId] })
+        }
+      }
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   })
 
   const rows = useMemo(() => {
-    const all = (drafts.data ?? []).filter((d) => d.status !== 'DELETED')
-    if (statusFilter === 'ACTIVE') return all.filter((d) => d.status === 'ACTIVE')
-    if (statusFilter === 'DRAFT') return all.filter((d) => d.status !== 'ACTIVE')
+    const all = (drafts.data ?? []).filter((d) => (d.status ?? '').toUpperCase() !== 'DELETED')
+    if (statusFilter === 'ACTIVE') return all.filter((d) => (d.status ?? '').toUpperCase() === 'ACTIVE')
+    if (statusFilter === 'DRAFT') return all.filter((d) => (d.status ?? '').toUpperCase() !== 'ACTIVE')
     return all
   }, [drafts.data, statusFilter])
 
   const pending: AiWorkflowApproval[] = approvals.data ?? []
-  const visible = (drafts.data ?? []).filter((d) => d.status !== 'DELETED')
-  const activeCount = visible.filter((d) => d.status === 'ACTIVE').length
+  const decidedHistory = useMemo(
+    () =>
+      (approvalHistory.data ?? [])
+        .filter((row) => row.status === 'APPROVED' || row.status === 'REJECTED')
+        .slice(0, 40),
+    [approvalHistory.data],
+  )
+  const visible = (drafts.data ?? []).filter((d) => (d.status ?? '').toUpperCase() !== 'DELETED')
+  const activeCount = visible.filter((d) => (d.status ?? '').toUpperCase() === 'ACTIVE').length
   const draftCount = visible.length - activeCount
   const libraryBusy = activate.isPending || deactivate.isPending || remove.isPending || update.isPending
 
@@ -695,100 +781,164 @@ export function AiWorkflowsPage() {
         </div>
       </div>
 
+      {activeCount > 1 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Multiple active workflows overlap</p>
+          <p className="mt-1 text-amber-900/80">
+            For each document, FlowLedger applies the strictest matching workflow (most approval steps). Deactivate
+            extras like “test” if you only want Seed’s Admin → Accountant path.
+          </p>
+        </div>
+      ) : null}
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
         <div className="border-b border-slate-100 px-5 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Inbox</p>
           <h2 className="font-[family-name:var(--font-display)] text-base font-semibold text-slate-900">
             Pending approvals
           </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Review requests before convert or confirm can continue.
+          </p>
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="max-h-[28rem] divide-y divide-slate-100 overflow-y-auto">
           {approvals.isLoading ? (
             <div className="space-y-3 p-5">
-              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
           ) : null}
           {!approvals.isLoading && !pending.length ? (
             <div className="p-8">
               <EmptyState
                 title="No pending approvals"
-                description="When an active workflow matches a convert/confirm, the request lands here."
+                description="When an active workflow matches a convert or confirm, the request lands here."
               />
             </div>
           ) : null}
           {pending.map((a) => {
             const href = docPath(a.entityType, a.entityId)
-            const total = a.totalSteps ?? 1
-            const current = a.currentStep ?? 1
+            const total = Number(a.totalSteps ?? 1) || 1
+            const current = Number(a.currentStep ?? 1) || 1
             const canApprove = a.canApprove !== false
-            const stepSteps = parseJson<{ order?: number; role?: string; action?: string }[]>(a.stepsSnapshotJson, [])
+            const stepSteps = parseJson<WorkflowStep[]>(a.stepsSnapshotJson, [])
+            const { action, amount } = parseApprovalContext(a.remarks)
+            const waitingRole = a.currentStepRole ? humanize(a.currentStepRole) : 'approver'
+            const focused = highlightId === a.id
+            const stepActors = (a.actions ?? []).filter((action) => action.action === 'STEP_APPROVED')
             return (
-              <article key={a.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="warning">{a.status}</Badge>
-                    <Badge variant="outline">{humanize(a.entityType)}</Badge>
-                    {a.workflowName ? <Badge variant="neutral">{a.workflowName}</Badge> : null}
-                    <Badge variant="outline">
-                      Step {current}/{total}
-                      {a.currentStepRole ? ` · ${humanize(a.currentStepRole)}` : ''}
-                    </Badge>
-                    {href ? (
-                      <Link to={href} className="text-xs font-medium text-teal-700 hover:underline">
-                        Open document
-                      </Link>
-                    ) : (
-                      <span className="font-mono text-xs text-slate-500">{a.entityId.slice(0, 8)}…</span>
-                    )}
+              <article
+                key={a.id}
+                ref={focused ? focusRef : undefined}
+                className={`grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center ${
+                  focused ? 'bg-teal-50/50 ring-2 ring-inset ring-teal-300' : ''
+                }`}
+              >
+                <div className="min-w-0 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/80">
+                          Needs approval
+                        </span>
+                        {amount ? (
+                          <span className="text-sm font-semibold tabular-nums text-slate-900">{amount}</span>
+                        ) : null}
+                      </div>
+                      <h3 className="truncate text-base font-semibold text-slate-900">
+                        {approvalHeadline(a.entityType, action)}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        {a.workflowName ?? 'Approval workflow'}
+                        {a.requestedByName ? ` · requested by ${a.requestedByName}` : null}
+                        {href ? (
+                          <>
+                            {' · '}
+                            <Link to={href} className="font-medium text-teal-700 hover:underline">
+                              Open document
+                            </Link>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
                   </div>
-                  {stepSteps.length > 1 ? (
-                    <ol className="flex flex-wrap items-center gap-1.5">
+
+                  {stepSteps.length > 0 ? (
+                    <ol className="flex flex-wrap items-center gap-2">
                       {stepSteps.map((s, idx) => {
                         const n = idx + 1
                         const done = n < current || a.status === 'APPROVED'
                         const active = n === current && a.status === 'PENDING'
+                        const actorLabel = done
+                          ? stepActors[idx]?.actorName?.trim() || humanize(s.role)
+                          : humanize(s.role)
                         return (
-                          <li
-                            key={`${a.id}-step-${n}`}
-                            className={`rounded-md px-2 py-1 text-[11px] font-medium ${
-                              done
-                                ? 'bg-emerald-50 text-emerald-800'
-                                : active
-                                  ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200'
-                                  : 'bg-slate-50 text-slate-500'
-                            }`}
-                          >
-                            {n}. {humanize(s.role)}
+                          <li key={`${a.id}-step-${n}`} className="flex items-center gap-2">
+                            {idx > 0 ? <ArrowRight className="size-3.5 text-slate-300" aria-hidden /> : null}
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                                done
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : active
+                                    ? 'bg-slate-900 text-white'
+                                    : 'bg-slate-100 text-slate-500'
+                              }`}
+                              title={done && stepActors[idx]?.actorName ? humanize(s.role) : undefined}
+                            >
+                              <span
+                                className={`flex size-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                                  done
+                                    ? 'bg-emerald-200/80 text-emerald-900'
+                                    : active
+                                      ? 'bg-white/20 text-white'
+                                      : 'bg-white text-slate-400'
+                                }`}
+                              >
+                                {done ? <Check className="size-2.5" /> : n}
+                              </span>
+                              {actorLabel}
+                            </span>
                           </li>
                         )
                       })}
                     </ol>
-                  ) : null}
-                  {a.remarks ? <p className="text-sm text-slate-600">{a.remarks}</p> : null}
-                  {!canApprove && a.currentStepRole ? (
-                    <p className="text-xs text-amber-800">
-                      Waiting for {humanize(a.currentStepRole)} (or Organization Admin) to approve this step.
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Step {current} of {total}
                     </p>
-                  ) : null}
-                  <p className="text-xs text-slate-400">Requested {new Date(a.requestedAt).toLocaleString()}</p>
+                  )}
+
+                  <p className="text-xs text-slate-400">
+                    {canApprove
+                      ? a.currentStepRole && a.currentStepRole.toUpperCase() !== 'ORGANIZATION_ADMIN'
+                        ? `Waiting for ${waitingRole} · you can approve as admin · requested ${new Date(a.requestedAt).toLocaleString()}`
+                        : `Your turn · requested ${new Date(a.requestedAt).toLocaleString()}`
+                      : `Waiting for ${waitingRole} · requested ${new Date(a.requestedAt).toLocaleString()}`}
+                  </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+
+                <div className="flex shrink-0 gap-2 sm:flex-col sm:items-stretch lg:flex-row">
                   <Button
                     size="sm"
                     className="cursor-pointer gap-1"
-                    disabled={approve.isPending || !canApprove}
-                    title={canApprove ? undefined : `Requires ${humanize(a.currentStepRole)} or Organization Admin`}
-                    onClick={() => approve.mutate(a.id)}
+                    disabled={approve.isPending || reject.isPending || !canApprove}
+                    title={canApprove ? undefined : `Requires ${waitingRole} or Organization Admin`}
+                    onClick={() => {
+                      setDecisionComment('')
+                      setDecision({ id: a.id, mode: 'approve' })
+                    }}
                   >
                     <Check className="size-3.5" />
-                    {total > 1 ? `Approve step ${current}` : 'Approve'}
+                    Approve
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="cursor-pointer gap-1"
-                    disabled={reject.isPending}
-                    onClick={() => reject.mutate(a.id)}
+                    disabled={approve.isPending || reject.isPending}
+                    onClick={() => {
+                      setDecisionComment('')
+                      setDecision({ id: a.id, mode: 'reject' })
+                    }}
                   >
                     <X className="size-3.5" />
                     Reject
@@ -799,6 +949,87 @@ export function AiWorkflowsPage() {
           })}
         </div>
       </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">History</p>
+          <h2 className="font-[family-name:var(--font-display)] text-base font-semibold text-slate-900">
+            Approval history
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Recently approved or rejected requests — open the linked document to validate what was decided.
+          </p>
+        </div>
+        <div className="p-5">
+          {approvalHistory.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <ApprovalHistoryPanel
+              requests={decidedHistory}
+              emptyLabel="No decided approvals yet. Completed inbox items will show up here."
+              showDocumentLink
+            />
+          )}
+        </div>
+      </section>
+
+      <Dialog
+        open={!!decision}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDecision(null)
+            setDecisionComment('')
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogTitle>{decision?.mode === 'reject' ? 'Reject request' : 'Approve request'}</DialogTitle>
+          <p className="mt-1 text-sm text-slate-500">
+            {decision?.mode === 'reject'
+              ? 'Optional comment is shared with the requester on the sales document.'
+              : 'Optional comment is recorded on this approval step.'}
+          </p>
+          <div className="mt-4 space-y-2">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Comment (optional)</label>
+            <Textarea
+              rows={4}
+              value={decisionComment}
+              onChange={(e) => setDecisionComment(e.target.value)}
+              placeholder={
+                decision?.mode === 'reject'
+                  ? 'e.g. Please revise delivery address before converting…'
+                  : 'e.g. Looks good — proceed to next step…'
+              }
+            />
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              disabled={approve.isPending || reject.isPending}
+              onClick={() => {
+                setDecision(null)
+                setDecisionComment('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="cursor-pointer"
+              variant={decision?.mode === 'reject' ? 'outline' : 'default'}
+              disabled={!decision || approve.isPending || reject.isPending}
+              onClick={() => {
+                if (!decision) return
+                const payload = { id: decision.id, remarks: decisionComment.trim() || undefined }
+                if (decision.mode === 'reject') reject.mutate(payload)
+                else approve.mutate(payload)
+              }}
+            >
+              {decision?.mode === 'reject' ? 'Confirm reject' : 'Confirm approve'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[var(--shadow-soft)]">

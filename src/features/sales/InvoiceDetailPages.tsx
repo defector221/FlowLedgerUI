@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -16,11 +16,13 @@ import {
   Skeleton,
   Table,
 } from '@/components/ui'
-import { customerApi, paymentApi, purchaseApi, salesApi, supplierApi } from '@/services/api'
-import { getApiErrorMessage } from '@/lib/api-error'
+import { customerApi, paymentApi, purchaseApi, salesApi, supplierApi, aiApi } from '@/services/api'
+import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
 import { PageHeader } from '@/components/layout/PageChrome'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
+import { ApprovalHistoryPanel } from '@/features/ai/ApprovalHistoryPanel'
+import type { AiWorkflowApproval } from '@/services/api'
 
 function formatMoney(value: unknown) {
   const amount = typeof value === 'number' ? value : Number(value ?? 0)
@@ -41,6 +43,23 @@ export function SalesInvoiceDetailPage() {
     queryFn: () => customerApi.get(String(data?.customerId)),
     enabled: !!data?.customerId,
   })
+  const { data: invoiceApprovals = [] } = useQuery({
+    queryKey: ['workflow-approvals', 'SALES_INVOICE', id],
+    queryFn: () => aiApi.workflowApprovalsForEntity('SALES_INVOICE', id),
+    enabled: !!id,
+    refetchOnWindowFocus: true,
+  })
+  const challanId = data?.deliveryChallanId ? String(data.deliveryChallanId) : ''
+  const { data: challanApprovals = [] } = useQuery({
+    queryKey: ['workflow-approvals', 'DELIVERY_CHALLAN', challanId],
+    queryFn: () => aiApi.workflowApprovalsForEntity('DELIVERY_CHALLAN', challanId),
+    enabled: !!challanId,
+    refetchOnWindowFocus: true,
+  })
+  const approvalHistory = useMemo(() => {
+    const merged: AiWorkflowApproval[] = [...invoiceApprovals, ...challanApprovals]
+    return merged.sort((a, b) => String(b.requestedAt).localeCompare(String(a.requestedAt)))
+  }, [invoiceApprovals, challanApprovals])
 
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderChannels, setReminderChannels] = useState<string[]>(['EMAIL'])
@@ -54,6 +73,7 @@ export function SalesInvoiceDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success('Invoice confirmed')
     } catch (err) {
+      if (notifyWorkflowApproval(err)) return
       toast.error(getApiErrorMessage(err, 'Unable to confirm invoice'))
     }
   }
@@ -195,9 +215,38 @@ export function SalesInvoiceDetailPage() {
             Warehouse:{' '}
             {data.warehouseName ? data.warehouseName : hasStockedLines ? '—' : 'Not applicable (services only)'}
           </p>
-          <p>Due date: {data.dueDate || '—'}</p>
+          {data.deliveryChallanId ? (
+            <p>
+              Delivery challan:{' '}
+              <Link
+                className="font-medium text-teal-700 hover:underline"
+                to={`/sales/challans/${data.deliveryChallanId}`}
+              >
+                Open challan
+              </Link>
+            </p>
+          ) : null}
           <p className="font-semibold text-slate-900">Outstanding: {formatMoney(outstanding)}</p>
           <p>Grand total: {formatMoney(data.grandTotal)}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Approval history</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Workflow decisions for this invoice
+              {data.deliveryChallanId ? ' and its source delivery challan conversion' : ''}.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ApprovalHistoryPanel
+            requests={approvalHistory}
+            emptyLabel="No workflow approvals recorded for this invoice yet."
+            showDocumentLink
+          />
         </CardContent>
       </Card>
 

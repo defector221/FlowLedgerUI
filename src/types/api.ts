@@ -492,6 +492,8 @@ export interface ShipmentLeg {
   id?: string
   shipmentId?: string
   sequenceNo: number
+  status?: string | null
+  transportMode?: TransportMode | null
   transportCompanyId?: string | null
   transportCompanyName?: string | null
   vehicleId?: string | null
@@ -501,16 +503,24 @@ export interface ShipmentLeg {
   vehicleNumberSnapshot?: string | null
   driverNameSnapshot?: string | null
   driverMobileSnapshot?: string | null
+  originLocation?: string | null
+  destinationLocation?: string | null
   expectedDeparture?: string | null
   expectedArrival?: string | null
   actualDeparture?: string | null
   actualArrival?: string | null
   remarks?: string | null
+  freightCost?: number | null
+  fuelCost?: number | null
+  tollCost?: number | null
+  otherCharges?: number | null
+  currentLatitude?: number | null
+  currentLongitude?: number | null
 }
 
 export interface ShipmentEvent {
   id: string
-  shipmentId: string
+  shipmentId?: string
   eventType: string
   occurredAt: string
   actorUserId?: string | null
@@ -542,6 +552,12 @@ export interface Shipment extends TransportRecord {
   actualDeliveryDate?: string | null
   freightCharges: number
   freightPaidBy?: FreightPayer | null
+  fuelChargesTotal?: number | null
+  tollChargesTotal?: number | null
+  otherChargesTotal?: number | null
+  grandTotal?: number | null
+  totalDistance?: number | null
+  priority?: string | null
   insuranceDetails?: string | null
   gpsTrackingUrl?: string | null
   ewayBillNumber?: string | null
@@ -577,6 +593,8 @@ export interface DeliveryChallan {
   salesOrderNumber?: string | null
   notes?: string | null
   transportRequired?: boolean
+  linkedInvoiceId?: string | null
+  linkedInvoiceNumber?: string | null
   items?: DeliveryChallanItem[]
 }
 
@@ -723,6 +741,8 @@ export interface SalesInvoiceResponse {
   billingAddress?: string | null
   shippingAddress?: string | null
   placeOfSupply?: string | null
+  salesOrderId?: string | null
+  deliveryChallanId?: string | null
   items?: SalesInvoiceItemResponse[] | null
 }
 

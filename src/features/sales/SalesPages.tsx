@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { Download, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
+  aiApi,
   customerApi,
   organizationApi,
   productApi,
@@ -18,8 +19,9 @@ import {
   taxRateApi,
   templateApi,
   warehouseApi,
+  type AiWorkflowApproval,
 } from '@/services/api'
-import { getApiErrorMessage } from '@/lib/api-error'
+import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
 import { resolveDefaultWarehouseId } from '@/lib/warehouse'
 import { currency, customerLabel, supplierLabel } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
@@ -138,6 +140,30 @@ export function DocumentListPage({
     queryFn: salesApi.listChallans,
     enabled: endpoint === 'orders' && canWrite,
   })
+  const workflowEntityType =
+    endpoint === 'orders' ? 'SALES_ORDER' : endpoint === 'quotations' ? 'QUOTATION' : null
+  const { data: workflowApprovals = [] } = useQuery({
+    queryKey: ['ai-workflow-approvals', 'all'],
+    queryFn: async () => {
+      try {
+        return await aiApi.workflowApprovals('all')
+      } catch {
+        return [] as AiWorkflowApproval[]
+      }
+    },
+    enabled: !!workflowEntityType,
+    refetchOnWindowFocus: true,
+  })
+  const approvalByEntityId = useMemo(() => {
+    if (!workflowEntityType) return {} as Record<string, AiWorkflowApproval>
+    const map: Record<string, AiWorkflowApproval> = {}
+    for (const approval of workflowApprovals) {
+      if (approval.entityType !== workflowEntityType) continue
+      const key = String(approval.entityId)
+      if (!map[key]) map[key] = approval
+    }
+    return map
+  }, [workflowApprovals, workflowEntityType])
   const needsWarehouse = canWrite && ['orders', 'challans', 'purchase-orders', 'grn'].includes(endpoint)
   const { data: warehouses = [] } = useQuery({
     queryKey: ['warehouses'],
@@ -199,6 +225,10 @@ export function DocumentListPage({
       await queryClient.invalidateQueries({ queryKey: ['orders'] })
       toast.success('Quotation converted to sales order')
     } catch (error) {
+      if (notifyWorkflowApproval(error)) {
+        void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+        return
+      }
       toast.error(getApiErrorMessage(error, 'Unable to convert quotation'))
     }
   }
@@ -220,6 +250,10 @@ export function DocumentListPage({
       if (challan?.id) navigate(`/sales/challans?focus=${String(challan.id)}`)
       else navigate('/sales/challans')
     } catch (error) {
+      if (notifyWorkflowApproval(error)) {
+        void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+        return
+      }
       const message = getApiErrorMessage(error, 'Unable to convert order to challan')
       if (/already exists/i.test(message)) {
         try {
@@ -248,6 +282,10 @@ export function DocumentListPage({
       toast.success('Sales order converted to invoice')
       if (invoice?.id) navigate(`/sales/invoices/${String(invoice.id)}`)
     } catch (error) {
+      if (notifyWorkflowApproval(error)) {
+        void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+        return
+      }
       toast.error(getApiErrorMessage(error, 'Unable to convert order to invoice'))
     }
   }
@@ -260,6 +298,7 @@ export function DocumentListPage({
       toast.success('Challan converted to invoice')
       if (invoice?.id) navigate(`/sales/invoices/${String(invoice.id)}`)
     } catch (error) {
+      if (notifyWorkflowApproval(error)) return
       toast.error(getApiErrorMessage(error, 'Unable to convert challan to invoice'))
     }
   }
@@ -346,6 +385,7 @@ export function DocumentListPage({
       await queryClient.invalidateQueries({ queryKey: ['inventory'] })
       toast.success('Invoice confirmed')
     } catch (error) {
+      if (notifyWorkflowApproval(error)) return
       toast.error(getApiErrorMessage(error, 'Unable to confirm invoice'))
     }
   }
@@ -422,6 +462,20 @@ export function DocumentListPage({
                 rows.map((row) => {
                   const status = String(row.status ?? row.paymentType ?? 'DRAFT')
                   const cancelled = status === 'CANCELLED'
+                  const approval = approvalByEntityId[String(row.id)]
+                  const approvalPending = approval?.status === 'PENDING'
+                  const approvalRejected = approval?.status === 'REJECTED'
+                  const displayStatus = approvalPending
+                    ? 'IN APPROVAL'
+                    : approvalRejected
+                      ? 'REJECTED'
+                      : status
+                  const statusVariant = approvalPending
+                    ? 'warning'
+                    : approvalRejected || cancelled
+                      ? 'danger'
+                      : 'default'
+                  const convertLocked = cancelled || approvalPending || approvalRejected
                   return (
                     <tr
                       key={String(row.id)}
@@ -477,49 +531,95 @@ export function DocumentListPage({
                       <td className="p-3">{documentDate(row)}</td>
                       <td className="p-3">{currency(Number(row.grandTotal ?? row.amount ?? 0))}</td>
                       <td className="p-3">
-                        <Badge>{status}</Badge>
+                        <Badge variant={statusVariant}>{displayStatus}</Badge>
                       </td>
                       {endpoint === 'quotations' && canWrite && (
                         <td className="p-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={status === 'CONVERTED' || cancelled}
-                            onClick={() => convertQuotation(String(row.id))}
-                          >
-                            Convert to order
-                          </Button>
+                          {approvalPending ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-amber-800">Awaiting approval</p>
+                              <Link
+                                className="text-xs font-medium text-teal-700 hover:underline"
+                                to="/ai/workflows"
+                              >
+                                Open workflows
+                              </Link>
+                            </div>
+                          ) : approvalRejected ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-rose-800">Rejected — review comments</p>
+                              <Link
+                                className="text-xs font-medium text-teal-700 hover:underline"
+                                to={`/sales/quotations/${row.id}`}
+                              >
+                                Open quotation
+                              </Link>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={status === 'CONVERTED' || convertLocked}
+                              onClick={() => convertQuotation(String(row.id))}
+                            >
+                              Convert to order
+                            </Button>
+                          )}
                         </td>
                       )}
                       {endpoint === 'orders' && canWrite && (
                         <td className="p-3">
-                          <div className="flex flex-wrap gap-2">
-                            {challanByOrderId[String(row.id)]?.id ? (
+                          {approvalPending ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-amber-900">In approval</p>
+                              <p className="text-[11px] text-slate-500">Convert actions are locked</p>
                               <Link
-                                className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                to={`/sales/challans?focus=${String(challanByOrderId[String(row.id)].id)}`}
+                                className="text-xs font-medium text-teal-700 hover:underline"
+                                to={`/sales/orders/${row.id}`}
                               >
-                                View challan
+                                View order
                               </Link>
-                            ) : (
+                            </div>
+                          ) : approvalRejected ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-rose-900">Rejected</p>
+                              <p className="text-[11px] text-slate-500">Review comments, then retry</p>
+                              <Link
+                                className="text-xs font-medium text-teal-700 hover:underline"
+                                to={`/sales/orders/${row.id}`}
+                              >
+                                Open order
+                              </Link>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {challanByOrderId[String(row.id)]?.id ? (
+                                <Link
+                                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                  to={`/sales/challans?focus=${String(challanByOrderId[String(row.id)].id)}`}
+                                >
+                                  View challan
+                                </Link>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={convertLocked}
+                                  onClick={() => convertOrderToChallan(String(row.id))}
+                                >
+                                  To challan
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={cancelled}
-                                onClick={() => convertOrderToChallan(String(row.id))}
+                                disabled={convertLocked}
+                                onClick={() => convertOrderToInvoice(String(row.id))}
                               >
-                                To challan
+                                To invoice
                               </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={cancelled}
-                              onClick={() => convertOrderToInvoice(String(row.id))}
-                            >
-                              To invoice
-                            </Button>
-                          </div>
+                            </div>
+                          )}
                         </td>
                       )}
                       {endpoint === 'challans' && canWrite && (
@@ -666,6 +766,7 @@ type SplitStrategy = 'PLACE_OF_SUPPLY' | 'NO_SPLIT_IGST' | 'NO_SPLIT_OTHER' | 'C
 type Line = {
   id: number
   productId: string
+  description?: string
   quantity: number
   rate: number
   discountPercent: number
@@ -760,6 +861,7 @@ function useLineItems(defaultRateKey: 'sellingPrice' | 'purchasePrice' = 'sellin
         return {
           ...line,
           productId,
+          description: product?.name ?? line.description,
           quantity: isService ? 1 : line.quantity,
           rate: product ? Number(product[defaultRateKey] ?? 0) : line.rate,
           taxRate: tax ? Number(tax.rate) : line.taxRate,
@@ -1146,6 +1248,7 @@ export function CreateInvoicePage() {
           items: items.map(
             ({
               productId,
+              description,
               quantity,
               rate,
               discountPercent,
@@ -1156,6 +1259,7 @@ export function CreateInvoicePage() {
               sgstSharePercent,
             }) => ({
               productId,
+              description,
               quantity,
               rate,
               discountPercent,
@@ -1183,6 +1287,7 @@ export function CreateInvoicePage() {
         toast.success(confirm ? 'Invoice confirmed' : 'Invoice saved as draft')
         if (confirm) navigate('/sales/invoices')
       } catch (error) {
+        if (notifyWorkflowApproval(error)) return
         toast.error(getApiErrorMessage(error, 'Unable to save invoice'))
       }
     })
@@ -1436,6 +1541,7 @@ export function CreateQuotationPage() {
         items: items.map(
           ({
             productId,
+            description,
             quantity,
             rate,
             discountPercent,
@@ -1446,6 +1552,7 @@ export function CreateQuotationPage() {
             sgstSharePercent,
           }) => ({
             productId,
+            description,
             quantity,
             rate,
             discountPercent,
@@ -1547,6 +1654,10 @@ export function CreateQuotationPage() {
 const salesOrderSchema = z.object({
   customerId: z.string().uuid('Select a customer'),
   orderDate: z.string().min(1),
+  expectedDeliveryDate: z.string().optional(),
+  placeOfSupply: z.string().optional(),
+  billingAddress: z.string().optional(),
+  shippingAddress: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -1568,12 +1679,29 @@ export function CreateSalesOrderPage() {
   } = useLineItems()
   const form = useForm({
     resolver: zodResolver(salesOrderSchema),
-    defaultValues: { customerId: '', orderDate: new Date().toISOString().slice(0, 10), notes: '' },
+    defaultValues: {
+      customerId: '',
+      orderDate: new Date().toISOString().slice(0, 10),
+      expectedDeliveryDate: '',
+      placeOfSupply: '',
+      billingAddress: '',
+      shippingAddress: '',
+      notes: '',
+    },
   })
   const { data: customers = [] } = useQuery({
     queryKey: ['customers', 'sales-order'],
     queryFn: () => customerApi.list({ size: 100 }),
   })
+
+  const applyCustomerDefaults = (customerId: string) => {
+    form.setValue('customerId', customerId)
+    const customer = customers.find((c) => c.id === customerId)
+    if (!customer) return
+    form.setValue('billingAddress', customer.billingAddress ?? '')
+    form.setValue('shippingAddress', customer.shippingAddress || customer.billingAddress || '')
+    form.setValue('placeOfSupply', customer.stateCode ?? '')
+  }
 
   const save = form.handleSubmit(async (values) => {
     try {
@@ -1582,10 +1710,15 @@ export function CreateSalesOrderPage() {
       await salesApi.createOrder({
         customerId: values.customerId,
         orderDate: values.orderDate,
+        expectedDeliveryDate: values.expectedDeliveryDate || undefined,
+        placeOfSupply: values.placeOfSupply || undefined,
+        billingAddress: values.billingAddress || undefined,
+        shippingAddress: values.shippingAddress || undefined,
         notes: values.notes,
         items: items.map(
           ({
             productId,
+            description,
             quantity,
             rate,
             discountPercent,
@@ -1596,6 +1729,7 @@ export function CreateSalesOrderPage() {
             sgstSharePercent,
           }) => ({
             productId,
+            description,
             quantity,
             rate,
             discountPercent,
@@ -1630,7 +1764,7 @@ export function CreateSalesOrderPage() {
             <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Customer</Label>
-                <Select value={form.watch('customerId')} onValueChange={(value) => form.setValue('customerId', value)}>
+                <Select value={form.watch('customerId')} onValueChange={applyCustomerDefaults}>
                   <SelectTrigger className="h-auto min-h-10 py-2">
                     {(() => {
                       const selected = customers.find((c) => c.id === form.watch('customerId'))
@@ -1649,6 +1783,22 @@ export function CreateSalesOrderPage() {
               <div className="space-y-1.5">
                 <Label>Order date</Label>
                 <Input type="date" {...form.register('orderDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Expected delivery</Label>
+                <Input type="date" {...form.register('expectedDeliveryDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Place of supply</Label>
+                <Input placeholder="State code e.g. 27" {...form.register('placeOfSupply')} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Billing address</Label>
+                <Input {...form.register('billingAddress')} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Shipping address</Label>
+                <Input {...form.register('shippingAddress')} />
               </div>
             </CardContent>
           </Card>
@@ -1758,6 +1908,7 @@ export function CreateChallanPage() {
       toast.success('Delivery challan created')
       navigate(challan?.id ? `/sales/challans?focus=${String(challan.id)}` : '/sales/challans')
     } catch (error) {
+      if (notifyWorkflowApproval(error)) return
       const message = getApiErrorMessage(error, 'Unable to create delivery challan')
       if (/already exists/i.test(message) && goToExistingChallan(values.salesOrderId)) return
       if (/already exists/i.test(message)) {

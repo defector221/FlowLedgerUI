@@ -1,4 +1,5 @@
 import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
 import type { FieldValues, Path, UseFormSetError } from 'react-hook-form'
 
 interface ProblemDetail {
@@ -25,7 +26,10 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
     }
 
     const data = error.response?.data as
-      ProblemDetail | { message?: string; error?: string; errors?: string[] } | string | undefined
+      | ProblemDetail
+      | { message?: string; error?: string; errors?: string[] }
+      | string
+      | undefined
 
     if (typeof data === 'string' && data.trim()) return data.trim()
 
@@ -60,6 +64,26 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
   }
   if (error instanceof Error && error.message) return error.message
   return fallback
+}
+
+/** True when an ERP action was blocked because a workflow approval is required / pending. */
+export function isWorkflowApprovalResponse(error: unknown): boolean {
+  const message = getApiErrorMessage(error, '')
+  return /workflow approval|submitted for approval|awaiting (workflow )?approval/i.test(message)
+}
+
+/**
+ * Shows a neutral “submitted for approval” toast instead of a red error.
+ * Returns true when the error was handled as a workflow gate.
+ */
+export function notifyWorkflowApproval(error: unknown): boolean {
+  if (!isWorkflowApprovalResponse(error)) return false
+  const detail = getApiErrorMessage(error, '')
+  const awaiting = /awaiting/i.test(detail)
+  toast.message(awaiting ? 'Awaiting approval' : 'Submitted for approval', {
+    description: 'Open AI → Workflows to review, then retry this action.',
+  })
+  return true
 }
 
 export function getApiFieldErrors(error: unknown): Record<string, string> | null {

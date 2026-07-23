@@ -3,10 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageChrome'
-import { customerApi, organizationApi, salesApi, warehouseApi } from '@/services/api'
-import { getApiErrorMessage } from '@/lib/api-error'
+import { customerApi, organizationApi, salesApi, warehouseApi, aiApi } from '@/services/api'
+import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { Badge, Button, Card, CardContent, CardHeader, Table } from '@/components/ui'
+import { ApprovalHistoryPanel } from '@/features/ai/ApprovalHistoryPanel'
 
 type SalesLine = {
   id?: string
@@ -74,6 +75,19 @@ export function SalesOrderDetailPage() {
     enabled: !!id,
   })
 
+  const { data: approvalHistory = [] } = useQuery({
+    queryKey: ['workflow-approvals', 'SALES_ORDER', id],
+    queryFn: async () => {
+      try {
+        return await aiApi.workflowApprovalsForEntity('SALES_ORDER', id)
+      } catch {
+        return []
+      }
+    },
+    enabled: !!id,
+    refetchOnWindowFocus: true,
+  })
+
   const linkedChallan = (challans as Array<{ id?: string; salesOrderId?: string; challanNumber?: string }>).find(
     (c) => String(c.salesOrderId) === id,
   )
@@ -98,6 +112,11 @@ export function SalesOrderDetailPage() {
       toast.success('Sales order converted to delivery challan')
       if (challan?.id) navigate(`/sales/challans/${String(challan.id)}`)
     } catch (err) {
+      if (notifyWorkflowApproval(err)) {
+        void queryClient.invalidateQueries({ queryKey: ['workflow-approvals', 'SALES_ORDER', id] })
+        void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+        return
+      }
       toast.error(getApiErrorMessage(err))
     }
   }
@@ -112,6 +131,11 @@ export function SalesOrderDetailPage() {
       toast.success('Sales order converted to invoice')
       if (invoice?.id) navigate(`/sales/invoices/${String(invoice.id)}`)
     } catch (err) {
+      if (notifyWorkflowApproval(err)) {
+        void queryClient.invalidateQueries({ queryKey: ['workflow-approvals', 'SALES_ORDER', id] })
+        void queryClient.invalidateQueries({ queryKey: ['ai-workflow-approvals'] })
+        return
+      }
       toast.error(getApiErrorMessage(err))
     }
   }
@@ -137,6 +161,12 @@ export function SalesOrderDetailPage() {
   const status = String(data.status ?? 'DRAFT')
   const cancelled = status === 'CANCELLED'
   const items = data.items ?? []
+  const latestApproval = approvalHistory[0]
+  const latestRejected = latestApproval?.status === 'REJECTED'
+  const latestPending = latestApproval?.status === 'PENDING'
+  const displayStatus = latestPending ? 'IN APPROVAL' : latestRejected ? 'REJECTED' : status
+  const statusVariant = latestPending ? 'warning' : latestRejected || cancelled ? 'danger' : 'default'
+  const convertLocked = cancelled || latestPending
 
   return (
     <div className="space-y-6">
@@ -145,7 +175,7 @@ export function SalesOrderDetailPage() {
         subtitle={`Sales order · ${data.orderDate}`}
         actions={
           <>
-            <Badge>{status}</Badge>
+            <Badge variant={statusVariant}>{displayStatus}</Badge>
             <Button variant="outline" className="cursor-pointer" onClick={() => refetch()}>
               <RefreshCw className="size-4" />
               Refresh
@@ -157,14 +187,37 @@ export function SalesOrderDetailPage() {
                 </Button>
               </Link>
             ) : (
-              <Button className="cursor-pointer" onClick={toChallan} disabled={cancelled}>
-                To challan
+              <Button
+                className="cursor-pointer"
+                onClick={toChallan}
+                disabled={convertLocked}
+                title={
+                  latestPending
+                    ? 'Awaiting workflow approval'
+                    : latestRejected
+                      ? 'Retrying will resubmit this order for approval'
+                      : undefined
+                }
+              >
+                {latestRejected ? 'Retry to challan' : 'To challan'}
               </Button>
             )}
-            <Button variant="outline" className="cursor-pointer" onClick={toInvoice} disabled={cancelled}>
-              To invoice
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={toInvoice}
+              disabled={convertLocked}
+              title={
+                latestPending
+                  ? 'Awaiting workflow approval'
+                  : latestRejected
+                    ? 'Retrying will resubmit this order for approval'
+                    : undefined
+              }
+            >
+              {latestRejected ? 'Retry to invoice' : 'To invoice'}
             </Button>
-            {!cancelled && status !== 'FULFILLED' && (
+            {!cancelled && !latestPending && status !== 'FULFILLED' && (
               <Button variant="outline" className="cursor-pointer" onClick={cancel}>
                 Cancel
               </Button>
@@ -172,6 +225,40 @@ export function SalesOrderDetailPage() {
           </>
         }
       />
+
+      {latestPending ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-950">In approval</p>
+          <p className="mt-1 text-sm text-amber-900/90">
+            Convert actions are locked until{' '}
+            {latestApproval?.currentStepRole
+              ? latestApproval.currentStepRole.replaceAll('_', ' ').toLowerCase()
+              : 'the approver'}{' '}
+            completes this request
+            {latestApproval?.currentStep && latestApproval?.totalSteps
+              ? ` (step ${latestApproval.currentStep}/${latestApproval.totalSteps})`
+              : ''}
+            .
+          </p>
+          <Link to="/ai/workflows" className="mt-2 inline-block text-sm font-medium text-teal-700 hover:underline">
+            Open workflows inbox
+          </Link>
+        </div>
+      ) : null}
+
+      {latestRejected ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 px-5 py-4">
+          <p className="text-sm font-semibold text-rose-950">
+            Sales order rejected
+            {latestApproval?.decidedByName ? ` by ${latestApproval.decidedByName}` : null}
+          </p>
+          <p className="mt-1 text-sm text-rose-900/90">
+            {latestApproval?.remarks?.trim()
+              ? latestApproval.remarks
+              : 'Review the approval history comments, fix the order if needed, then retry convert to resubmit for approval.'}
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
@@ -251,30 +338,48 @@ export function SalesOrderDetailPage() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <h2 className="font-semibold">Totals</h2>
-          </CardHeader>
-          <CardContent className="space-y-3 p-6 text-sm">
-            <TotalRow label="Subtotal" value={money(data.subtotal)} />
-            <TotalRow label="Discount" value={`−${money(data.discountTotal)}`} />
-            <TotalRow label="Tax" value={money(data.taxTotal)} />
-            <div className="border-t border-slate-100 pt-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900">Grand total</span>
-                <span className="font-[family-name:var(--font-display)] text-xl font-semibold text-slate-900">
-                  {money(data.grandTotal)}
-                </span>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <h2 className="font-semibold">Totals</h2>
+            </CardHeader>
+            <CardContent className="space-y-3 p-6 text-sm">
+              <TotalRow label="Subtotal" value={money(data.subtotal)} />
+              <TotalRow label="Discount" value={`−${money(data.discountTotal)}`} />
+              <TotalRow label="Tax" value={money(data.taxTotal)} />
+              <div className="border-t border-slate-100 pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-900">Grand total</span>
+                  <span className="font-[family-name:var(--font-display)] text-xl font-semibold text-slate-900">
+                    {money(data.grandTotal)}
+                  </span>
+                </div>
               </div>
-            </div>
-            {data.termsAndConditions ? (
-              <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-                <p className="mb-1 font-semibold uppercase tracking-wide text-slate-400">Terms</p>
-                {data.termsAndConditions}
+              {data.termsAndConditions ? (
+                <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+                  <p className="mb-1 font-semibold uppercase tracking-wide text-slate-400">Terms</p>
+                  {data.termsAndConditions}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <h2 className="font-semibold">Approval history</h2>
+                <p className="text-xs text-slate-500">Workflow decisions and comments for this order.</p>
               </div>
-            ) : null}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="p-6">
+              <ApprovalHistoryPanel
+                requests={approvalHistory}
+                emptyLabel="No workflow approvals for this sales order yet."
+                showDocumentLink={false}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

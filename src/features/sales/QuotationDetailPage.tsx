@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { RefreshCw } from 'lucide-react'
+import { Building2, CalendarDays, MapPin, RefreshCw, Truck, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageChrome'
+import { DocumentSummaryCard } from '@/components/documents/DocumentSummaryCard'
 import { customerApi, salesApi } from '@/services/api'
 import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
+import { formatPlaceOfSupply } from '@/lib/gst-states'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { Badge, Button, Card, CardContent, CardHeader, Table } from '@/components/ui'
 
@@ -37,6 +39,7 @@ type QuotationDoc = {
   taxTotal?: number
   grandTotal?: number
   convertedToOrderId?: string
+  createdAt?: string
   items?: SalesLine[]
 }
 
@@ -133,26 +136,60 @@ export function QuotationDetailPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <Card>
-            <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
-              <Detail
-                label="Customer"
-                value={customer?.companyName ?? customer?.customerName ?? String(data.customerId ?? '—')}
-              />
-              <Detail label="Quotation date" value={data.quotationDate} />
-              <Detail label="Expiry" value={data.expiryDate ?? '—'} />
-              <Detail label="Place of supply" value={data.placeOfSupply ?? '—'} />
-              <div className="sm:col-span-2">
-                <Detail label="Billing address" value={data.billingAddress ?? '—'} />
-              </div>
-              <div className="sm:col-span-2">
-                <Detail label="Shipping address" value={data.shippingAddress ?? '—'} />
-              </div>
-              <div className="sm:col-span-2">
-                <Detail label="Notes" value={data.notes ?? '—'} />
-              </div>
-            </CardContent>
-          </Card>
+          <DocumentSummaryCard
+            title="Quotation Summary"
+            documentNumber={data.quotationNumber}
+            status={status}
+            statusVariant={cancelled ? 'danger' : converted ? 'success' : 'default'}
+            createdAt={data.createdAt}
+            notes={data.notes}
+            fields={[
+              {
+                key: 'customer',
+                label: 'Customer',
+                icon: UserRound,
+                iconTone: 'violet',
+                value: customer?.companyName ?? customer?.customerName ?? String(data.customerId ?? '—'),
+                detail: customer?.gstin ? `GSTIN: ${customer.gstin}` : customer?.customerCode || undefined,
+              },
+              {
+                key: 'quotationDate',
+                label: 'Quotation date',
+                icon: CalendarDays,
+                iconTone: 'blue',
+                value: data.quotationDate,
+              },
+              {
+                key: 'expiry',
+                label: 'Expiry',
+                icon: CalendarDays,
+                iconTone: 'amber',
+                value: data.expiryDate ?? '—',
+              },
+              {
+                key: 'placeOfSupply',
+                label: 'Place of supply',
+                icon: MapPin,
+                iconTone: 'teal',
+                value: formatPlaceOfSupply(data.placeOfSupply).title,
+                detail: formatPlaceOfSupply(data.placeOfSupply).detail,
+              },
+              {
+                key: 'billing',
+                label: 'Billing address',
+                icon: Building2,
+                iconTone: 'blue',
+                value: data.billingAddress?.trim() || '—',
+              },
+              {
+                key: 'shipping',
+                label: 'Shipping address',
+                icon: Truck,
+                iconTone: 'amber',
+                value: data.shippingAddress?.trim() || '—',
+              },
+            ]}
+          />
 
           <Card>
             <CardHeader>
@@ -223,15 +260,6 @@ export function QuotationDetailPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 whitespace-pre-wrap text-sm font-medium text-slate-800">{value}</p>
     </div>
   )
 }

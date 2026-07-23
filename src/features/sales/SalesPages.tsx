@@ -721,16 +721,18 @@ export function DocumentListPage({
                               <Download className="size-3.5" />
                               PDF
                             </Button>
-                            {canWrite && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={cancelled}
-                                onClick={() => cancelInvoice(String(row.id))}
-                              >
-                                Cancel
-                              </Button>
-                            )}
+                            {canWrite &&
+                              !cancelled &&
+                              status !== 'PAID' &&
+                              status !== 'PARTIALLY_PAID' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => cancelInvoice(String(row.id))}
+                                >
+                                  Cancel
+                                </Button>
+                              )}
                           </div>
                         </td>
                       )}

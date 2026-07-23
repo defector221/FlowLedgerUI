@@ -1,7 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import {
+  Building2,
+  CalendarDays,
+  CreditCard,
+  Download,
+  MapPin,
+  Package,
+  Truck,
+  UserRound,
+  Wallet,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Badge,
@@ -19,6 +29,8 @@ import {
 import { customerApi, paymentApi, purchaseApi, salesApi, supplierApi, aiApi } from '@/services/api'
 import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
 import { PageHeader } from '@/components/layout/PageChrome'
+import { DocumentSummaryCard } from '@/components/documents/DocumentSummaryCard'
+import { formatPlaceOfSupply } from '@/lib/gst-states'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { PartySelectLabel } from '@/components/party/PartySelectLabel'
 import { ApprovalHistoryPanel } from '@/features/ai/ApprovalHistoryPanel'
@@ -139,8 +151,11 @@ export function SalesInvoiceDetailPage() {
 
   const isDraft = data.status === 'DRAFT'
   const isCancelled = data.status === 'CANCELLED'
+  const hasPayments = Number(data.amountPaid ?? 0) > 0
+  const isPaidLike = data.status === 'PAID' || data.status === 'PARTIALLY_PAID' || hasPayments
   const outstanding = Number(data.outstandingAmount ?? 0)
   const canCollect = !isDraft && !isCancelled && outstanding > 0
+  const canCancel = !isCancelled && !isPaidLike
   const items = data.items ?? []
   const hasStockedLines = items.some((item) => (item.itemType ?? 'PRODUCT') !== 'SERVICE')
   const taxTotal = Number(data.cgstTotal ?? 0) + Number(data.sgstTotal ?? 0) + Number(data.igstTotal ?? 0)
@@ -181,7 +196,7 @@ export function SalesInvoiceDetailPage() {
               <Download className="size-4" />
               PDF
             </Button>
-            {!isCancelled && (
+            {canCancel && (
               <Button variant="outline" onClick={cancelInvoice}>
                 Cancel
               </Button>
@@ -193,43 +208,115 @@ export function SalesInvoiceDetailPage() {
         }
       />
 
-      <Card>
-        <CardHeader>
-          <p className="text-sm font-semibold text-slate-800">Summary</p>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-          <p>Date: {data.invoiceDate}</p>
-          <p>Payment: {data.paymentStatus}</p>
-          <p>Due: {data.dueDate ?? '—'}</p>
-          <p>
-            Customer:{' '}
-            {customer ? (
+      <DocumentSummaryCard
+        title="Invoice Summary"
+        documentNumber={data.invoiceNumber || 'Draft invoice'}
+        status={data.status}
+        statusVariant={
+          isCancelled ? 'danger' : data.status === 'PAID' ? 'success' : isDraft ? 'warning' : 'default'
+        }
+        createdAt={data.createdAt}
+        notes={data.notes}
+        fields={[
+          {
+            key: 'customer',
+            label: 'Customer',
+            icon: UserRound,
+            iconTone: 'violet',
+            value: customer ? (
               <Link className="font-medium text-teal-700 hover:underline" to={`/customers/${customer.id}`}>
                 <PartySelectLabel party={customer} />
               </Link>
             ) : (
               data.customerId
-            )}
-          </p>
-          <p>
-            Warehouse:{' '}
-            {data.warehouseName ? data.warehouseName : hasStockedLines ? '—' : 'Not applicable (services only)'}
-          </p>
-          {data.deliveryChallanId ? (
-            <p>
-              Delivery challan:{' '}
-              <Link
-                className="font-medium text-teal-700 hover:underline"
-                to={`/sales/challans/${data.deliveryChallanId}`}
-              >
-                Open challan
-              </Link>
-            </p>
-          ) : null}
-          <p className="font-semibold text-slate-900">Outstanding: {formatMoney(outstanding)}</p>
-          <p>Grand total: {formatMoney(data.grandTotal)}</p>
-        </CardContent>
-      </Card>
+            ),
+            detail: customer?.gstin ? `GSTIN: ${customer.gstin}` : customer?.customerCode || undefined,
+          },
+          {
+            key: 'invoiceDate',
+            label: 'Invoice date',
+            icon: CalendarDays,
+            iconTone: 'blue',
+            value: data.invoiceDate,
+          },
+          {
+            key: 'dueDate',
+            label: 'Due date',
+            icon: CalendarDays,
+            iconTone: 'amber',
+            value: data.dueDate ?? '—',
+          },
+          {
+            key: 'payment',
+            label: 'Payment',
+            icon: CreditCard,
+            iconTone: 'teal',
+            value: data.paymentStatus,
+            detail: `Paid ${formatMoney(data.amountPaid)} · Due ${formatMoney(outstanding)}`,
+          },
+          {
+            key: 'warehouse',
+            label: 'Warehouse',
+            icon: Building2,
+            iconTone: 'blue',
+            value: data.warehouseName
+              ? data.warehouseName
+              : hasStockedLines
+                ? '—'
+                : 'Not applicable (services only)',
+          },
+          {
+            key: 'placeOfSupply',
+            label: 'Place of supply',
+            icon: MapPin,
+            iconTone: 'teal',
+            value: formatPlaceOfSupply(data.placeOfSupply).title,
+            detail: formatPlaceOfSupply(data.placeOfSupply).detail,
+          },
+          {
+            key: 'billing',
+            label: 'Billing address',
+            icon: Building2,
+            iconTone: 'blue',
+            value: data.billingAddress?.trim() || '—',
+          },
+          {
+            key: 'shipping',
+            label: 'Shipping address',
+            icon: Truck,
+            iconTone: 'amber',
+            value: data.shippingAddress?.trim() || '—',
+          },
+          {
+            key: 'totals',
+            label: 'Amounts',
+            icon: Wallet,
+            iconTone: 'slate',
+            span: 2,
+            value: `Grand total ${formatMoney(data.grandTotal)}`,
+            detail: `Outstanding ${formatMoney(outstanding)}`,
+          },
+          ...(data.deliveryChallanId
+            ? [
+                {
+                  key: 'challan',
+                  label: 'Delivery challan',
+                  icon: Package,
+                  iconTone: 'teal' as const,
+                  span: 2 as const,
+                  value: (
+                    <Link
+                      className="font-medium text-teal-700 hover:underline"
+                      to={`/sales/challans/${data.deliveryChallanId}`}
+                    >
+                      Open challan
+                    </Link>
+                  ),
+                },
+              ]
+            : []),
+        ]}
+      />
 
       <Card>
         <CardHeader>

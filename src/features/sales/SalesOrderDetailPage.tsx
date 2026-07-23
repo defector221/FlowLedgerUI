@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { RefreshCw } from 'lucide-react'
+import { Building2, CalendarDays, FileText, MapPin, RefreshCw, Truck, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageChrome'
+import { DocumentSummaryCard } from '@/components/documents/DocumentSummaryCard'
 import { customerApi, organizationApi, salesApi, warehouseApi, aiApi } from '@/services/api'
 import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
+import { formatPlaceOfSupply } from '@/lib/gst-states'
 import { currency, quantity as formatQty } from '@/lib/utils'
 import { Badge, Button, Card, CardContent, CardHeader, Table } from '@/components/ui'
 import { ApprovalHistoryPanel } from '@/features/ai/ApprovalHistoryPanel'
@@ -38,6 +40,7 @@ type SalesOrderDoc = {
   discountTotal?: number
   taxTotal?: number
   grandTotal?: number
+  createdAt?: string
   items?: SalesLine[]
 }
 
@@ -262,37 +265,79 @@ export function SalesOrderDetailPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <Card>
-            <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
-              <Detail
-                label="Customer"
-                value={customer?.companyName ?? customer?.customerName ?? String(data.customerId ?? '—')}
-              />
-              <Detail label="Order date" value={data.orderDate} />
-              <Detail label="Expected delivery" value={data.expectedDeliveryDate ?? '—'} />
-              <Detail label="Place of supply" value={data.placeOfSupply ?? '—'} />
-              {data.quotationId ? (
-                <div className="sm:col-span-2">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Source quotation</p>
-                  <Link
-                    to={`/sales/quotations/${data.quotationId}`}
-                    className="mt-1 inline-block text-sm font-medium text-teal-700 hover:underline"
-                  >
-                    Open quotation
-                  </Link>
-                </div>
-              ) : null}
-              <div className="sm:col-span-2">
-                <Detail label="Billing address" value={data.billingAddress ?? '—'} />
-              </div>
-              <div className="sm:col-span-2">
-                <Detail label="Shipping address" value={data.shippingAddress ?? '—'} />
-              </div>
-              <div className="sm:col-span-2">
-                <Detail label="Notes" value={data.notes ?? '—'} />
-              </div>
-            </CardContent>
-          </Card>
+          <DocumentSummaryCard
+            title="Sales Order Summary"
+            documentNumber={data.orderNumber}
+            status={displayStatus}
+            statusVariant={statusVariant}
+            createdAt={data.createdAt}
+            notes={data.notes}
+            fields={[
+              {
+                key: 'customer',
+                label: 'Customer',
+                icon: UserRound,
+                iconTone: 'violet',
+                value: customer?.companyName ?? customer?.customerName ?? String(data.customerId ?? '—'),
+                detail: customer?.gstin ? `GSTIN: ${customer.gstin}` : customer?.customerCode || undefined,
+              },
+              {
+                key: 'orderDate',
+                label: 'Order date',
+                icon: CalendarDays,
+                iconTone: 'blue',
+                value: data.orderDate,
+              },
+              {
+                key: 'expectedDelivery',
+                label: 'Expected delivery',
+                icon: Truck,
+                iconTone: 'teal',
+                value: data.expectedDeliveryDate ?? '—',
+              },
+              {
+                key: 'placeOfSupply',
+                label: 'Place of supply',
+                icon: MapPin,
+                iconTone: 'teal',
+                value: formatPlaceOfSupply(data.placeOfSupply).title,
+                detail: formatPlaceOfSupply(data.placeOfSupply).detail,
+              },
+              {
+                key: 'billing',
+                label: 'Billing address',
+                icon: Building2,
+                iconTone: 'blue',
+                value: data.billingAddress?.trim() || '—',
+              },
+              {
+                key: 'shipping',
+                label: 'Shipping address',
+                icon: Truck,
+                iconTone: 'amber',
+                value: data.shippingAddress?.trim() || '—',
+              },
+              ...(data.quotationId
+                ? [
+                    {
+                      key: 'quotation',
+                      label: 'Source quotation',
+                      icon: FileText,
+                      iconTone: 'slate' as const,
+                      span: 2 as const,
+                      value: (
+                        <Link
+                          to={`/sales/quotations/${data.quotationId}`}
+                          className="font-medium text-teal-700 hover:underline"
+                        >
+                          Open quotation
+                        </Link>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
 
           <Card>
             <CardHeader>
@@ -381,15 +426,6 @@ export function SalesOrderDetailPage() {
           </Card>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 whitespace-pre-wrap text-sm font-medium text-slate-800">{value}</p>
     </div>
   )
 }

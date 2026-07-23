@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { RefreshCw } from 'lucide-react'
+import { Building2, CalendarDays, Package, RefreshCw, ShoppingCart, UserRound } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageChrome'
+import { DocumentSummaryCard } from '@/components/documents/DocumentSummaryCard'
 import { customerApi, organizationApi, salesApi, transportApi, warehouseApi, aiApi } from '@/services/api'
 import { getApiErrorMessage, notifyWorkflowApproval } from '@/lib/api-error'
 import {
@@ -378,20 +379,73 @@ export function DeliveryChallanDetailPage() {
               />
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
-              <Detail
-                label="Customer"
-                value={challan.customerName ?? customer?.companyName ?? customer?.customerName ?? '—'}
-              />
-              <Detail label="Warehouse" value={challan.warehouseName ?? warehouse?.warehouseName ?? '—'} />
-              <Detail label="Challan date" value={challan.challanDate} />
-              <Detail label="Sales order" value={challan.salesOrderNumber ?? challan.salesOrderId ?? '—'} />
-              <div className="sm:col-span-2">
-                <Detail label="Notes" value={challan.notes ?? '—'} />
-              </div>
-            </CardContent>
-          </Card>
+          <DocumentSummaryCard
+            title="Delivery Challan Summary"
+            documentNumber={challan.challanNumber}
+            status={displayStatus}
+            statusVariant={statusVariant}
+            createdAt={challan.createdAt}
+            notes={challan.notes}
+            fields={[
+              {
+                key: 'customer',
+                label: 'Customer',
+                icon: UserRound,
+                iconTone: 'violet',
+                value: challan.customerName ?? customer?.companyName ?? customer?.customerName ?? '—',
+                detail: customer?.gstin ? `GSTIN: ${customer.gstin}` : customer?.customerCode || undefined,
+              },
+              {
+                key: 'warehouse',
+                label: 'Warehouse',
+                icon: Building2,
+                iconTone: 'blue',
+                value: challan.warehouseName ?? warehouse?.warehouseName ?? '—',
+              },
+              {
+                key: 'challanDate',
+                label: 'Challan date',
+                icon: CalendarDays,
+                iconTone: 'teal',
+                value: challan.challanDate,
+              },
+              {
+                key: 'salesOrder',
+                label: 'Sales order',
+                icon: ShoppingCart,
+                iconTone: 'amber',
+                value: challan.salesOrderId ? (
+                  <Link
+                    to={`/sales/orders/${challan.salesOrderId}`}
+                    className="font-medium text-teal-700 hover:underline"
+                  >
+                    {challan.salesOrderNumber ?? challan.salesOrderId}
+                  </Link>
+                ) : (
+                  '—'
+                ),
+              },
+              ...(linkedInvoiceId
+                ? [
+                    {
+                      key: 'invoice',
+                      label: 'Linked invoice',
+                      icon: Package,
+                      iconTone: 'teal' as const,
+                      span: 2 as const,
+                      value: (
+                        <Link
+                          to={`/sales/invoices/${linkedInvoiceId}`}
+                          className="font-medium text-teal-700 hover:underline"
+                        >
+                          {linkedInvoiceNumber ?? linkedInvoiceId}
+                        </Link>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
           <Card>
             <CardHeader>
               <h2 className="font-semibold">Items</h2>
@@ -583,15 +637,6 @@ export function DeliveryChallanDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
     </div>
   )
 }

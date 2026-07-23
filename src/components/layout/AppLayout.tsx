@@ -36,12 +36,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
-      <AppSidebar
-        mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
-      />
+      <AppSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} collapsed={collapsed} />
       <div
         className={cn('min-w-0 transition-[padding] duration-200 ease-out', collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64')}
       >

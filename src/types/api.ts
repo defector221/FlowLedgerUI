@@ -214,6 +214,8 @@ export interface CustomerResponse {
   gstin: string | null
   email: string | null
   phone: string | null
+  billingAddress?: string | null
+  shippingAddress?: string | null
   city: string | null
   state: string | null
   stateCode: string | null
@@ -595,6 +597,7 @@ export interface DeliveryChallan {
   transportRequired?: boolean
   linkedInvoiceId?: string | null
   linkedInvoiceNumber?: string | null
+  createdAt?: string | null
   items?: DeliveryChallanItem[]
 }
 
@@ -743,6 +746,7 @@ export interface SalesInvoiceResponse {
   placeOfSupply?: string | null
   salesOrderId?: string | null
   deliveryChallanId?: string | null
+  createdAt?: string | null
   items?: SalesInvoiceItemResponse[] | null
 }
 

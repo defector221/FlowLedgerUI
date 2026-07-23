@@ -12,8 +12,6 @@ import {
   LogOut,
   Megaphone,
   Package,
-  PanelLeftClose,
-  PanelLeftOpen,
   Percent,
   ReceiptText,
   Search,
@@ -146,12 +144,10 @@ export function AppSidebar({
   mobileOpen,
   onMobileClose,
   collapsed,
-  onToggleCollapsed,
 }: {
   mobileOpen: boolean
   onMobileClose: () => void
   collapsed: boolean
-  onToggleCollapsed: () => void
 }) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -222,18 +218,7 @@ export function AppSidebar({
             >
               <X className="size-5" />
             </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden cursor-pointer text-slate-400 hover:bg-white/5 hover:text-white lg:inline-flex"
-              onClick={onToggleCollapsed}
-              aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={compact ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {compact ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-            </Button>
-          )}
+          ) : null}
         </div>
 
         <nav className="scrollbar-dark relative min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden">

@@ -1,0 +1,16 @@
+import { registerModule } from '../registry'
+
+registerModule({ code: 'DASHBOARD' })
+registerModule({ code: 'SALES' })
+registerModule({ code: 'PURCHASE' })
+registerModule({ code: 'INVENTORY' })
+registerModule({ code: 'PAYMENTS' })
+registerModule({ code: 'ACCOUNTING' })
+registerModule({ code: 'CRM' })
+registerModule({ code: 'REPORTS' })
+registerModule({ code: 'TRANSPORT' })
+registerModule({ code: 'RETAIL' })
+registerModule({ code: 'AI' })
+registerModule({ code: 'SETTINGS' })
+registerModule({ code: 'AUDIT' })
+registerModule({ code: 'WAREHOUSE' })

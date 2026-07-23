@@ -143,6 +143,58 @@ export const organizationApi = {
     api.put('/organizations/current/settings', payload).then((r) => unwrapApi<OrganizationSettingsResponse>(r)),
 }
 
+export const platformApi = {
+  modules: () => api.get('/platform/modules').then((r) => unwrapApi<import('@/platform').ModuleCatalogItem[]>(r)),
+  moduleFeatures: (code: string) =>
+    api.get(`/platform/modules/${code}/features`).then((r) => unwrapApi<import('@/platform').ModuleFeatureCatalogItem[]>(r)),
+  allFeatures: () =>
+    api.get('/platform/modules/features').then((r) => unwrapApi<import('@/platform').ModuleFeatureCatalogItem[]>(r)),
+  editions: () => api.get('/platform/editions').then((r) => unwrapApi<import('@/platform').EditionResponse[]>(r)),
+  edition: () =>
+    api.get('/platform/organization/edition').then((r) => unwrapApi<import('@/platform').OrganizationEditionResponse>(r)),
+  updateEdition: (editionCode: string) =>
+    api
+      .patch('/platform/organization/edition', { editionCode })
+      .then((r) => unwrapApi<import('@/platform').OrganizationEditionResponse>(r)),
+  organizationModules: () =>
+    api
+      .get('/platform/organization/modules')
+      .then((r) => unwrapApi<import('@/platform').OrganizationModuleResponse[]>(r)),
+  updateOrganizationModules: (
+    modules: {
+      moduleCode: string
+      enabled?: boolean
+      licensed?: boolean
+      trial?: boolean
+      expiresAt?: string | null
+      configuration?: string
+    }[],
+  ) =>
+    api
+      .put('/platform/organization/modules', { modules })
+      .then((r) => unwrapApi<import('@/platform').OrganizationModuleResponse[]>(r)),
+  organizationFeatures: () =>
+    api
+      .get('/platform/organization/features')
+      .then((r) => unwrapApi<import('@/platform').OrganizationFeatureResponse[]>(r)),
+  updateOrganizationFeatures: (
+    features: {
+      moduleCode: string
+      featureCode: string
+      enabled?: boolean
+      licensed?: boolean
+      trial?: boolean
+      expiresAt?: string | null
+      configuration?: string
+    }[],
+  ) =>
+    api
+      .put('/platform/organization/features', { features })
+      .then((r) => unwrapApi<import('@/platform').OrganizationFeatureResponse[]>(r)),
+  capabilities: () =>
+    api.get('/platform/organization/capabilities').then((r) => unwrapApi<import('@/platform').CapabilitiesResponse>(r)),
+}
+
 export const userApi = {
   list: () => api.get('/users').then((r) => unwrapList<UserListResponse>(r)),
   invite: (payload: InviteUserRequest) =>

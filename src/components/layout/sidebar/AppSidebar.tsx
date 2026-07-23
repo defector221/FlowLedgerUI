@@ -16,8 +16,14 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth'
-import { aiApi, organizationApi } from '@/services/api'
+import { aiApi } from '@/services/api'
 import { cn } from '@/lib/utils'
+import {
+  isPlatformFeatureEnabled,
+  isPlatformModuleEnabled,
+  platformCodeForRbac,
+  useCapabilities,
+} from '@/platform'
 import {
   Button,
   DropdownMenu,
@@ -86,11 +92,7 @@ function NavItemRow({
         )}
       >
         {active ? (
-          <span
-            className="absolute inset-y-1.5 left-0 w-1 rounded-r"
-            style={{ background: 'var(--sidebar-active)' }}
-            aria-hidden
-          />
+          <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-teal-400" aria-hidden />
         ) : null}
         <Icon className={cn('size-[18px] shrink-0', active ? 'text-teal-300' : 'opacity-90')} />
         {!compact ? (
@@ -157,11 +159,7 @@ function NavSectionBlock({
           )}
         >
           {(childActive || expanded) && (
-            <span
-              className="absolute inset-y-1.5 left-0 w-1 rounded-r"
-              style={{ background: 'var(--sidebar-active)' }}
-              aria-hidden
-            />
+            <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-teal-400" aria-hidden />
           )}
           <Icon className="size-[18px]" />
         </button>
@@ -264,41 +262,37 @@ export function AppSidebar({
   })
   const aiAvailable = aiHealth.isSuccess && aiHealth.data?.enabled !== false
 
-  const orgSettings = useQuery({
-    queryKey: ['organization', 'ops-settings'],
-    queryFn: organizationApi.settings,
-    staleTime: 30_000,
-  })
-  const retailEnabled = orgSettings.data?.retailEnabled === true
-  // Preserve prior behavior: transport remains permission-gated only (no org flag hide).
-  const transportEnabled = true
-
-  const flags = useMemo(
-    () => ({
-      ai: aiAvailable,
-      retail: retailEnabled,
-      transport: transportEnabled,
-    }),
-    [aiAvailable, retailEnabled, transportEnabled],
-  )
+  const { data: capabilities } = useCapabilities()
 
   const visibleEntries = useMemo(() => {
     const result: NavEntry[] = []
     for (const entry of NAV_ENTRIES) {
       if (entry.type === 'link') {
-        if (canAccessModule(entry.item.module)) result.push(entry)
+        if (!canAccessModule(entry.item.module)) continue
+        const code = platformCodeForRbac(entry.item.module)
+        if (!isPlatformModuleEnabled(capabilities, code)) continue
+        result.push(entry)
         continue
       }
       const section = entry.section
-      if (section.featureFlag && !flags[section.featureFlag]) continue
+      if (section.featureFlag === 'ai' && !aiAvailable) continue
+      if (section.featureFlag === 'ai' && !isPlatformModuleEnabled(capabilities, 'AI')) continue
+      if (section.featureFlag === 'retail' && !isPlatformModuleEnabled(capabilities, 'RETAIL')) continue
+      if (section.featureFlag === 'transport' && !isPlatformModuleEnabled(capabilities, 'TRANSPORT')) continue
+
       const items = section.items.filter((item) => {
         if (!canAccessModule(item.module)) return false
-        if (item.module === 'retail' && !flags.retail) return false
-        if (item.to.startsWith('/transport') && item.to.includes('reports') && !canAccessModule('transport')) {
-          return false
-        }
+        const code = platformCodeForRbac(item.module)
+        if (!isPlatformModuleEnabled(capabilities, code)) return false
+        if (item.feature && code && !isPlatformFeatureEnabled(capabilities, code, item.feature)) return false
         if (item.module === 'retail' || item.to.startsWith('/retail')) {
-          return flags.retail
+          if (!isPlatformModuleEnabled(capabilities, 'RETAIL')) return false
+        }
+        if (item.to.startsWith('/transport')) {
+          if (!isPlatformModuleEnabled(capabilities, 'TRANSPORT')) return false
+        }
+        if (item.module === 'ai' || item.module === 'aiRecommendations' || item.module === 'aiWorkflow') {
+          if (!aiAvailable || !isPlatformModuleEnabled(capabilities, 'AI')) return false
         }
         return true
       })
@@ -306,7 +300,7 @@ export function AppSidebar({
       result.push({ type: 'section', section: { ...section, items } })
     }
     return result
-  }, [canAccessModule, flags])
+  }, [canAccessModule, capabilities, aiAvailable])
 
   const visibleLeaves = useMemo(() => flattenNavLeaves(visibleEntries), [visibleEntries])
   const visiblePaths = visibleLeaves.map((leaf) => leaf.to)
@@ -361,11 +355,12 @@ export function AppSidebar({
       <aside
         ref={asideRef}
         className={cn(
-          'flex h-full flex-col overflow-hidden text-slate-300 shadow-[4px_0_24px_rgb(2_6_23/0.28)] transition-[width] duration-200 ease-out [color-scheme:dark]',
-          compact ? 'w-[72px] px-2 py-3' : 'w-[280px] px-3 py-4',
+          'flex h-full w-full flex-col overflow-hidden text-slate-300 shadow-[4px_0_24px_rgb(2_6_23/0.28)] transition-[width] duration-200 ease-out [color-scheme:dark]',
+          'bg-[#0F172A]',
+          compact ? 'px-2 py-3' : 'px-3 py-4',
         )}
         style={{
-          background: 'linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%)',
+          backgroundImage: 'linear-gradient(180deg, #0F172A 0%, #111827 100%)',
         }}
       >
         {/* Header */}
@@ -646,7 +641,7 @@ export function AppSidebar({
     <>
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-40 hidden transition-[width] duration-200 ease-out lg:block',
+          'fixed inset-y-0 left-0 z-40 hidden overflow-hidden bg-[#0F172A] transition-[width] duration-200 ease-out lg:block',
           collapsed ? 'w-[72px]' : 'w-[280px]',
         )}
       >
@@ -658,7 +653,7 @@ export function AppSidebar({
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
-            className="h-full w-[min(280px,88vw)] shadow-2xl transition-transform duration-200 ease-out"
+            className="h-full w-[min(280px,88vw)] overflow-hidden bg-[#0F172A] shadow-2xl transition-transform duration-200 ease-out"
             onClick={(event) => event.stopPropagation()}
           >
             {renderAside({ compact: false, showClose: true })}

@@ -32,10 +32,14 @@ export function OrganizationSwitcher({ variant = 'default' }: { variant?: 'defau
         {activeOrganization.organizationName.slice(0, 2).toUpperCase()}
       </span>
       <div className={sidebar ? 'min-w-0 flex-1 text-left' : 'hidden min-w-0 text-left md:block'}>
-        <p className="truncate text-sm font-medium text-slate-900">{activeOrganization.organizationName}</p>
-        <p className="truncate text-xs text-slate-500">{activeOrganization.roles[0]?.replace(/_/g, ' ') ?? 'Member'}</p>
+        <p className={sidebar ? 'truncate text-sm font-medium text-white' : 'truncate text-sm font-medium text-slate-900'}>
+          {activeOrganization.organizationName}
+        </p>
+        <p className={sidebar ? 'truncate text-xs text-slate-400' : 'truncate text-xs text-slate-500'}>
+          {activeOrganization.roles[0]?.replace(/_/g, ' ') ?? 'Member'}
+        </p>
       </div>
-      {multiple && <ChevronDown className="size-4 shrink-0 text-slate-500" />}
+      {multiple && <ChevronDown className={sidebar ? 'size-4 shrink-0 text-slate-400' : 'size-4 shrink-0 text-slate-500'} />}
     </div>
   )
 

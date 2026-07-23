@@ -3,41 +3,44 @@ import { Link } from 'react-router-dom'
 import { PageHeader, PageShell } from '@/components/layout/PageChrome'
 import { Button, Card, CardContent } from '@/components/ui'
 import { useAuth } from '@/features/auth/auth'
-import { useCapabilities } from '@/platform'
+import { useCapabilities, useHasFeature, useHasModule } from '@/platform'
 
-export function useRetailEnabled() {
-  const query = useCapabilities()
-  return {
-    ...query,
-    data: query.data
-      ? { retailEnabled: query.data.modules.RETAIL === true }
-      : undefined,
-  }
-}
-
-export function RetailModuleGate({ children, title }: { children: ReactNode; title?: string }) {
+export function RequirePlatformFeature({
+  module,
+  feature,
+  title,
+  children,
+}: {
+  module: string
+  feature?: string
+  title: string
+  children: ReactNode
+}) {
   const { canManageOrganization } = useAuth()
-  const { data: capabilities, isLoading } = useCapabilities()
+  const { isLoading } = useCapabilities()
+  const moduleOn = useHasModule(module)
+  const featureOn = useHasFeature(module, feature ?? '')
 
   if (isLoading) {
     return (
       <PageShell>
-        {title ? <PageHeader title={title} /> : null}
+        <PageHeader title={title} />
         <p className="text-sm text-slate-500">Loading…</p>
       </PageShell>
     )
   }
 
-  if (capabilities && capabilities.modules.RETAIL !== true) {
+  if (!moduleOn || (feature && !featureOn)) {
     return (
       <PageShell>
-        {title ? <PageHeader title={title} /> : null}
+        <PageHeader title={title} />
         <Card>
           <CardContent className="space-y-3 p-6">
-            <p className="text-base font-semibold text-slate-900">Retail module is disabled</p>
+            <p className="text-base font-semibold text-slate-900">
+              {!moduleOn ? `${module} module is disabled` : `${module}.${feature} is disabled`}
+            </p>
             <p className="text-sm text-slate-600">
-              Enable Retail in Platform Settings (or Organization Settings) to use stores, shifts, POS, and related
-              features.
+              Enable it in Platform Settings to use this screen.
             </p>
             {canManageOrganization() ? (
               <Button asChild>

@@ -40,6 +40,7 @@ import {
   TemplateDesignerPage,
   UnitsPage,
 } from '@/features/misc/MiscPages'
+import { PlatformSettingsPage } from '@/features/settings/platform/PlatformSettingsPage'
 import { TeamManagementPage } from '@/features/settings/TeamManagementPage'
 import { BillingPage } from '@/features/settings/BillingPage'
 import { ReminderRulesPage } from '@/features/settings/ReminderRulesPage'
@@ -76,6 +77,7 @@ import { AiChatPage } from '@/features/ai/AiChatPage'
 import { AiRecommendationsPage } from '@/features/ai/AiRecommendationsPage'
 import { AiAnalyticsPage } from '@/features/ai/AiAnalyticsPage'
 import { AiWorkflowsPage } from '@/features/ai/AiWorkflowsPage'
+import { RequirePlatformFeature } from '@/platform'
 
 const guarded = (element: ReactNode) => (
   <ProtectedRoute>
@@ -311,6 +313,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'settings/platform',
+        element: (
+          <RequireRole roles={['ORGANIZATION_ADMIN']}>
+            <PlatformSettingsPage />
+          </RequireRole>
+        ),
+      },
+      {
         path: 'settings/billing',
         element: (
           <RequireRole roles={['ORGANIZATION_ADMIN']}>
@@ -332,10 +342,38 @@ export const router = createBrowserRouter([
       { path: 'settings/password', element: <ChangePasswordPage /> },
       { path: 'settings/profile', element: <ProfileSettingsPage /> },
       { path: 'audit', element: <AuditLogsPage /> },
-      { path: 'ai/chat', element: <AiChatPage /> },
-      { path: 'ai/recommendations', element: <AiRecommendationsPage /> },
-      { path: 'ai/analytics', element: <AiAnalyticsPage /> },
-      { path: 'ai/workflows', element: <AiWorkflowsPage /> },
+      {
+        path: 'ai/chat',
+        element: (
+          <RequirePlatformFeature module="AI" feature="ASSISTANT" title="AI Assistant">
+            <AiChatPage />
+          </RequirePlatformFeature>
+        ),
+      },
+      {
+        path: 'ai/recommendations',
+        element: (
+          <RequirePlatformFeature module="AI" feature="INSIGHTS" title="AI Insights">
+            <AiRecommendationsPage />
+          </RequirePlatformFeature>
+        ),
+      },
+      {
+        path: 'ai/analytics',
+        element: (
+          <RequirePlatformFeature module="AI" feature="FORECASTS" title="AI Forecasts">
+            <AiAnalyticsPage />
+          </RequirePlatformFeature>
+        ),
+      },
+      {
+        path: 'ai/workflows',
+        element: (
+          <RequirePlatformFeature module="AI" feature="AUTOMATION" title="AI Automation">
+            <AiWorkflowsPage />
+          </RequirePlatformFeature>
+        ),
+      },
     ],
   },
 ])
